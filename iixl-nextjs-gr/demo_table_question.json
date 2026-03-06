@@ -1,0 +1,76 @@
+{
+    "id": "gemini-smart-table-demo",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+        {
+            "type": "text",
+            "content": "Use the Place Value table to find the total sum by adding each column."
+        },
+        {
+            "type": "table",
+            "title": "Place Value Addition",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "Hundred",
+                    "key": "h"
+                },
+                {
+                    "header": "Ten",
+                    "key": "t"
+                },
+                {
+                    "header": "One",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "carry",
+                    "h": {
+                        "id": "c_h"
+                    },
+                    "t": {
+                        "id": "c_t"
+                    },
+                    "o": ""
+                },
+                {
+                    "label": "",
+                    "h": "4",
+                    "t": "7",
+                    "o": "9"
+                },
+                {
+                    "label": "+",
+                    "h": "9",
+                    "t": "2",
+                    "o": "3"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "ans_h"
+                    },
+                    "t": {
+                        "id": "ans_t",
+                        "maxLength": 1
+                    },
+                    "o": {
+                        "id": "ans_o",
+                        "maxLength": 1
+                    }
+                }
+            ],
+            "features": {
+                "exportable": false
+            }
+        }
+    ],
+    "correctAnswerText": "{\"ans_h\":\"14\",\"ans_t\":\"0\",\"ans_o\":\"2\"}",
+    "showSubmitButton": true
+}

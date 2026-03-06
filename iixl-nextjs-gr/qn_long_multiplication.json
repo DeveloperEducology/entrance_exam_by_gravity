@@ -1,0 +1,89 @@
+{
+    "id": "qn-long-multiplication",
+    "type": "fillInTheBlank",
+    "difficulty": "Medium",
+    "parts": [
+        {
+            "type": "text",
+            "content": "Solve the long multiplication problem below step-by-step:"
+        },
+        {
+            "type": "table",
+            "title": "Multiply: 24 × 12",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "H",
+                    "key": "h"
+                },
+                {
+                    "header": "T",
+                    "key": "t"
+                },
+                {
+                    "header": "O",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "",
+                    "h": "",
+                    "t": "2",
+                    "o": "4"
+                },
+                {
+                    "label": "×",
+                    "h": "",
+                    "t": "1",
+                    "o": "2"
+                },
+                {
+                    "label": "24 x 2",
+                    "h": "",
+                    "t": {
+                        "id": "p1_t"
+                    },
+                    "o": {
+                        "id": "p1_o"
+                    }
+                },
+                {
+                    "label": "24 x 10",
+                    "h": {
+                        "id": "p2_h"
+                    },
+                    "t": {
+                        "id": "p2_t"
+                    },
+                    "o": "0"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "total_h"
+                    },
+                    "t": {
+                        "id": "total_t"
+                    },
+                    "o": {
+                        "id": "total_o"
+                    }
+                }
+            ]
+        }
+    ],
+    "correct_answer_text": {
+        "p1_t": "4",
+        "p1_o": "8",
+        "p2_h": "2",
+        "p2_t": "4",
+        "total_h": "2",
+        "total_t": "8",
+        "total_o": "8"
+    },
+    "showSubmitButton": true
+}

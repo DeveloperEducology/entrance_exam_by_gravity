@@ -1,0 +1,287 @@
+{
+    "arithmetic_patterns": {
+        "addition_with_carry": {
+            "type": "table",
+            "title": "Addition: 479 + 923",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "H",
+                    "key": "h"
+                },
+                {
+                    "header": "T",
+                    "key": "t"
+                },
+                {
+                    "header": "O",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "carry",
+                    "h": {
+                        "id": "c_h"
+                    },
+                    "t": {
+                        "id": "c_t"
+                    },
+                    "o": ""
+                },
+                {
+                    "label": "",
+                    "h": "4",
+                    "t": "7",
+                    "o": "9"
+                },
+                {
+                    "label": "+",
+                    "h": "9",
+                    "t": "2",
+                    "o": "3"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "ans_h"
+                    },
+                    "t": {
+                        "id": "ans_t",
+                        "maxLength": 1
+                    },
+                    "o": {
+                        "id": "ans_o",
+                        "maxLength": 1
+                    }
+                }
+            ]
+        },
+        "subtraction_with_borrow": {
+            "type": "table",
+            "title": "Subtraction: 543 - 267",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "H",
+                    "key": "h"
+                },
+                {
+                    "header": "T",
+                    "key": "t"
+                },
+                {
+                    "header": "O",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "borrow",
+                    "h": {
+                        "id": "b_h"
+                    },
+                    "t": {
+                        "id": "b_t"
+                    },
+                    "o": {
+                        "id": "b_o"
+                    }
+                },
+                {
+                    "label": "",
+                    "h": "5",
+                    "t": "4",
+                    "o": "3"
+                },
+                {
+                    "label": "-",
+                    "h": "2",
+                    "t": "6",
+                    "o": "7"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "ans_h"
+                    },
+                    "t": {
+                        "id": "ans_t"
+                    },
+                    "o": {
+                        "id": "ans_o"
+                    }
+                }
+            ]
+        }
+    },
+    "advanced_patterns": {
+        "decimal_comparison": {
+            "type": "table",
+            "title": "Compare Decimals",
+            "columns": [
+                {
+                    "header": "Value",
+                    "key": "label"
+                },
+                {
+                    "header": "Ones",
+                    "key": "ones"
+                },
+                {
+                    "header": ".",
+                    "key": "dot"
+                },
+                {
+                    "header": "1/10",
+                    "key": "t"
+                },
+                {
+                    "header": "1/100",
+                    "key": "h"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "A",
+                    "ones": "3",
+                    "dot": ".",
+                    "t": "4",
+                    "h": "5"
+                },
+                {
+                    "label": "B",
+                    "ones": "3",
+                    "dot": ".",
+                    "t": "5",
+                    "h": "0"
+                },
+                {
+                    "label": "Compare",
+                    "ones": "",
+                    "dot": "",
+                    "t": {
+                        "id": "comp",
+                        "placeholder": "< > ="
+                    },
+                    "h": ""
+                }
+            ]
+        },
+        "frequency_table": {
+            "type": "table",
+            "title": "Class Fruit Survey",
+            "columns": [
+                {
+                    "header": "Fruit",
+                    "key": "label"
+                },
+                {
+                    "header": "Tally",
+                    "key": "tally"
+                },
+                {
+                    "header": "Count",
+                    "key": "count"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "🍎 Apple",
+                    "tally": "IIII",
+                    "count": {
+                        "id": "count_apple"
+                    }
+                },
+                {
+                    "label": "🍌 Banana",
+                    "tally": "II",
+                    "count": {
+                        "id": "count_banana"
+                    }
+                },
+                {
+                    "label": "Total",
+                    "tally": "",
+                    "count": {
+                        "id": "total_fruit"
+                    }
+                }
+            ]
+        },
+        "long_multiplication_steps": {
+            "type": "table",
+            "title": "Long Multiplication: 24 × 12",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "H",
+                    "key": "h"
+                },
+                {
+                    "header": "T",
+                    "key": "t"
+                },
+                {
+                    "header": "O",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "",
+                    "h": "",
+                    "t": "2",
+                    "o": "4"
+                },
+                {
+                    "label": "×",
+                    "h": "",
+                    "t": "1",
+                    "o": "2"
+                },
+                {
+                    "label": "24 x 2",
+                    "h": "",
+                    "t": {
+                        "id": "p1_t"
+                    },
+                    "o": {
+                        "id": "p1_o"
+                    }
+                },
+                {
+                    "label": "24 x 10",
+                    "h": {
+                        "id": "p2_h"
+                    },
+                    "t": {
+                        "id": "p2_t"
+                    },
+                    "o": "0"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "total_h"
+                    },
+                    "t": {
+                        "id": "total_t"
+                    },
+                    "o": {
+                        "id": "total_o"
+                    }
+                }
+            ]
+        }
+    }
+}

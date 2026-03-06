@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import QuestionParts from './QuestionParts';
 import styles from './TextInputRenderer.module.css';
 
@@ -10,6 +11,14 @@ export default function TextInputRenderer({
     onSubmit,
     isAnswered
 }) {
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (!isAnswered && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [question?.id, isAnswered]);
+
     return (
         <div className={styles.container}>
             <div className={styles.questionCard}>
@@ -18,6 +27,7 @@ export default function TextInputRenderer({
                 </div>
 
                 <input
+                    ref={inputRef}
                     type="text"
                     className={styles.input}
                     value={userAnswer || ''}

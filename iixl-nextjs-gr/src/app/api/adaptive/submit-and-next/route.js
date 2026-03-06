@@ -74,7 +74,7 @@ function buildBasicFeedback(question) {
 
             return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join(', ');
           }
-        } catch {}
+        } catch { }
       }
       return String(question?.correctAnswerText ?? '');
     })(),
@@ -98,20 +98,21 @@ function extractIdempotencyResponse(correctPayload) {
     : null;
 }
 
-async function findIdempotentReplay(supabase, { sessionId, studentId, microskillId, questionId, attemptId }) {
+async function findIdempotentReplay(db, { sessionId, studentId, microskillId, questionId, attemptId }) {
   if (!attemptId) return null;
 
-  const { data, error } = await supabase
-    .from('attempt_events')
-    .select('correct_payload, created_at')
-    .eq('session_id', sessionId)
-    .eq('student_id', studentId)
-    .eq('micro_skill_id', microskillId)
-    .eq('question_id', questionId)
-    .order('created_at', { ascending: false })
-    .limit(40);
+  const data = await db.collection('attempt_events')
+    .find({
+      session_id: sessionId,
+      student_id: studentId,
+      micro_skill_id: microskillId,
+      question_id: questionId,
+    })
+    .sort({ created_at: -1 })
+    .limit(40)
+    .toArray();
 
-  if (error || !Array.isArray(data)) return null;
+  if (!Array.isArray(data)) return null;
 
   const matched = data.find((row) => {
     const candidate = row?.correct_payload?.idempotency?.attemptId;
@@ -139,7 +140,21 @@ export async function POST(req) {
   const hintUsed = Boolean(payload?.hintUsed ?? false);
   const attemptsOnQuestion = Number(payload?.attemptsOnQuestion ?? 1);
 
+  const { serverLog } = require('@/lib/debug/logger');
+  serverLog('api.adaptive.submit-and-next', 'request start', {
+    sessionId: sessionId ? 'present' : 'missing',
+    studentId: studentId ? 'present' : 'missing',
+    microskillKey: microskillKey ? 'present' : 'missing',
+    questionId: questionId ? 'present' : 'missing',
+  });
+
   if (!sessionId || !studentId || !microskillKey || !questionId) {
+    serverLog('api.adaptive.submit-and-next', 'validation failed', {
+      sessionId: !!sessionId,
+      studentId: !!studentId,
+      microskillKey: !!microskillKey,
+      questionId: !!questionId
+    });
     return NextResponse.json(
       { error: 'sessionId, studentId, microSkillId and questionId are required.' },
       { status: 400 }
@@ -151,13 +166,13 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });
   }
 
-  const supabase = createServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase is not configured on server.' }, { status: 500 });
-  }
-
   try {
-    const replayPayload = await findIdempotentReplay(supabase, {
+    const { connectMongo } = require('@/lib/db/mongo');
+    const mongoose = require('mongoose');
+    await connectMongo();
+    const db = mongoose.connection.db;
+
+    const replayPayload = await findIdempotentReplay(db, {
       sessionId,
       studentId,
       microskillId,
@@ -172,10 +187,10 @@ export async function POST(req) {
     }
 
     const [questions, prevSession, prevSkill, priorRecoveryContext] = await Promise.all([
-      fetchQuestionsByMicroskill(supabase, microskillId),
-      getSessionState(supabase, sessionId),
-      getStudentSkillState(supabase, studentId, microskillId),
-      getRecoveryContextFromAttempts(supabase, { sessionId }),
+      fetchQuestionsByMicroskill(db, microskillId),
+      getSessionState(db, sessionId),
+      getStudentSkillState(db, studentId, microskillId),
+      getRecoveryContextFromAttempts(db, { sessionId }),
     ]);
 
     const currentQuestion = questions.find((q) => String(q.id) === questionId);
@@ -201,12 +216,12 @@ export async function POST(req) {
       attemptsOnQuestion,
     });
 
-    const skillRow = await upsertStudentSkillState(supabase, {
+    const skillRow = await upsertStudentSkillState(db, {
       student_id: studentId,
       micro_skill_id: microskillId,
       mastery_score: mastery.masteryScore,
       confidence: mastery.confidence,
-      difficulty_band: mastery.difficultyBand,
+      difficulty_band: mastery.difficulty_band,
       streak: mastery.streak,
       attempts_total: mastery.attemptsTotal,
       correct_total: mastery.correctTotal,
@@ -243,7 +258,7 @@ export async function POST(req) {
       availableQuestionIds: questions.map((q) => q.id),
     });
 
-    const sessionRow = await upsertSessionState(supabase, {
+    const sessionRow = await upsertSessionState(db, {
       id: sessionId,
       student_id: studentId,
       micro_skill_id: microskillId,
@@ -273,8 +288,8 @@ export async function POST(req) {
       remediation: inRecoveryNow
         ? {
           misconceptionCode: effectiveRemediationCode,
-            remaining: effectiveRemediationRemaining,
-          }
+          remaining: effectiveRemediationRemaining,
+        }
         : null,
     });
 
@@ -321,7 +336,7 @@ export async function POST(req) {
       },
     };
 
-    await insertAttemptEvent(supabase, {
+    await insertAttemptEvent(db, {
       session_id: sessionId,
       student_id: studentId,
       micro_skill_id: microskillId,
@@ -357,7 +372,7 @@ export async function POST(req) {
 
     if (!isCorrect && misconceptionCodeForWrongAnswer) {
       try {
-        await insertMisconceptionEvent(supabase, {
+        await insertMisconceptionEvent(db, {
           student_id: studentId,
           micro_skill_id: microskillId,
           session_id: sessionId,

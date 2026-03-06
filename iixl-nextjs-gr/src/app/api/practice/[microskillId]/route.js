@@ -92,54 +92,39 @@ export async function GET(_req, { params }) {
     );
   }
 
-  const supabase = createServerClient();
+  try {
+    const { connectMongo } = require('@/lib/db/mongo');
+    const mongoose = require('mongoose');
+    await connectMongo();
+    const db = mongoose.connection.db;
 
-  if (!supabase) {
-    serverLog('api.practice.get', 'supabase not configured');
-    return NextResponse.json(
-      { error: 'Supabase is not configured on server.' },
-      { status: 500 }
-    );
-  }
-
-  let data = null;
-  let error = null;
-
-  for (const skillColumn of SKILL_COLUMNS) {
-    for (const orderColumn of ORDER_COLUMNS) {
-      ({ data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq(skillColumn, microskillId)
-        .order(orderColumn, { ascending: true }));
-
-      if (!error) break;
-      if (!error.message?.includes(skillColumn) && !error.message?.includes(orderColumn)) {
-        break;
-      }
+    let data = null;
+    for (const skillColumn of SKILL_COLUMNS) {
+      data = await db.collection('questions')
+        .find({ [skillColumn]: microskillId })
+        .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
+        .toArray();
+      if (data && data.length > 0) break;
     }
-    if (!error) break;
-  }
 
-  if (error) {
+    const firstQuestion = Array.isArray(data) && data.length > 0 ? toPublicQuestion(mapDbQuestion(data[0])) : null;
+
+    serverLog('api.practice.get', 'request success', {
+      microskillId,
+      hasQuestion: Boolean(firstQuestion),
+      questionCount: Array.isArray(data) ? data.length : 0,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return NextResponse.json({
+      source: 'mongodb',
+      question: firstQuestion,
+    });
+  } catch (error) {
     serverError('api.practice.get', 'question fetch failed', error, { microskillId });
     return NextResponse.json(
-      { error: error.message ?? 'Failed to fetch questions from Supabase.' },
+      { error: error.message ?? 'Failed to fetch questions from MongoDB.' },
       { status: 500 }
     );
   }
-
-  const firstQuestion = Array.isArray(data) && data.length > 0 ? toPublicQuestion(mapDbQuestion(data[0])) : null;
-
-  serverLog('api.practice.get', 'request success', {
-    microskillId,
-    hasQuestion: Boolean(firstQuestion),
-    questionCount: Array.isArray(data) ? data.length : 0,
-    durationMs: Date.now() - startedAt,
-  });
-
-  return NextResponse.json({
-    source: 'supabase',
-    question: firstQuestion,
-  });
 }

@@ -159,7 +159,7 @@ export function mapDbQuestion(row) {
   const items = normalizeSortingItems(sortingSource);
 
   return {
-    id: row.id,
+    id: row.id ?? (row._id ? String(row._id) : undefined),
     microSkillId: row.micro_skill_id ?? row.microskill_id ?? null,
     questionText: row.question_text ?? row.questionText ?? '',
     type: normalizeQuestionType(row.type),

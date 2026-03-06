@@ -236,24 +236,18 @@ export function toPublicQuestion(question) {
   };
 }
 
-export async function fetchQuestionsByMicroskill(supabase, microskillId) {
-  let data = null;
-  let error = null;
-
+export async function fetchQuestionsByMicroskill(db, microskillId) {
+  let rows = [];
   for (const skillColumn of SKILL_COLUMNS) {
-    for (const orderColumn of ORDER_COLUMNS) {
-      ({ data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq(skillColumn, microskillId)
-        .order(orderColumn, { ascending: true }));
+    rows = await db.collection('questions')
+      .find({ [skillColumn]: microskillId })
+      .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
+      .toArray();
 
-      if (!error) return (data ?? []).map(mapDbQuestion);
-      if (!error.message?.includes(skillColumn) && !error.message?.includes(orderColumn)) break;
-    }
+    if (rows && rows.length > 0) break;
   }
 
-  throw new Error(error?.message ?? 'Failed to fetch questions for microskill.');
+  return rows.map(mapDbQuestion);
 }
 
 export function validateAnswer(question, answer) {
@@ -325,149 +319,60 @@ export function validateAnswer(question, answer) {
   }
 }
 
-export async function getStudentSkillState(supabase, studentId, microskillId) {
-  const { data, error } = await supabase
-    .from('student_skill_state')
-    .select('*')
-    .eq('student_id', studentId)
-    .eq('micro_skill_id', microskillId)
-    .maybeSingle();
-
-  if (!error) return data;
-  throw new Error(error.message);
+export async function getStudentSkillState(db, studentId, microskillId) {
+  const data = await db.collection('student_skill_state').findOne({
+    student_id: studentId,
+    micro_skill_id: microskillId,
+  });
+  return data;
 }
 
-export async function upsertStudentSkillState(supabase, payload) {
-  const run = async (row) => supabase
-    .from('student_skill_state')
-    .upsert(row, { onConflict: 'student_id,micro_skill_id' })
-    .select('*')
-    .single();
-
-  let result = await run(payload);
-  if (!result.error) return result.data;
-
-  const message = String(result.error?.message || '').toLowerCase();
-  const needsLegacyFallback = (
-    message.includes('next_review_at') ||
-    message.includes('avg_latency_ms') ||
-    message.includes('difficulty_band') ||
-    message.includes('confidence')
-  );
-  if (!needsLegacyFallback) throw new Error(result.error.message);
-
-  const legacyPayload = {
+export async function upsertStudentSkillState(db, payload) {
+  const query = {
     student_id: payload.student_id,
     micro_skill_id: payload.micro_skill_id,
-    mastery_score: payload.mastery_score,
-    confidence: payload.confidence ?? 0.1,
-    difficulty_band: payload.difficulty_band ?? 'easy',
-    streak: payload.streak ?? 0,
-    attempts_total: payload.attempts_total ?? 0,
-    correct_total: payload.correct_total ?? 0,
-    updated_at: payload.updated_at,
   };
-  result = await run(legacyPayload);
-  if (!result.error) return result.data;
-  throw new Error(result.error.message);
-}
 
-export async function getSessionState(supabase, sessionId) {
-  const { data, error } = await supabase
-    .from('session_state')
-    .select('*')
-    .eq('id', sessionId)
-    .maybeSingle();
-
-  if (!error) return data;
-  throw new Error(error.message);
-}
-
-export async function upsertSessionState(supabase, payload) {
-  const run = async (row) => supabase
-    .from('session_state')
-    .upsert(row)
-    .select('*')
-    .single();
-
-  let result = await run(payload);
-  if (!result.error) return result.data;
-
-  const message = String(result.error?.message || '').toLowerCase();
-  const needsLegacyFallback = (
-    message.includes('remediation_recent_question_ids') ||
-    message.includes('active_misconception_code') ||
-    message.includes('remediation_remaining') ||
-    message.includes('completed_at')
-  );
-  if (!needsLegacyFallback) throw new Error(result.error.message);
-
-  const legacyPayload = {
-    id: payload.id,
-    student_id: payload.student_id,
-    micro_skill_id: payload.micro_skill_id,
-    phase: payload.phase,
-    target_correct_streak: payload.target_correct_streak,
-    current_streak: payload.current_streak,
-    asked_count: payload.asked_count,
-    correct_count: payload.correct_count,
-    active_difficulty: payload.active_difficulty,
-    last_question_id: payload.last_question_id ?? null,
-    recent_question_ids: payload.recent_question_ids ?? [],
-    updated_at: payload.updated_at,
-  };
-  result = await run(legacyPayload);
-  if (!result.error) return result.data;
-  throw new Error(result.error.message);
-}
-
-export async function insertAttemptEvent(supabase, payload) {
-  const { error } = await supabase.from('attempt_events').insert(payload);
-  if (!error) return;
-  throw new Error(error.message);
-}
-
-export async function insertMisconceptionEvent(supabase, payload) {
-  const { error } = await supabase.from('misconception_events').insert(payload);
-  if (!error) return;
-
-  // Backward compatibility: older DBs may not yet have these adaptive-v2 columns.
-  const message = String(error?.message || '').toLowerCase();
-  const needsLegacyFallback = (
-    message.includes('session_id') ||
-    message.includes('question_id') ||
-    message.includes('answer_payload') ||
-    message.includes('created_at')
+  await db.collection('student_skill_state').updateOne(
+    query,
+    { $set: { ...payload, updated_at: new Date().toISOString() } },
+    { upsert: true }
   );
 
-  if (!needsLegacyFallback) {
-    throw new Error(error.message);
-  }
-
-  // Minimal compatible payload for the earliest schema version.
-  const legacyPayload = {
-    student_id: payload.student_id,
-    micro_skill_id: payload.micro_skill_id,
-    misconception_code: payload.misconception_code,
-    resolved: false,
-  };
-
-  const fallbackResult = await supabase.from('misconception_events').insert(legacyPayload);
-  if (!fallbackResult.error) return;
-  throw new Error(fallbackResult.error.message);
+  return db.collection('student_skill_state').findOne(query);
 }
 
-export async function getRecoveryContextFromAttempts(supabase, { sessionId }) {
-  const { data, error } = await supabase
-    .from('attempt_events')
-    .select('is_correct,misconception_code,question_id,created_at')
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: false })
-    .limit(30);
+export async function getSessionState(db, sessionId) {
+  const data = await db.collection('session_state').findOne({ id: sessionId });
+  return data;
+}
 
-  if (error) {
-    throw new Error(error.message);
-  }
+export async function upsertSessionState(db, payload) {
+  const query = { id: payload.id };
+
+  await db.collection('session_state').updateOne(
+    query,
+    { $set: { ...payload, updated_at: new Date().toISOString() } },
+    { upsert: true }
+  );
+
+  return db.collection('session_state').findOne(query);
+}
+
+export async function insertAttemptEvent(db, payload) {
+  await db.collection('attempt_events').insertOne(payload);
+}
+
+export async function insertMisconceptionEvent(db, payload) {
+  await db.collection('misconception_events').insertOne(payload);
+}
+
+export async function getRecoveryContextFromAttempts(db, { sessionId }) {
+  const data = await db.collection('attempt_events')
+    .find({ session_id: sessionId })
+    .sort({ created_at: -1 })
+    .limit(30)
+    .toArray();
 
   if (!Array.isArray(data) || data.length === 0) {
     return {

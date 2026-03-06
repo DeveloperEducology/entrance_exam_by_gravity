@@ -190,131 +190,221 @@ export default function StudentAnalyticsClient() {
     }
 
     return (
-        <div className={styles.page}>
-            <div className={styles.header}>
-                <h1>My Analytics</h1>
-                <Link href="/" className={styles.homeLink}>Back Home</Link>
+        <main className={styles.page}>
+            {/* Header Area */}
+            <div className={styles.headerRow}>
+                <div className={styles.titleArea}>
+                    <h1>My Learning Dashboard</h1>
+                    <p>Track your achievements and see what’s next in your learning journey.</p>
+                </div>
+                <button className={styles.downloadBtn}>Download Report</button>
             </div>
 
-            <div className={styles.kpis} style={{ marginBottom: '2rem' }}>
-                <div className={styles.kpi}>
-                    <span>Total Learning Time</span>
-                    <strong>{summaryStats.totalHours > 0 ? `${summaryStats.totalHours} hrs` : `${summaryStats.totalMinutes} mins`}</strong>
-                </div>
-                <div className={styles.kpi}>
-                    <span>Skills Mastered</span>
-                    <strong>{summaryStats.skillsMastered}</strong>
-                </div>
-                <div className={styles.kpi}>
-                    <span>Skills Started</span>
-                    <strong>{summaryStats.skillsStarted}</strong>
-                </div>
-                <div className={styles.kpi}>
-                    <span>Session Profile</span>
-                    <strong style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                        {isAuthenticated ? 'Authenticated Account' : 'Guest Learner (Offline)'}
-                    </strong>
-                </div>
-            </div>
-
-            <div className={styles.controls}>
-                <select
-                    value={selectedMicroSkill}
-                    onChange={(e) => {
-                        setSelectedMicroSkill(e.target.value);
-                        setMicroSkillId(e.target.value);
-                    }}
-                    aria-label="Micro skill picker"
-                >
-                    <option value="">Select a skill you practiced</option>
-                    {optionData.microSkillOptions.map((item) => (
-                        <option key={item.id} value={item.id}>
-                            {(item.code ? `${item.code} - ` : '') + item.name} ({item.usageCount})
-                        </option>
-                    ))}
-                </select>
-
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" />
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" />
-                <select value={phase} onChange={(e) => setPhase(e.target.value)} aria-label="Phase filter">
-                    <option value="">All phases</option>
-                    <option value="warmup">warmup</option>
-                    <option value="core">core</option>
-                    <option value="challenge">challenge</option>
-                    <option value="recovery">recovery</option>
-                    <option value="done">done</option>
-                </select>
-                <button onClick={fetchData} disabled={fetchLoading || !microSkillId}>{fetchLoading ? 'Loading...' : 'Refresh'}</button>
-            </div>
-
-            {error && <p className={styles.error}>{error}</p>}
-
-            {hasLoaded && !fetchLoading && !error && rows.length === 0 && (
-                <div className={styles.emptyWrap}>
-                    <p className={styles.emptyText}>
-                        No practice history found for this skill in the selected date range.
-                    </p>
-                </div>
-            )}
-
-            {summary && (
-                <>
-                    <div className={styles.kpis}>
-                        <div className={styles.kpi}><span>Attempts</span><strong>{summary.attempts}</strong></div>
-                        <div className={styles.kpi}><span>Accuracy</span><strong>{summary.accuracy}%</strong></div>
-                        <div className={styles.kpi}><span>Avg Delta</span><strong>{summary.avgDelta > 0 ? `+${summary.avgDelta}` : summary.avgDelta}</strong></div>
-                        <div className={styles.kpi}><span>Avg Time</span><strong>{Math.round(summary.avgMs / 1000)} s</strong></div>
+            {/* Welcome Banner */}
+            <section className={styles.banner}>
+                <div className={styles.bannerContent}>
+                    <h1>Welcome back, {summaryStats.userName || 'Learner'}! 👋</h1>
+                    <p>You're on a {summaryStats.streak || 0}-day streak! Keep up the great work and you'll reach your weekly goal in no time.</p>
+                    <div className={styles.bannerButtons}>
+                        <Link href="/practice">
+                            <button className={styles.primaryBtn}>Resume Practice</button>
+                        </Link>
+                        <button className={styles.secondaryBtn}>View Awards</button>
                     </div>
+                </div>
+                <div className={styles.bannerAlpha}>🏆</div>
+            </section>
 
-                    <div className={styles.charts}>
-                        <div className={styles.chartCard} style={{ gridColumn: '1 / -1' }}>
-                            <h3>Accuracy Trend</h3>
-                            <svg viewBox="0 0 520 140" className={styles.chart}>
-                                <polyline points={toPoints(accuracySeries)} fill="none" stroke="#22c55e" strokeWidth="3" />
-                            </svg>
-                        </div>
-                        <div className={styles.chartCard}>
-                            <h3>SmartScore Expected Delta</h3>
-                            <svg viewBox="0 0 520 140" className={styles.chart}>
-                                <polyline points={toPoints(deltaSeries)} fill="none" stroke="#0ea5e9" strokeWidth="3" />
-                            </svg>
-                        </div>
-                        <div className={styles.chartCard}>
-                            <h3>Response Time (ms) Trend</h3>
-                            <svg viewBox="0 0 520 140" className={styles.chart}>
-                                <polyline points={toPoints(speedSeries)} fill="none" stroke="#f97316" strokeWidth="3" />
-                            </svg>
-                        </div>
+            {/* KPI Cards */}
+            <div className={styles.kpiGrid}>
+                <div className={styles.kpiCard}>
+                    <div className={styles.iconBox} style={{ background: '#FFF7ED', color: '#F97316' }}>🏆</div>
+                    <div className={styles.kpiVal}>
+                        <span>Skills Mastered</span>
+                        <strong>{summaryStats.skillsMastered || 0}</strong>
                     </div>
+                </div>
+                <div className={styles.kpiCard}>
+                    <div className={styles.iconBox} style={{ background: '#EEF2FF', color: '#6366F1' }}>🎯</div>
+                    <div className={styles.kpiVal}>
+                        <span>Current Score</span>
+                        <strong>{summaryStats.avgScore || 0}</strong>
+                    </div>
+                </div>
+                <div className={styles.kpiCard}>
+                    <div className={styles.iconBox} style={{ background: '#F0F9FF', color: '#0EA5E9' }}>🕒</div>
+                    <div className={styles.kpiVal}>
+                        <span>Time Today</span>
+                        <strong>{summaryStats.todayMinutes || 0}m</strong>
+                    </div>
+                </div>
+                <div className={styles.kpiCard}>
+                    <div className={styles.iconBox} style={{ background: '#F0FDF4', color: '#22C55E' }}>📖</div>
+                    <div className={styles.kpiVal}>
+                        <span>Questions</span>
+                        <strong>{summaryStats.totalQuestions || 0}</strong>
+                    </div>
+                </div>
+            </div>
 
+            {/* Main Dashboard Grid */}
+            <div className={styles.dashboardGrid}>
+                {/* Left Column: Learning Progress & Recommended */}
+                <div className={styles.mainColumn}>
+                    <article className={styles.contentCard}>
+                        <div className={styles.cardHeader}>
+                            <h3>Learning Progress</h3>
+                            <span>Last 7 Days</span>
+                        </div>
+                        <div className={styles.chartContainer}>
+                            <svg viewBox="0 0 520 140" className={styles.chartSvg}>
+                                <defs>
+                                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.2" />
+                                        <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path
+                                    d={`M 16,140 L ${toPoints(deltaSeries || [30, 45, 38, 55, 48, 70, 65])} L 504,140 Z`}
+                                    fill="url(#chartGradient)"
+                                />
+                                <polyline
+                                    points={toPoints(deltaSeries || [30, 45, 38, 55, 48, 70, 65])}
+                                    fill="none"
+                                    stroke="#7c3aed"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                        </div>
+                    </article>
+
+                    <article className={styles.contentCard}>
+                        <div className={styles.cardHeader}>
+                            <h3>Recommended Skills</h3>
+                            <Link href="/practice" className={styles.seeAll}>See All</Link>
+                        </div>
+                        <div className={styles.skillList}>
+                            {(optionData.recommendedSkills || [
+                                { name: 'Multiplying by 3-digit numbers', code: 'A.5', level: 'Level E', id: '1', icon: '⚡' },
+                                { name: 'Complex Sentence Structures', code: 'L.1', level: 'Level F', id: '2', icon: '⭐' },
+                                { name: 'Introduction to Decimals', code: 'D.1', level: 'Level E', id: '3', icon: '⚡' }
+                            ]).map((skill, idx) => (
+                                <Link key={skill.id || idx} href={`/practice/${skill.id}`} className={styles.skillItem}>
+                                    <div className={styles.skillIcon}>{skill.icon || (idx % 2 === 0 ? '⚡' : '⭐')}</div>
+                                    <div className={styles.skillInfo}>
+                                        <div className={styles.skillName}>{skill.name}</div>
+                                        <div className={styles.skillSub}>Math • {skill.level}</div>
+                                    </div>
+                                    <span style={{ opacity: 0.3 }}>›</span>
+                                </Link>
+                            ))}
+                        </div>
+                    </article>
+                </div>
+
+                {/* Right Column: Recent & Goal */}
+                <div className={styles.sideColumn}>
+                    <article className={styles.contentCard}>
+                        <div className={styles.cardHeader}>
+                            <h3>My Recent Skills</h3>
+                        </div>
+                        <div className={styles.recentSkillsList}>
+                            {(optionData.recentSkills || []).slice(0, 5).map((skill, idx) => {
+                                const colors = ['#22C55E', '#8B5CF6', '#F97316', '#0EA5E9', '#F43F5E'];
+                                return (
+                                    <div key={skill.id} className={styles.recentSkillItem}>
+                                        <div className={styles.recentSkillHeader}>
+                                            <span className={styles.skillTitle}>{skill.name}</span>
+                                            <span className={styles.skillScore}>{skill.score}</span>
+                                        </div>
+                                        <div className={styles.progressBar}>
+                                            <div
+                                                className={styles.progressFill}
+                                                style={{ width: `${skill.progress}%`, background: colors[idx % colors.length] }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <Link href="/practice" className={styles.downloadBtn} style={{ display: 'block', textAlign: 'center', marginTop: '1rem', textDecoration: 'none' }}>
+                                View All Skills
+                            </Link>
+                        </div>
+                    </article>
+
+                    <article className={styles.contentCard}>
+                        <div className={styles.cardHeader}>
+                            <h3>Goal Progress</h3>
+                        </div>
+                        <div className={styles.goalBox}>
+                            <div className={styles.circleChart}>
+                                <svg width="140" height="140" className={styles.circleSvg}>
+                                    <circle cx="70" cy="70" r="60" fill="none" stroke="#F1F5F9" strokeWidth="12" />
+                                    <circle
+                                        cx="70" cy="70" r="60" fill="none" stroke="#7c3aed" strokeWidth="12"
+                                        strokeDasharray="377"
+                                        strokeDashoffset={377 - (377 * 0.75)}
+                                        strokeLinecap="round"
+                                    />
+                                </svg>
+                                <div className={styles.circleVal}>
+                                    <strong>75%</strong>
+                                    <span>Weekly</span>
+                                </div>
+                            </div>
+                            <p className={styles.goalText}>
+                                You've answered <b>{summaryStats.totalQuestions || 0}</b> of <b>500</b> questions this week.
+                            </p>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            {/* Subtle Skill History Section */}
+            <section style={{ marginTop: '4rem', padding: '1rem', borderTop: '1px solid #e2e8f0', opacity: 0.6 }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ margin: 0 }}>Detailed History Filter</h4>
+                    <select
+                        value={selectedMicroSkill}
+                        onChange={(e) => {
+                            setSelectedMicroSkill(e.target.value);
+                            setMicroSkillId(e.target.value);
+                        }}
+                        style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                    >
+                        <option value="">Select individual skill logs...</option>
+                        {optionData.microSkillOptions.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                    </select>
+                </div>
+                {summary && (
                     <div className={styles.tableWrap}>
                         <table className={styles.table}>
                             <thead>
                                 <tr>
                                     <th>Time</th>
-                                    <th>Adaptive</th>
                                     <th>Correct</th>
-                                    <th>Expected Score Delta</th>
+                                    <th>Score Delta</th>
                                     <th>Difficulty</th>
-                                    <th>Response Time</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map((row) => (
+                                {rows.slice(0, 10).map((row) => (
                                     <tr key={row.id}>
                                         <td>{new Date(row.createdAt).toLocaleTimeString()}</td>
-                                        <td>{row.isAdaptive ? 'Yes' : 'No'}</td>
-                                        <td>{row.isCorrect ? 'Yes' : 'No'}</td>
+                                        <td>{row.isCorrect ? '✅' : '❌'}</td>
                                         <td>{row.estimatedDelta > 0 ? `+${row.estimatedDelta}` : row.estimatedDelta}</td>
-                                        <td>{row.factors?.difficulty !== 'undefined' ? row.factors?.difficulty : '-'}</td>
-                                        <td>{row.factors?.responseMs ? `${Math.round(row.factors.responseMs / 1000)}s` : '-'}</td>
+                                        <td>{row.factors?.difficulty || '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                </>
-            )}
-        </div>
+                )}
+            </section>
+        </main>
     );
 }

@@ -36,6 +36,7 @@ export async function POST(req) {
             user: {
                 id: userId,
                 email: user.email,
+                role: user.role || 'student',
                 user_metadata: {
                     name: user.name,
                     birthYear: user.birth_year,

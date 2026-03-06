@@ -159,8 +159,141 @@ function renderLongMultiply(part, index, styles) {
         </div>
     );
 }
+function renderPictureEquation(part, index, styles) {
+    const cfg = part?.layout || {};
+    const left = { emoji: cfg.left?.emoji || '🍐', count: Number(cfg.left?.count || 0) };
+    const right = { emoji: cfg.right?.emoji || '🍐', count: Number(cfg.right?.count || 0) };
+    const totalCount = Number(cfg.total?.count || 0);
 
-export default function QuestionParts({ parts }) {
+    const emojiLine = (emoji, count) => Array.from({ length: Math.min(count, 20) }).map(() => emoji).join('');
+
+    return (
+        <div key={index} className={styles.pictureEq}>
+            <div className={styles.pictureTerm}>
+                <div className={styles.pictureEmoji}>{emojiLine(left.emoji, left.count)}</div>
+                <div className={styles.pictureBoxStatic}>{left.count}</div>
+            </div>
+            <div className={styles.pictureOp}>+</div>
+            <div className={styles.pictureTerm}>
+                <div className={styles.pictureEmoji}>{emojiLine(right.emoji, right.count)}</div>
+                <div className={styles.pictureBoxStatic}>{right.count}</div>
+            </div>
+            <div className={styles.pictureOp}>=</div>
+            <div className={styles.pictureTerm}>
+                <div className={styles.pictureEmoji} />
+                <div className={styles.pictureBoxStatic}>{totalCount || '?'}</div>
+            </div>
+        </div>
+    );
+}
+
+function renderButterflyFraction(part, index, styles) {
+    const layout = part?.layout || {};
+    const canvasWidth = Number(layout?.canvas?.width || 620);
+    const canvasHeight = Number(layout?.canvas?.height || 460);
+
+    return (
+        <div key={index} className={styles.butterflyStatic} style={{ '--bf-w': canvasWidth, '--bf-h': canvasHeight }}>
+            <svg viewBox={`0 0 ${canvasWidth} ${canvasHeight}`} className={styles.bfSvg}>
+                <path d="M220 142 C255 178, 300 200, 360 225" fill="none" stroke="#f29bb2" strokeWidth="4" />
+                <path d="M360 142 C325 178, 280 200, 220 225" fill="none" stroke="#f29bb2" strokeWidth="4" />
+                <text x="220" y="145" className={styles.bfText}>{layout.leftFraction?.num}</text>
+                <text x="220" y="230" className={styles.bfText}>{layout.leftFraction?.den}</text>
+                <text x="360" y="145" className={styles.bfText}>{layout.rightFraction?.num}</text>
+                <text x="360" y="230" className={styles.bfText}>{layout.rightFraction?.den}</text>
+            </svg>
+        </div>
+    );
+}
+
+function renderArithmeticLayout(part, index, styles) {
+    const rows = Array.isArray(part?.layout?.rows) ? part.layout.rows : [];
+    return (
+        <div key={index} className={styles.arithmeticStatic}>
+            {rows.map((row, rIdx) => {
+                const kind = String(row?.kind || '').toLowerCase();
+                if (kind === 'divider') return <div key={rIdx} className={styles.arDivider} />;
+                const text = row.text || (row.cells || []).map(c => c.text || c.value || c.correctValue || '').join('') || row.prefix || '';
+                return <div key={rIdx} className={styles.arRow}>{text}</div>;
+            })}
+        </div>
+    );
+}
+
+function renderGridArithmetic(part, index, styles) {
+    const layout = part?.layout || {};
+    const rows = Number(layout.rows || 1);
+    const cols = Number(layout.cols || 1);
+    const cells = Array.isArray(layout.cells) ? layout.cells : [];
+
+    const grid = Array.from({ length: rows }).map(() => Array.from({ length: cols }).fill(null));
+    cells.forEach(c => {
+        if (c.r < rows && c.c < cols) grid[c.r][c.c] = c.value;
+    });
+
+    return (
+        <div key={index} className={styles.gridStatic} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+            {grid.flat().map((val, i) => (
+                <div key={i} className={styles.gridCellStatic}>{val}</div>
+            ))}
+        </div>
+    );
+}
+
+function renderSmartTable(part, index, styles) {
+    const title = part?.title || '';
+    const columns = Array.isArray(part?.columns) ? part.columns : [];
+    const rows = Array.isArray(part?.rows) ? part.rows : [];
+
+    return (
+        <div key={index} className={styles.smartTableContainer}>
+            {title && <div className={styles.smartTableTitle}>{title}</div>}
+            <div style={{ overflowX: 'auto' }}>
+                <table className={styles.smartTable}>
+                    <thead>
+                        <tr>
+                            {columns.map((col, i) => (
+                                <th key={col.key || i} className={styles.smartTableHeaderCell}>
+                                    {col.header}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row, rowIndex) => {
+                            const rowLabel = String(row.label || '').toLowerCase();
+                            const isTotal = rowLabel === 'total';
+                            const isCarry = rowLabel === 'carry' || rowLabel === 'borrow' || row.kind === 'carry';
+                            return (
+                                <tr key={rowIndex} className={`${isTotal ? styles.smartTableRowTotal : ''} ${isCarry ? styles.smartTableRowCarry : ''}`}>
+                                    {columns.map((col, colIndex) => {
+                                        const cellValue = row[col.key];
+                                        const isLabelColumn = col.key === 'label';
+                                        const val = (cellValue && typeof cellValue === 'object')
+                                            ? (cellValue.value || cellValue.correctValue || '')
+                                            : cellValue;
+                                        return (
+                                            <td
+                                                key={`${rowIndex}-${colIndex}`}
+                                                className={`${styles.smartTableCell} ${isLabelColumn ? styles.smartTableLabelCell : ''}`}
+                                            >
+                                                {isCarry && !isLabelColumn && val !== "" ? (
+                                                    <span className={styles.smartTableCarryCircle}>{val}</span>
+                                                ) : val}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+export default function QuestionParts({ parts, className = '' }) {
     const safeParts = Array.isArray(parts) ? parts : [];
     const getRepeatCount = (value) => {
         const parsed = Number(value);
@@ -189,21 +322,21 @@ export default function QuestionParts({ parts }) {
                     (() => {
                         const isAboveFoldImage = index === 0 && imageIndex === 0;
                         return (
-                    <SafeImage
-                        key={`img-${index}-${imageIndex}`}
-                        src={imageSrc}
-                        alt={`Question image ${imageIndex + 1}`}
-                        className={styles.image}
-                        width={320}
-                        height={150}
-                        style={{
-                            maxWidth: part.width ? `${part.width}px` : undefined,
-                            maxHeight: part.height ? `${part.height}px` : undefined,
-                        }}
-                        sizes="(max-width: 768px) 70vw, 320px"
-                        priority={isAboveFoldImage}
-                        loading={isAboveFoldImage ? 'eager' : 'lazy'}
-                    />
+                            <SafeImage
+                                key={`img-${index}-${imageIndex}`}
+                                src={imageSrc}
+                                alt={`Question image ${imageIndex + 1}`}
+                                className={styles.image}
+                                width={320}
+                                height={150}
+                                style={{
+                                    maxWidth: part.width ? `${part.width}px` : undefined,
+                                    maxHeight: part.height ? `${part.height}px` : undefined,
+                                }}
+                                sizes="(max-width: 768px) 70vw, 320px"
+                                priority={isAboveFoldImage}
+                                loading={isAboveFoldImage ? 'eager' : 'lazy'}
+                            />
                         );
                     })()
                 ))}
@@ -314,8 +447,24 @@ export default function QuestionParts({ parts }) {
                     </span>
                 );
 
+            case 'arithmeticLayout':
+                return renderArithmeticLayout(part, index, styles);
+
+            case 'gridArithmetic':
+                return renderGridArithmetic(part, index, styles);
+
+            case 'butterflyFraction':
+                return renderButterflyFraction(part, index, styles);
+
+            case 'pictureEquation':
+                return renderPictureEquation(part, index, styles);
+
             case 'longMultiply':
                 return renderLongMultiply(part, index, styles);
+
+            case 'table':
+            case 'smartTable':
+                return renderSmartTable(part, index, styles);
 
             default:
                 return null;
@@ -338,7 +487,7 @@ export default function QuestionParts({ parts }) {
     };
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} ${className}`}>
             {safeParts.map((part, index) => renderPart(part, index))}
         </div>
     );

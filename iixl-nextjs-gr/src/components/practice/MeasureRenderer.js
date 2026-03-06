@@ -53,6 +53,7 @@ export default function MeasureRenderer({
   onSubmit,
   isAnswered,
 }) {
+  const inputRef = useRef(null);
   const unit = String(question.adaptiveConfig?.unit || 'cm');
   const parsedTarget = parseMeasureTarget(question);
   const safeCorrectValue = Number.isFinite(parsedTarget) && parsedTarget > 0 ? parsedTarget : 5;
@@ -154,6 +155,12 @@ export default function MeasureRenderer({
     }));
   }, [effectiveRulerWidth]);
 
+  useEffect(() => {
+    if (!isAnswered && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [question?.id, isAnswered]);
+
   return (
     <div className={styles.container}>
       <div className={styles.questionCard}>
@@ -198,6 +205,7 @@ export default function MeasureRenderer({
         <div className={styles.answerRow}>
           <span className={styles.answerLabel}>The line is about</span>
           <input
+            ref={inputRef}
             type="text"
             className={styles.answerInput}
             value={userAnswer || ''}

@@ -166,114 +166,133 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });
     }
 
-    const buildBaseQuery = (selectClause) => supabase
-      .from('attempt_events')
-      .select(selectClause)
-      .eq('student_id', studentId)
-      .eq('micro_skill_id', microskillId);
+    try {
+      const { connectMongo } = require('@/lib/db/mongo');
+      const mongoose = require('mongoose');
+      await connectMongo();
+      const db = mongoose.connection.db;
 
-    let query = buildBaseQuery('id,question_id,is_correct,response_ms,attempts_on_question,hint_used,selected_difficulty,concept_tags,misconception_code,correct_payload,created_at')
-      .order('created_at', { ascending: false })
-      .limit(Math.max(120, limit));
-
-    let queryLog = supabase.from('student_question_log')
-      .select('id,question_id,is_correct,created_at')
-      .eq('student_id', studentId)
-      .eq('microskill_id', microskillId)
-      .order('created_at', { ascending: false })
-      .limit(Math.max(120, limit));
-
-    if (dateFrom) {
-      const fromIso = new Date(`${dateFrom}T00:00:00.000Z`).toISOString();
-      query = query.gte('created_at', fromIso);
-      queryLog = queryLog.gte('created_at', fromIso);
-    }
-
-    if (dateTo) {
-      const toIso = new Date(`${dateTo}T23:59:59.999Z`).toISOString();
-      query = query.lte('created_at', toIso);
-      queryLog = queryLog.lte('created_at', toIso);
-    }
-
-    const [eventRes, logRes] = await Promise.all([query, queryLog]);
-
-    if (eventRes.error) {
-      return NextResponse.json({ error: eventRes.error.message ?? 'Failed to fetch score breakdown.' }, { status: 500 });
-    }
-
-    const events = (eventRes.data || []).map(r => ({ ...r, _ADAPTIVE: true }));
-    const logs = (logRes.data || []).map(r => ({ ...r, _ADAPTIVE: false }));
-    const data = [...events, ...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    let rows = (data || []).map((row) => {
-      const payloadObj = row.correct_payload || {};
-      const selectionMeta = payloadObj?.idempotency?.responsePayload?.selectionMeta || {};
-      const serverSmartScoreDelta = Number(payloadObj?.idempotency?.responsePayload?.smartScore?.delta);
-      const phase = row._ADAPTIVE ? String(payloadObj?.sessionUpdate?.phase ?? 'core') : 'practice';
-      const confidence = Number(payloadObj?.masteryUpdate?.confidence ?? 0.4);
-      const mastery = Number(payloadObj?.masteryUpdate?.newScore ?? 0.5);
-      return {
-        id: row.id,
-        questionId: row.question_id,
-        createdAt: row.created_at,
-        isCorrect: Boolean(row.is_correct),
-        isAdaptive: Boolean(row._ADAPTIVE),
-        estimatedDelta: row._ADAPTIVE ? (Number.isFinite(serverSmartScoreDelta) ? serverSmartScoreDelta : estimateDelta(row)) : 0,
-        selectionMeta: {
-          reason: selectionMeta?.reason || null,
-          policy: selectionMeta?.policy || null,
-          remediationCode: selectionMeta?.remediationCode || null,
-          remediationRemaining: Number(selectionMeta?.remediationRemaining ?? 0),
-        },
-        factors: {
-          phase,
-          difficulty: String(row.selected_difficulty || 'easy'),
-          masteryScore: mastery,
-          confidence,
-          responseMs: Number(row.response_ms ?? 0),
-          attemptsOnQuestion: Number(row.attempts_on_question ?? 1),
-          hintUsed: Boolean(row.hint_used),
-          conceptTags: row.concept_tags || [],
-          misconceptionCode: row.misconception_code || null,
-        },
+      const eventFilter = {
+        student_id: studentId,
+        micro_skill_id: microskillId,
       };
-    });
-
-    if (phaseFilter) {
-      rows = rows.filter((row) => String(row?.factors?.phase || '').toLowerCase() === phaseFilter);
-    }
-
-    rows = rows.slice(0, limit);
-
-    let diagnostics = null;
-    if (rows.length === 0) {
-      const { data: anyRows } = await buildBaseQuery('created_at')
-        .order('created_at', { ascending: true })
-        .limit(1);
-      const { data: latestRows } = await buildBaseQuery('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      const firstAttemptAt = anyRows?.[0]?.created_at || null;
-      const lastAttemptAt = latestRows?.[0]?.created_at || null;
-      const hasAnyRows = Boolean(firstAttemptAt || lastAttemptAt);
-
-      diagnostics = {
-        hasAnyRows,
-        dateFilteredOut: Boolean(hasAnyRows && (dateFrom || dateTo)),
-        firstAttemptAt,
-        lastAttemptAt,
+      const logFilter = {
+        student_id: studentId,
+        microskill_id: microskillId,
       };
-    }
 
-    return NextResponse.json({
-      studentId,
-      microSkillId: microskillId,
-      count: rows.length,
-      summary: summarizeAdaptive(rows),
-      diagnostics,
-      rows,
-    });
+      if (dateFrom) {
+        if (!eventFilter.created_at) eventFilter.created_at = {};
+        if (!logFilter.created_at) logFilter.created_at = {};
+        const fromIso = new Date(`${dateFrom}T00:00:00.000Z`).toISOString();
+        eventFilter.created_at.$gte = fromIso;
+        logFilter.created_at.$gte = fromIso;
+      }
+      if (dateTo) {
+        if (!eventFilter.created_at) eventFilter.created_at = {};
+        if (!logFilter.created_at) logFilter.created_at = {};
+        const toIso = new Date(`${dateTo}T23:59:59.999Z`).toISOString();
+        eventFilter.created_at.$lte = toIso;
+        logFilter.created_at.$lte = toIso;
+      }
+
+      const [eventsRaw, logsRaw] = await Promise.all([
+        db.collection('attempt_events')
+          .find(eventFilter)
+          .sort({ created_at: -1 })
+          .limit(Math.max(120, limit))
+          .toArray(),
+        db.collection('student_question_log')
+          .find(logFilter)
+          .sort({ created_at: -1 })
+          .limit(Math.max(120, limit))
+          .toArray(),
+      ]);
+
+      const events = (eventsRaw || []).map(r => ({ ...r, _ADAPTIVE: true }));
+      const logs = (logsRaw || []).map(r => ({ ...r, _ADAPTIVE: false }));
+      const data = [...events, ...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      let rows = (data || []).map((row) => {
+        const payloadObj = row.correct_payload || {};
+        const selectionMeta = payloadObj?.idempotency?.responsePayload?.selectionMeta || {};
+        const serverSmartScoreDelta = Number(payloadObj?.idempotency?.responsePayload?.smartScore?.delta);
+        const phase = row._ADAPTIVE ? String(payloadObj?.sessionUpdate?.phase ?? 'core') : 'practice';
+        const confidence = Number(payloadObj?.masteryUpdate?.confidence ?? 0.4);
+        const mastery = Number(payloadObj?.masteryUpdate?.newScore ?? 0.5);
+        return {
+          id: row.id || row._id,
+          questionId: row.question_id,
+          createdAt: row.created_at,
+          isCorrect: Boolean(row.is_correct),
+          isAdaptive: Boolean(row._ADAPTIVE),
+          estimatedDelta: row._ADAPTIVE ? (Number.isFinite(serverSmartScoreDelta) ? serverSmartScoreDelta : estimateDelta(row)) : 0,
+          selectionMeta: {
+            reason: selectionMeta?.reason || null,
+            policy: selectionMeta?.policy || null,
+            remediationCode: selectionMeta?.remediationCode || null,
+            remediationRemaining: Number(selectionMeta?.remediationRemaining ?? 0),
+          },
+          factors: {
+            phase,
+            difficulty: String(row.selected_difficulty || 'easy'),
+            masteryScore: mastery,
+            confidence,
+            responseMs: Number(row.response_ms ?? 0),
+            attemptsOnQuestion: Number(row.attempts_on_question ?? 1),
+            hintUsed: Boolean(row.hint_used),
+            conceptTags: row.concept_tags || [],
+            misconceptionCode: row.misconception_code || null,
+          },
+        };
+      });
+
+      if (phaseFilter) {
+        rows = rows.filter((row) => String(row?.factors?.phase || '').toLowerCase() === phaseFilter);
+      }
+
+      rows = rows.slice(0, limit);
+
+      let diagnostics = null;
+      if (rows.length === 0) {
+        const firstAttempt = await db.collection('attempt_events')
+          .find({ student_id: studentId, micro_skill_id: microskillId })
+          .sort({ created_at: 1 })
+          .limit(1)
+          .toArray();
+        const latestAttempt = await db.collection('attempt_events')
+          .find({ student_id: studentId, micro_skill_id: microskillId })
+          .sort({ created_at: -1 })
+          .limit(1)
+          .toArray();
+
+        const firstAttemptAt = firstAttempt?.[0]?.created_at || null;
+        const lastAttemptAt = latestAttempt?.[0]?.created_at || null;
+        const hasAnyRows = Boolean(firstAttemptAt || lastAttemptAt);
+
+        diagnostics = {
+          hasAnyRows,
+          dateFilteredOut: Boolean(hasAnyRows && (dateFrom || dateTo)),
+          firstAttemptAt,
+          lastAttemptAt,
+        };
+      }
+
+      return NextResponse.json({
+        studentId,
+        microSkillId: microskillId,
+        count: rows.length,
+        summary: summarizeAdaptive(rows),
+        diagnostics,
+        rows,
+      });
+    } catch (err) {
+      console.error('Score breakdown API error:', err);
+      return NextResponse.json(
+        { error: err?.message || 'Unexpected analytics server error.' },
+        { status: 500 }
+      );
+    }
   } catch (err) {
     return NextResponse.json(
       { error: err?.message || 'Unexpected analytics server error.' },

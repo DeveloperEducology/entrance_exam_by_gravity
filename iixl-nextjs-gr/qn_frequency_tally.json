@@ -1,0 +1,43 @@
+{
+    "id": "qn-frequency-table",
+    "type": "smartTable",
+    "title": "Class Fruit Survey",
+    "columns": [
+        {
+            "header": "Fruit",
+            "key": "label"
+        },
+        {
+            "header": "Tally",
+            "key": "tally"
+        },
+        {
+            "header": "Count",
+            "key": "count"
+        }
+    ],
+    "rows": [
+        {
+            "label": "🍎 Apple",
+            "tally": "IIII",
+            "count": {
+                "id": "count_apple"
+            }
+        },
+        {
+            "label": "🍌 Banana",
+            "tally": "II",
+            "count": {
+                "id": "count_banana"
+            }
+        },
+        {
+            "label": "Total",
+            "tally": "",
+            "count": {
+                "id": "total_fruit"
+            }
+        }
+    ],
+    "showSubmitButton": true
+}

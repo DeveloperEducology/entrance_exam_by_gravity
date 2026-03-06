@@ -1,0 +1,54 @@
+{
+    "id": "qn-decimal-comparison",
+    "type": "smartTable",
+    "title": "Decimal Comparison",
+    "columns": [
+        {
+            "header": "Item",
+            "key": "label"
+        },
+        {
+            "header": "Ones",
+            "key": "ones"
+        },
+        {
+            "header": ".",
+            "key": "dot"
+        },
+        {
+            "header": "1/10",
+            "key": "t"
+        },
+        {
+            "header": "1/100",
+            "key": "h"
+        }
+    ],
+    "rows": [
+        {
+            "label": "A",
+            "ones": "3",
+            "dot": ".",
+            "t": "4",
+            "h": "5"
+        },
+        {
+            "label": "B",
+            "ones": "3",
+            "dot": ".",
+            "t": "5",
+            "h": "0"
+        },
+        {
+            "label": "Compare",
+            "ones": "",
+            "dot": "",
+            "t": {
+                "id": "comp",
+                "placeholder": "< > ="
+            },
+            "h": ""
+        }
+    ],
+    "showSubmitButton": true
+}

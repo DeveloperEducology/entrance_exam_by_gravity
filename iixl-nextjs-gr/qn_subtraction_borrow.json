@@ -1,0 +1,65 @@
+{
+    "id": "qn-subtraction-borrow",
+    "type": "smartTable",
+    "title": "Subtraction with Borrowing",
+    "columns": [
+        {
+            "header": "",
+            "key": "label"
+        },
+        {
+            "header": "H",
+            "key": "h"
+        },
+        {
+            "header": "T",
+            "key": "t"
+        },
+        {
+            "header": "O",
+            "key": "o"
+        }
+    ],
+    "rows": [
+        {
+            "label": "borrow",
+            "h": {
+                "id": "b_h"
+            },
+            "t": {
+                "id": "b_t"
+            },
+            "o": {
+                "id": "b_o"
+            }
+        },
+        {
+            "label": "",
+            "h": "5",
+            "t": "4",
+            "o": "3"
+        },
+        {
+            "label": "-",
+            "h": "2",
+            "t": "6",
+            "o": "7"
+        },
+        {
+            "label": "Total",
+            "h": {
+                "id": "ans_h"
+            },
+            "t": {
+                "id": "ans_t"
+            },
+            "o": {
+                "id": "ans_o"
+            }
+        }
+    ],
+    "features": {
+        "type": "math_place_value"
+    },
+    "showSubmitButton": true
+}

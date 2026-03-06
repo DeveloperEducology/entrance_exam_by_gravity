@@ -1,0 +1,65 @@
+{
+    "id": "qn-addition-carry",
+    "type": "smartTable",
+    "title": "Addition with Carry",
+    "columns": [
+        {
+            "header": "",
+            "key": "label"
+        },
+        {
+            "header": "H",
+            "key": "h"
+        },
+        {
+            "header": "T",
+            "key": "t"
+        },
+        {
+            "header": "O",
+            "key": "o"
+        }
+    ],
+    "rows": [
+        {
+            "label": "carry",
+            "h": {
+                "id": "c_h"
+            },
+            "t": {
+                "id": "c_t"
+            },
+            "o": ""
+        },
+        {
+            "label": "",
+            "h": "4",
+            "t": "7",
+            "o": "9"
+        },
+        {
+            "label": "+",
+            "h": "9",
+            "t": "2",
+            "o": "3"
+        },
+        {
+            "label": "Total",
+            "h": {
+                "id": "ans_h"
+            },
+            "t": {
+                "id": "ans_t",
+                "maxLength": 1
+            },
+            "o": {
+                "id": "ans_o",
+                "maxLength": 1
+            }
+        }
+    ],
+    "features": {
+        "type": "math_place_value"
+    },
+    "showSubmitButton": true
+}

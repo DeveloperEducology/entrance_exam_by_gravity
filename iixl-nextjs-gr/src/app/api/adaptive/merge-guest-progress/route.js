@@ -81,64 +81,56 @@ export async function POST(req) {
     return NextResponse.json({ merged: false, reason: 'same_id' });
   }
 
-  const supabase = createServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase is not configured on server.' }, { status: 500 });
-  }
-
-  // Check if guest is actually a registered user (forbidden merge)
-  // I need to check the users collection directly.
-  const { data: dbUser } = await supabase.from('users').select('id').eq('id', guestStudentId).maybeSingle();
-
-  if (dbUser) {
-    return NextResponse.json({ error: 'Cannot merge a registered user account into another.' }, { status: 403 });
-  }
-
   try {
-    const { data: guestSkills, error: guestSkillError } = await supabase
-      .from('student_skill_state')
-      .select('*')
-      .eq('student_id', guestStudentId);
-    if (guestSkillError) throw guestSkillError;
+    const { connectMongo } = require('@/lib/db/mongo');
+    const mongoose = require('mongoose');
+    await connectMongo();
+    const db = mongoose.connection.db;
 
-    const { data: userSkills, error: userSkillError } = await supabase
-      .from('student_skill_state')
-      .select('*')
-      .eq('student_id', userStudentId);
-    if (userSkillError) throw userSkillError;
+    // Check if guest is actually a registered user (forbidden merge)
+    const dbUser = await db.collection('users').findOne({ id: guestStudentId });
+    if (dbUser) {
+      return NextResponse.json({ error: 'Cannot merge a registered user account into another.' }, { status: 403 });
+    }
+
+    const guestSkills = await db.collection('student_skill_state').find({ student_id: guestStudentId }).toArray();
+    const userSkills = await db.collection('student_skill_state').find({ student_id: userStudentId }).toArray();
 
     const userByMicroskill = new Map((userSkills || []).map((row) => [String(row.micro_skill_id), row]));
-    let mergedSkillRows = 0;
+    let mergedSkillRowsCount = 0;
 
     for (const guestRow of (guestSkills || [])) {
       const userRow = userByMicroskill.get(String(guestRow.micro_skill_id));
       const merged = mergeSkillRows(guestRow, userRow, userStudentId);
-      const { error } = await supabase
-        .from('student_skill_state')
-        .upsert(merged, { onConflict: 'student_id,micro_skill_id' });
-      if (!error) mergedSkillRows += 1;
+
+      await db.collection('student_skill_state').updateOne(
+        { student_id: userStudentId, micro_skill_id: guestRow.micro_skill_id },
+        { $set: { ...merged, updated_at: new Date().toISOString() } },
+        { upsert: true }
+      );
+      mergedSkillRowsCount += 1;
     }
 
     // Clean up guest skill states
-    await supabase.from('student_skill_state').delete().eq('student_id', guestStudentId);
+    await db.collection('student_skill_state').deleteMany({ student_id: guestStudentId });
 
     // Update all historical records
-    const tableUpdates = [
-      { table: 'attempt_events', field: 'student_id' },
-      { table: 'session_state', field: 'student_id' },
-      { table: 'misconception_events', field: 'student_id' },
-      { table: 'student_question_log', field: 'student_id' },
-      { table: 'student_skill_state_history', field: 'student_id' } // if exists
+    const collections = [
+      'attempt_events',
+      'session_state',
+      'misconception_events',
+      'student_question_log',
+      'student_skill_state_history'
     ];
 
-    for (const update of tableUpdates) {
+    for (const collectionName of collections) {
       try {
-        await supabase
-          .from(update.table)
-          .update({ [update.field]: userStudentId, updated_at: new Date().toISOString() })
-          .eq(update.field, guestStudentId);
+        await db.collection(collectionName).updateMany(
+          { student_id: guestStudentId },
+          { $set: { student_id: userStudentId, updated_at: new Date().toISOString() } }
+        );
       } catch (e) {
-        // Table might not exist in all envs
+        // Collection might not exist
       }
     }
 
@@ -146,7 +138,7 @@ export async function POST(req) {
       merged: true,
       guestStudentId,
       userStudentId,
-      mergedSkillRows,
+      mergedSkillRows: mergedSkillRowsCount,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message ?? 'Failed to merge guest progress.' }, { status: 500 });

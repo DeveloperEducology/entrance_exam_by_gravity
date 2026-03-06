@@ -4,6 +4,7 @@
 }
 
 .questionCard {
+    position: relative;
     background: white;
     border-radius: var(--border-radius-xl);
     padding: 2.5rem;
@@ -25,7 +26,38 @@
 
 .questionTextRow {
     width: 100%;
-    margin-bottom: 0.8rem;
+    margin-bottom: 1.25rem;
+}
+
+.keypadToggle {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.keypadToggle:hover {
+    background: #f8fafc;
+    color: #3b82f6;
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.keypadToggle:active {
+    transform: translateY(0);
 }
 
 .questionText {
@@ -185,11 +217,11 @@
 }
 
 .arithmeticLayout {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    --ar-cell-size: 44px;
+    font-family: "Baloo 2", "Nunito", cursive, sans-serif;
+    --ar-cell-size: 52px;
     width: fit-content;
     max-width: 100%;
-    margin: 0.25rem auto 0.5rem;
+    margin: 0.5rem auto;
     color: #111827;
 }
 
@@ -215,27 +247,99 @@
     font-family: "Nunito", "Baloo 2", "Segoe UI", sans-serif;
 }
 
+.arHeaderRow {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 1), var(--ar-cell-size));
+    justify-content: end;
+    align-items: center;
+    margin-bottom: 0px;
+    width: fit-content;
+    margin-left: auto;
+}
+
+.arHeaderCell {
+    width: var(--ar-cell-size);
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #94a3b8;
+}
+
+.arCarryRow {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 1), var(--ar-cell-size));
+    justify-content: end;
+    align-items: center;
+    margin-bottom: 2px;
+    width: fit-content;
+    margin-left: auto;
+}
+
+.arCarryCell {
+    width: var(--ar-cell-size);
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.arCarryInput {
+    width: 28px;
+    height: 28px;
+    border: 2px solid #576b8a;
+    border-radius: 50%;
+    background: transparent;
+    color: #111827;
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-align: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.arCarryInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.arCarryInputActive {
+    border-color: #3b82f6;
+}
+
+.arCarryInput:not(:placeholder-shown) {
+    border-color: #475569;
+}
+
 .arGridRow {
     display: grid;
     grid-template-columns: repeat(var(--cols, 1), var(--ar-cell-size));
     justify-content: end;
-    align-items: end;
+    align-items: center;
+    width: fit-content;
+    margin-left: auto;
 }
 
 .arGridCell {
     width: var(--ar-cell-size);
-    height: 52px;
-    display: inline-flex;
+    height: 44px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1;
+    font-family: inherit;
 }
 
 .arDivider {
-    border-top: 2px solid #111827;
-    margin: 0.15rem 0 0.25rem;
-    width: calc(var(--cols, 1) * var(--ar-cell-size));
+    border-top: 4px solid #111827;
+    border-radius: 4px;
+    margin: 0.1rem 0 0.5rem;
+    width: 100%;
 }
 
 .arAnswerRow {
@@ -246,21 +350,27 @@
     color: #1f2f46;
 }
 
+.arFixedCell {
+    color: #111827;
+}
+
 .arCellInput {
-    width: 38px;
-    height: 46px;
-    border: 1.5px solid #c084fc;
-    border-radius: 2px;
+    width: 44px;
+    height: 44px;
+    border: 3px solid #111827;
+    border-radius: 4px;
     background: #fff;
     color: #111827;
-    font-size: 1.7rem;
-    font-weight: 700;
+    font-size: 2.2rem;
+    font-weight: 800;
     text-align: center;
+    box-sizing: border-box;
+    transition: all 0.1s ease;
 }
 
 .arCellInputActive {
     border-color: #7c3aed;
-    box-shadow: none;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
     background: #fff;
 }
 
@@ -608,5 +718,230 @@
     .pairedRow .verticalPart,
     .pairedRow .inlinePart {
         width: 100%;
+    }
+}
+
+.smartTableContainer {
+    width: 100%;
+    max-width: fit-content;
+    margin: 1.5rem auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+}
+
+.smartTableTitle {
+    padding: 1rem 1.25rem;
+    background: #ffffff;
+    border-bottom: 1px solid #f3f4f6;
+    font-weight: 700;
+    color: #111827;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.smartTable {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.smartTableHeaderCell {
+    padding: 0.85rem 1.25rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.smartTableCell {
+    padding: 0.85rem 1.25rem;
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #111827;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.smartTableLabelCell {
+    text-align: left;
+    font-weight: 700;
+    color: #4b5563;
+    font-size: 1.1rem;
+    background: #f9fafb;
+    border-right: 1px solid #f3f4f6;
+    padding-left: 1.25rem;
+}
+
+.smartTableRowTotal .smartTableCell {
+    background: #f8fafc;
+    color: #1d4ed8;
+    font-weight: 800;
+    border-top: 2px solid #e2e8f0;
+}
+
+.smartTableFooter {
+    padding: 0.75rem 1.25rem;
+    background: #ffffff;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.exportButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.exportButton:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    color: #111827;
+    transform: translateY(-1px);
+}
+
+.smartTableInput {
+    width: 44px;
+    height: 44px;
+    border: 2px solid #3b82f6;
+    border-radius: 4px;
+    background: #fff;
+    color: #111827;
+    font-size: 1.4rem;
+    font-weight: 700;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.smartTableInput:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.smartTableRowCarry .smartTableCell {
+    padding-bottom: 0.25rem;
+    border-bottom: none;
+}
+
+.smartTableCarryInput {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #576b8a;
+    border-radius: 50%;
+    background: transparent;
+    color: #111827;
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-align: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.smartTableCarryInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+@media (max-width: 600px) {
+    .smartTableContainer {
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+
+    .smartTableHeaderCell,
+    .smartTableCell {
+        padding: 0.5rem 0.65rem;
+        font-size: 1.1rem;
+    }
+
+    .smartTableLabelCell {
+        padding-left: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .smartTableInput {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+
+    .smartTableCarryInput {
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
+    }
+}
+
+.virtualKeypad {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #f1f5f9;
+    border-radius: 12px;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+}
+
+.keypadButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.keypadButton:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.keypadButton:active {
+    background: #e2e8f0;
+    transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+    .keypadButton {
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+    }
+
+    .virtualKeypad {
+        gap: 6px;
+        padding: 1rem;
     }
 }

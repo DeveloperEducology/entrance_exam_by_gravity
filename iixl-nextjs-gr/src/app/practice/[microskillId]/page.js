@@ -609,7 +609,7 @@ export default function PracticePage() {
 
         if (ENABLE_ADAPTIVE && studentId) {
           try {
-            const sessionRes = await fetch(backendUrl('/api/adaptive/session/start'), {
+            const sessionRes = await fetch('/api/adaptive/session/start', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -630,7 +630,7 @@ export default function PracticePage() {
             setStoredAdaptiveSessionId(actualMicroSkillId, sessionPayload.sessionId);
             setAdaptivePhase(sessionPayload.phase || 'warmup');
 
-            const nextRes = await fetch(backendUrl('/api/adaptive/next-question'), {
+            const nextRes = await fetch('/api/adaptive/next-question', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -650,6 +650,7 @@ export default function PracticePage() {
             firstQuestion = nextPayload.question;
             setUsingAdaptiveApi(true);
             setAdaptiveMeta(nextPayload.selectionMeta || null);
+            console.log('Loaded first adaptive question:', firstQuestion.id, firstQuestion.difficulty);
           } catch (adaptiveError) {
             setUsingAdaptiveApi(false);
             setAdaptiveSessionId(null);
@@ -658,7 +659,7 @@ export default function PracticePage() {
         }
 
         if (!firstQuestion) {
-          const res = await fetch(backendUrl(`/api/practice/${actualMicroSkillId}`), { cache: 'no-store' });
+          const res = await fetch(`/api/practice/${actualMicroSkillId}`, { cache: 'no-store' });
           const payload = await res.json();
           if (!active) return;
 
@@ -762,18 +763,19 @@ export default function PracticePage() {
         seenQuestionIds,
       };
 
+      console.log('Submit Body:', submitBody);
       let payload = null;
       if (ENABLE_ADAPTIVE && usingAdaptiveApi && adaptiveSessionId) {
         try {
-          payload = await submitWithRetry(backendUrl('/api/adaptive/submit-and-next'), submitBody);
+          payload = await submitWithRetry('/api/adaptive/submit-and-next', submitBody);
         } catch (adaptiveError) {
           setUsingAdaptiveApi(false);
           setAdaptiveSessionId(null);
           setSubmitError(`Adaptive submit failed, switched to fallback mode: ${adaptiveError?.message || 'Unknown error'}`);
-          payload = await submitWithRetry(backendUrl(`/api/practice/${actualMicroSkillId}/submit`), submitBody);
+          payload = await submitWithRetry(`/api/practice/${actualMicroSkillId}/submit`, submitBody);
         }
       } else {
-        payload = await submitWithRetry(backendUrl(`/api/practice/${actualMicroSkillId}/submit`), submitBody);
+        payload = await submitWithRetry(`/api/practice/${actualMicroSkillId}/submit`, submitBody);
       }
 
       const correct = Boolean(payload?.result?.isCorrect ?? payload?.isCorrect);
@@ -928,6 +930,7 @@ export default function PracticePage() {
           <div className={styles.statPill}><span className={styles.statLabel}>Questions</span><strong>{questionsAnswered}</strong></div>
           <div className={styles.statPill}><span className={styles.statLabel}>Time</span><strong>{time.mins}:{time.secs}</strong></div>
           <div className={styles.statPill}><span className={styles.statLabel}>SmartScore</span><strong>{smartScore}</strong></div>
+          <div className={styles.statPill}><span className={styles.statLabel}>Level</span><strong style={{ textTransform: 'capitalize' }}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</strong></div>
         </div>
       </header>
 
@@ -1152,6 +1155,24 @@ export default function PracticePage() {
               <div className={styles.timeUnit}><div className={styles.timeValue}>{time.hrs}</div><div className={styles.timeLabel}>HR</div></div>
               <div className={styles.timeUnit}><div className={styles.timeValue}>{time.mins}</div><div className={styles.timeLabel}>MIN</div></div>
               <div className={styles.timeUnit}><div className={styles.timeValue}>{time.secs}</div><div className={styles.timeLabel}>SEC</div></div>
+            </div>
+          </div>
+
+          <div className={styles.sidebarCard}>
+            <div className={styles.sidebarLabel}>Adaptive status</div>
+            <div className={styles.sidebarValue} style={{ fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#888' }}>Level:</span>
+                <span style={{ fontWeight: 600, color: '#333', textTransform: 'capitalize' }}>
+                  {adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#888' }}>Phase:</span>
+                <span style={{ fontWeight: 600, color: '#0070f3', textTransform: 'capitalize' }}>
+                  {adaptivePhase}
+                </span>
+              </div>
             </div>
           </div>
 

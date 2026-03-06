@@ -1,0 +1,166 @@
+{
+    "id": "gemini-smart-table-showcase",
+    "type": "fillInTheBlank",
+    "difficulty": "advanced",
+    "parts": [
+        {
+            "type": "text",
+            "content": "### 1. Place Value Addition (Zig-Zag Focus)"
+        },
+        {
+            "type": "table",
+            "features": {
+                "type": "math_place_value"
+            },
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "H",
+                    "key": "h"
+                },
+                {
+                    "header": "T",
+                    "key": "t"
+                },
+                {
+                    "header": "O",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "carry",
+                    "h": {
+                        "id": "c1_h"
+                    },
+                    "t": {
+                        "id": "c1_t"
+                    },
+                    "o": ""
+                },
+                {
+                    "label": "",
+                    "h": "4",
+                    "t": "7",
+                    "o": "9"
+                },
+                {
+                    "label": "+",
+                    "h": "9",
+                    "t": "2",
+                    "o": "3"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "a1_h"
+                    },
+                    "t": {
+                        "id": "a1_t",
+                        "maxLength": 1
+                    },
+                    "o": {
+                        "id": "a1_o",
+                        "maxLength": 1
+                    }
+                }
+            ]
+        },
+        {
+            "type": "text",
+            "content": "### 2. Decimal Comparison (General Focus)"
+        },
+        {
+            "type": "table",
+            "columns": [
+                {
+                    "header": "Item",
+                    "key": "label"
+                },
+                {
+                    "header": "Whole",
+                    "key": "w"
+                },
+                {
+                    "header": ".",
+                    "key": "d"
+                },
+                {
+                    "header": "Dec",
+                    "key": "dec"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "A",
+                    "w": "5",
+                    "d": ".",
+                    "dec": "75"
+                },
+                {
+                    "label": "B",
+                    "w": "5",
+                    "d": ".",
+                    "dec": "8"
+                },
+                {
+                    "label": "Compare",
+                    "w": "",
+                    "d": {
+                        "id": "comp_op",
+                        "placeholder": "< > ="
+                    },
+                    "dec": ""
+                }
+            ]
+        },
+        {
+            "type": "text",
+            "content": "### 3. Survey Table (Emojis & Multi-digit)"
+        },
+        {
+            "type": "table",
+            "columns": [
+                {
+                    "header": "Fruit",
+                    "key": "label"
+                },
+                {
+                    "header": "Tally",
+                    "key": "t"
+                },
+                {
+                    "header": "Count",
+                    "key": "c"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "🍎 Apple",
+                    "t": "IIII",
+                    "c": {
+                        "id": "c_apple"
+                    }
+                },
+                {
+                    "label": "🍌 Banana",
+                    "t": "II",
+                    "c": {
+                        "id": "c_banana"
+                    }
+                },
+                {
+                    "label": "Total",
+                    "t": "",
+                    "c": {
+                        "id": "c_total"
+                    }
+                }
+            ]
+        }
+    ],
+    "showSubmitButton": true
+}

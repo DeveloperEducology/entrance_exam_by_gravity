@@ -38,15 +38,14 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });
   }
 
-  const supabase = createServerClient();
-  if (!supabase) {
-    serverLog('api.adaptive.session.start', 'supabase not configured');
-    return NextResponse.json({ error: 'Supabase is not configured on server.' }, { status: 500 });
-  }
-
   try {
-    const existingState = await getStudentSkillState(supabase, studentId, microskillId);
-    const skillState = existingState ?? await upsertStudentSkillState(supabase, {
+    const { connectMongo } = require('@/lib/db/mongo');
+    const mongoose = require('mongoose');
+    await connectMongo();
+    const db = mongoose.connection.db;
+
+    const existingState = await getStudentSkillState(db, studentId, microskillId);
+    const skillState = existingState ?? await upsertStudentSkillState(db, {
       student_id: studentId,
       micro_skill_id: microskillId,
       mastery_score: 0.2,
@@ -64,11 +63,11 @@ export async function POST(req) {
 
     let sessionState = null;
     if (sessionId) {
-      sessionState = await getSessionState(supabase, sessionId);
+      sessionState = await getSessionState(db, sessionId);
     }
     if (!sessionState) {
-      sessionState = await upsertSessionState(supabase, {
-        id: sessionId || undefined,
+      sessionState = await upsertSessionState(db, {
+        id: sessionId || crypto.randomUUID(),
         student_id: studentId,
         micro_skill_id: microskillId,
         phase: 'warmup',

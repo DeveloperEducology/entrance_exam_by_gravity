@@ -1,0 +1,71 @@
+{
+    "id": "demo-arithmetic-table-1",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+        {
+            "type": "text",
+            "content": "Add the numbers by aligning them to their place values. Don't forget to carry!"
+        },
+        {
+            "type": "arithmeticLayout",
+            "layout": {
+                "rows": [
+                    {
+                        "kind": "header",
+                        "text": "HTO"
+                    },
+                    {
+                        "kind": "carry",
+                        "cells": [
+                            {
+                                "id": "c1"
+                            },
+                            {
+                                "id": "c2"
+                            },
+                            {
+                                "id": "c3"
+                            }
+                        ]
+                    },
+                    {
+                        "kind": "text",
+                        "text": " 479"
+                    },
+                    {
+                        "kind": "text",
+                        "text": "+923"
+                    },
+                    {
+                        "kind": "divider"
+                    },
+                    {
+                        "kind": "answer",
+                        "prefix": "",
+                        "cells": [
+                            {
+                                "id": "a1",
+                                "answerType": "digit"
+                            },
+                            {
+                                "id": "a2",
+                                "answerType": "digit"
+                            },
+                            {
+                                "id": "a3",
+                                "answerType": "digit"
+                            },
+                            {
+                                "id": "a4",
+                                "answerType": "digit"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "correctAnswerText": "{\"c1\":\"1\",\"c2\":\"1\",\"a1\":\"1\",\"a2\":\"4\",\"a3\":\"0\",\"a4\":\"2\"}",
+    "showSubmitButton": true
+}

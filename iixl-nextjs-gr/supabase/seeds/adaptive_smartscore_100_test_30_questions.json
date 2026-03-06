@@ -1,0 +1,1442 @@
+[
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 8,
+    "marks": 1,
+    "sort_order": 1,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e1",
+        "type": "text",
+        "content": "7 + 5 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"12\"}",
+    "solution": "7 + 5 = 12.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 10,
+    "marks": 1,
+    "sort_order": 2,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e2",
+        "type": "text",
+        "content": "9 + 6 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"15\"}",
+    "solution": "9 + 6 = 15.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 12,
+    "marks": 1,
+    "sort_order": 3,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e3",
+        "type": "text",
+        "content": "14 + 3 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"17\"}",
+    "solution": "14 + 3 = 17.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 14,
+    "marks": 1,
+    "sort_order": 4,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e4",
+        "type": "text",
+        "content": "18 - 7 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"11\"}",
+    "solution": "18 - 7 = 11.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 16,
+    "marks": 1,
+    "sort_order": 5,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e5",
+        "type": "text",
+        "content": "25 - 9 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"16\"}",
+    "solution": "25 - 9 = 16.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 18,
+    "marks": 1,
+    "sort_order": 6,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e6",
+        "type": "text",
+        "content": "22 + 8 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"30\"}",
+    "solution": "22 + 8 = 30.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 20,
+    "marks": 1,
+    "sort_order": 7,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e7",
+        "type": "text",
+        "content": "35 + 15 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"50\"}",
+    "solution": "35 + 15 = 50.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 22,
+    "marks": 1,
+    "sort_order": 8,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e8",
+        "type": "text",
+        "content": "41 + 19 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"60\"}",
+    "solution": "41 + 19 = 60.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 26,
+    "marks": 1,
+    "sort_order": 9,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e9",
+        "type": "text",
+        "content": "64 - 23 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"41\"}",
+    "solution": "64 - 23 = 41.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "complexity": 30,
+    "marks": 1,
+    "sort_order": 10,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_e10",
+        "type": "text",
+        "content": "70 - 28 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"42\"}",
+    "solution": "70 - 28 = 42.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "easy",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "low",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 34,
+    "marks": 1,
+    "sort_order": 11,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m1",
+        "type": "text",
+        "content": "48 + 27 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"75\"}",
+    "solution": "48 + 27 = 75.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 38,
+    "marks": 1,
+    "sort_order": 12,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m2",
+        "type": "text",
+        "content": "57 + 36 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"93\"}",
+    "solution": "57 + 36 = 93.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 42,
+    "marks": 1,
+    "sort_order": 13,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m3",
+        "type": "text",
+        "content": "84 - 29 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"55\"}",
+    "solution": "84 - 29 = 55.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 46,
+    "marks": 1,
+    "sort_order": 14,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m4",
+        "type": "text",
+        "content": "95 - 47 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"48\"}",
+    "solution": "95 - 47 = 48.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 50,
+    "marks": 1,
+    "sort_order": 15,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m5",
+        "type": "text",
+        "content": "126 + 38 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"164\"}",
+    "solution": "126 + 38 = 164.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 54,
+    "marks": 1,
+    "sort_order": 16,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m6",
+        "type": "text",
+        "content": "203 + 58 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"261\"}",
+    "solution": "203 + 58 = 261.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 58,
+    "marks": 1,
+    "sort_order": 17,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m7",
+        "type": "text",
+        "content": "312 - 79 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"233\"}",
+    "solution": "312 - 79 = 233.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 62,
+    "marks": 1,
+    "sort_order": 18,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m8",
+        "type": "text",
+        "content": "425 - 186 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"239\"}",
+    "solution": "425 - 186 = 239.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 66,
+    "marks": 1,
+    "sort_order": 19,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m9",
+        "type": "text",
+        "content": "278 + 145 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"423\"}",
+    "solution": "278 + 145 = 423.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "complexity": 70,
+    "marks": 1,
+    "sort_order": 20,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_m10",
+        "type": "text",
+        "content": "640 - 255 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"385\"}",
+    "solution": "640 - 255 = 385.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "medium",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "mid",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 74,
+    "marks": 1,
+    "sort_order": 21,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h1",
+        "type": "text",
+        "content": "1578 + 946 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"2524\"}",
+    "solution": "1578 + 946 = 2524.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 77,
+    "marks": 1,
+    "sort_order": 22,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h2",
+        "type": "text",
+        "content": "2405 + 1387 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"3792\"}",
+    "solution": "2405 + 1387 = 3792.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 80,
+    "marks": 1,
+    "sort_order": 23,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h3",
+        "type": "text",
+        "content": "5002 - 2789 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"2213\"}",
+    "solution": "5002 - 2789 = 2213.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 83,
+    "marks": 1,
+    "sort_order": 24,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h4",
+        "type": "text",
+        "content": "7321 - 4685 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"2636\"}",
+    "solution": "7321 - 4685 = 2636.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 86,
+    "marks": 1,
+    "sort_order": 25,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h5",
+        "type": "text",
+        "content": "14235 + 8764 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"22999\"}",
+    "solution": "14235 + 8764 = 22999.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 89,
+    "marks": 1,
+    "sort_order": 26,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h6",
+        "type": "text",
+        "content": "30000 - 14678 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"15322\"}",
+    "solution": "30000 - 14678 = 15322.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 92,
+    "marks": 1,
+    "sort_order": 27,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h7",
+        "type": "text",
+        "content": "45678 + 23984 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"69662\"}",
+    "solution": "45678 + 23984 = 69662.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 95,
+    "marks": 1,
+    "sort_order": 28,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h8",
+        "type": "text",
+        "content": "91011 - 47856 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"43155\"}",
+    "solution": "91011 - 47856 = 43155.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 98,
+    "marks": 1,
+    "sort_order": 29,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h9",
+        "type": "text",
+        "content": "123456 + 78901 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"202357\"}",
+    "solution": "123456 + 78901 = 202357.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "addition"
+      ],
+      "misconceptionCode": "addition_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  },
+  {
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "complexity": 100,
+    "marks": 1,
+    "sort_order": 30,
+    "is_multi_select": false,
+    "is_vertical": false,
+    "show_submit_button": true,
+    "parts": [
+      {
+        "id": "p_h10",
+        "type": "text",
+        "content": "250000 - 127777 =",
+        "isVertical": true,
+        "hasAudio": true
+      },
+      {
+        "id": "answer_1",
+        "type": "input",
+        "content": "",
+        "isVertical": false,
+        "hasAudio": false,
+        "expectedType": "number"
+      }
+    ],
+    "options": [],
+    "items": [],
+    "drag_items": [],
+    "drop_groups": [],
+    "correct_answer_index": -1,
+    "correct_answer_indices": [],
+    "correct_answer_text": "{\"answer_1\":\"122223\"}",
+    "solution": "250000 - 127777 = 122223.",
+    "adaptive_config": {
+      "policyVersion": "misconception_v2",
+      "conceptTags": [
+        "number_operations",
+        "hard",
+        "subtraction"
+      ],
+      "misconceptionCode": "subtraction_fact_error",
+      "targetComplexityBand": "high",
+      "inputMode": "digit_pad",
+      "isRemediation": false,
+      "remediationLevel": 0
+    }
+  }
+]

@@ -1,0 +1,79 @@
+{
+    "id": "gemini-smart-table-subtraction",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+        {
+            "type": "text",
+            "content": "Subtract the numbers by using the borrow row where needed. If you borrow for the Ones place, mark it in the circle above."
+        },
+        {
+            "type": "table",
+            "title": "Place Value Subtraction",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "Hundred",
+                    "key": "h"
+                },
+                {
+                    "header": "Ten",
+                    "key": "t"
+                },
+                {
+                    "header": "One",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "borrow",
+                    "h": {
+                        "id": "b_h"
+                    },
+                    "t": {
+                        "id": "b_t"
+                    },
+                    "o": {
+                        "id": "b_o"
+                    }
+                },
+                {
+                    "label": "",
+                    "h": "5",
+                    "t": "4",
+                    "o": "3"
+                },
+                {
+                    "label": "-",
+                    "h": "2",
+                    "t": "6",
+                    "o": "7"
+                },
+                {
+                    "label": "Total",
+                    "h": {
+                        "id": "ans_h",
+                        "maxLength": 1
+                    },
+                    "t": {
+                        "id": "ans_t",
+                        "maxLength": 1
+                    },
+                    "o": {
+                        "id": "ans_o",
+                        "maxLength": 1
+                    }
+                }
+            ],
+            "features": {
+                "exportable": false
+            }
+        }
+    ],
+    "correctAnswerText": "{\"ans_h\":\"2\",\"ans_t\":\"7\",\"ans_o\":\"6\"}",
+    "showSubmitButton": true
+}

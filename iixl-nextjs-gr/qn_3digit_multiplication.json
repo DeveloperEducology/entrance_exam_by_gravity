@@ -1,0 +1,136 @@
+{
+    "id": "qn-3digit-multiplication",
+    "type": "fillInTheBlank",
+    "difficulty": "Advanced",
+    "parts": [
+        {
+            "type": "text",
+            "content": "Solve the 3-digit long multiplication step-by-step:"
+        },
+        {
+            "type": "table",
+            "title": "Multiply: 123 × 231",
+            "columns": [
+                {
+                    "header": "",
+                    "key": "label"
+                },
+                {
+                    "header": "TTh",
+                    "key": "tt"
+                },
+                {
+                    "header": "Th",
+                    "key": "th"
+                },
+                {
+                    "header": "H",
+                    "key": "h"
+                },
+                {
+                    "header": "T",
+                    "key": "t"
+                },
+                {
+                    "header": "O",
+                    "key": "o"
+                }
+            ],
+            "rows": [
+                {
+                    "label": "",
+                    "tt": "",
+                    "th": "",
+                    "h": "1",
+                    "t": "2",
+                    "o": "3"
+                },
+                {
+                    "label": "×",
+                    "tt": "",
+                    "th": "",
+                    "h": "2",
+                    "t": "3",
+                    "o": "1"
+                },
+                {
+                    "label": "123 x 1",
+                    "tt": "",
+                    "th": "",
+                    "h": {
+                        "id": "p1_h"
+                    },
+                    "t": {
+                        "id": "p1_t"
+                    },
+                    "o": {
+                        "id": "p1_o"
+                    }
+                },
+                {
+                    "label": "123 x 30",
+                    "tt": "",
+                    "th": {
+                        "id": "p2_th"
+                    },
+                    "h": {
+                        "id": "p2_h"
+                    },
+                    "t": {
+                        "id": "p2_t"
+                    },
+                    "o": "0"
+                },
+                {
+                    "label": "123 x 200",
+                    "tt": {
+                        "id": "p3_tt"
+                    },
+                    "th": {
+                        "id": "p3_th"
+                    },
+                    "h": {
+                        "id": "p3_h"
+                    },
+                    "t": "0",
+                    "o": "0"
+                },
+                {
+                    "label": "Total",
+                    "tt": {
+                        "id": "ans_tt"
+                    },
+                    "th": {
+                        "id": "ans_th"
+                    },
+                    "h": {
+                        "id": "ans_h"
+                    },
+                    "t": {
+                        "id": "ans_t"
+                    },
+                    "o": {
+                        "id": "ans_o"
+                    }
+                }
+            ]
+        }
+    ],
+    "correct_answer_text": {
+        "p1_h": "1",
+        "p1_t": "2",
+        "p1_o": "3",
+        "p2_th": "3",
+        "p2_h": "6",
+        "p2_t": "9",
+        "p3_tt": "2",
+        "p3_th": "4",
+        "p3_h": "6",
+        "ans_tt": "2",
+        "ans_th": "8",
+        "ans_h": "4",
+        "ans_t": "1",
+        "ans_o": "3"
+    },
+    "showSubmitButton": true
+}

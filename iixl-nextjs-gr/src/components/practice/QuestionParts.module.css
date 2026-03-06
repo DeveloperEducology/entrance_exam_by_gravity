@@ -288,3 +288,199 @@
         font-size: 1.05rem;
     }
 }
+
+/* Static Renderers for Dashboard */
+.pictureBoxStatic {
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+.pictureEq {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pictureTerm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.pictureEmoji {
+    font-size: 1.2rem;
+    min-height: 1.4rem;
+}
+
+.pictureOp {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #475569;
+}
+
+.butterflyStatic {
+    width: 220px;
+    height: 160px;
+    position: relative;
+}
+
+.bfSvg {
+    width: 100%;
+    height: 100%;
+}
+
+.bfText {
+    font-size: 32px;
+    font-weight: 700;
+    fill: #1e293b;
+    font-family: system-ui;
+}
+
+.arithmeticStatic {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 700;
+    font-size: 1.2rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px dashed #e2e8f0;
+    border-radius: 4px;
+}
+
+.arRow {
+    line-height: 1.2;
+    letter-spacing: 0.1em;
+}
+
+.arDivider {
+    width: 100%;
+    border-top: 2px solid #334155;
+    margin: 0.1rem 0 0.15rem;
+}
+
+.gridStatic {
+    display: grid;
+    gap: 1px;
+    background: #e2e8f0;
+    border: 1px solid #e2e8f0;
+}
+
+.gridCellStatic {
+    background: white;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.smartTableContainer {
+    width: fit-content;
+    margin: 1rem 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.smartTableTitle {
+    padding: 0.6rem 0.85rem;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 700;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.smartTable {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.smartTableHeaderCell {
+    padding: 0.6rem 0.85rem;
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.smartTableCell {
+    padding: 0.6rem 0.85rem;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.smartTableLabelCell {
+    text-align: left;
+    font-weight: 700;
+    color: #4b5563;
+    font-size: 0.95rem;
+    background: #f9fafb;
+    border-right: 1px solid #f3f4f6;
+}
+
+.smartTableRowTotal .smartTableCell {
+    background: #f8fafc;
+    color: #1d4ed8;
+    font-weight: 800;
+}
+
+.smartTableRowCarry .smartTableCell {
+    padding-bottom: 0.25rem;
+    border-bottom: none;
+}
+
+.smartTableCarryCircle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 2px solid #576b8a;
+    border-radius: 50%;
+    margin: 0 auto;
+    font-weight: 800;
+}
+
+@media (max-width: 600px) {
+    .smartTableContainer {
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+
+    .smartTableHeaderCell,
+    .smartTableCell {
+        padding: 0.5rem 0.65rem;
+        font-size: 1.1rem;
+    }
+
+    .smartTableLabelCell {
+        padding-left: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .smartTableCarryCircle {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
+    }
+}

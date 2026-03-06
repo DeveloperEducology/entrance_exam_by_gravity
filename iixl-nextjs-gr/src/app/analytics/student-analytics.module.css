@@ -1,183 +1,385 @@
 .page {
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 2rem 1rem;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  color: #1e293b;
+  background-color: #f8fafc;
+  min-height: 100vh;
 }
 
-.header {
+.headerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 2rem;
 }
 
-.homeLink {
-  color: #0f6ea8;
+.titleArea h1 {
+  font-size: 1.875rem;
   font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: #0f172a;
 }
 
-.controls {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.5rem;
+.titleArea p {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.downloadBtn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.downloadBtn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Banner */
+.banner {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  border-radius: 20px;
+  padding: 2.5rem;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.3);
+}
+
+.bannerContent {
+  position: relative;
+  z-index: 2;
+  max-width: 60%;
+}
+
+.bannerContent h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
   margin-bottom: 0.75rem;
 }
 
-.controls input,
-.controls select {
-  border: 1px solid #cfe3f3;
-  border-radius: 8px;
-  padding: 0.55rem 0.65rem;
-  font-size: 0.9rem;
-  background: #fff;
+.bannerContent p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  line-height: 1.6;
 }
 
-.controls button {
-  background: #0f6ea8;
-  color: #fff;
-  border-radius: 8px;
-  padding: 0.55rem 0.8rem;
+.bannerButtons {
+  display: flex;
+  gap: 1rem;
+}
+
+.primaryBtn {
+  background: white;
+  color: #7c3aed;
+  padding: 0.75rem 1.75rem;
+  border-radius: 10px;
   font-weight: 700;
   border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.error {
-  color: #b42318;
+.secondaryBtn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.75rem 1.75rem;
+  border-radius: 10px;
   font-weight: 700;
+  border: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
 }
 
-.kpis {
+.primaryBtn:hover {
+  transform: translateY(-2px);
+}
+
+.bannerAlpha {
+  font-size: 10rem;
+  opacity: 0.15;
+  position: absolute;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* KPI Grid */
+.kpiGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
-.kpi {
-  background: #fff;
-  border: 1px solid #d9ebf8;
-  border-radius: 10px;
-  padding: 0.55rem 0.65rem;
+.kpiCard {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
 }
 
-.kpi span {
+.iconBox {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.kpiVal span {
   display: block;
-  font-size: 0.72rem;
-  color: #6b8097;
-  text-transform: uppercase;
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 0.25rem;
 }
 
-.kpi strong {
-  font-size: 1.05rem;
-  color: #22394f;
+.kpiVal strong {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.charts {
+/* Dashboard Layout */
+.dashboardGrid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.6rem;
-  margin-bottom: 0.75rem;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
 }
 
-.chartCard {
-  background: #fff;
-  border: 1px solid #d9ebf8;
-  border-radius: 10px;
-  padding: 0.45rem 0.6rem;
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
-.chartCard h3 {
-  font-size: 0.8rem;
-  color: #2f4d67;
-  margin-bottom: 0.35rem;
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
-.chart {
-  width: 100%;
-  height: 150px;
-  background: #f8fcff;
-  border-radius: 8px;
+/* Generic Card */
+.contentCard {
+  background: white;
+  border-radius: 20px;
+  padding: 1.75rem;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.legendList {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.legendItem {
-  border: 1px solid #e7f0f8;
-  background: #f8fcff;
-  border-radius: 8px;
-  padding: 0.4rem 0.5rem;
+.cardHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1.75rem;
 }
 
-.legendLabel {
-  font-size: 0.78rem;
-  color: #3c5770;
+.cardHeader h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.seeAll {
+  font-size: 0.875rem;
+  color: #7c3aed;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Chart */
+.chartContainer {
+  width: 100%;
+  height: 250px;
+  position: relative;
+}
+
+.chartSvg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Skill Lists */
+.skillList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.skillItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #fcfcfd;
+  border: 1px solid #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.skillItem:hover {
+  background: #f8fafc;
+  transform: translateX(4px);
+}
+
+.skillIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: #f1f5f9;
+}
+
+.skillInfo {
+  flex: 1;
+}
+
+.skillName {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+}
+
+.skillSub {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* Side Items */
+.recentSkillItem {
+  margin-bottom: 1.5rem;
+}
+
+.recentSkillHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  font-size: 0.875rem;
+}
+
+.skillTitle {
+  font-weight: 500;
+  font-size: 0.9rem;
   max-width: 80%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.emptyText {
-  font-size: 0.78rem;
-  color: #647b92;
-  margin: 0.1rem 0 0;
+.skillScore {
+  font-weight: 700;
+  color: #7c3aed;
 }
 
-.emptyWrap {
-  display: grid;
-  gap: 0.25rem;
+.progressBar {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.hintText {
-  font-size: 0.75rem;
-  color: #44617d;
-  margin: 0;
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s ease-out;
 }
 
-.tableWrap {
-  overflow-x: auto;
-  background: #fff;
-  border: 1px solid #d9ebf8;
-  border-radius: 10px;
+/* Goal Progress */
+.goalBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 1rem;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
+.circleChart {
+  width: 140px;
+  height: 140px;
+  margin-bottom: 1.5rem;
+  position: relative;
 }
 
-.table th,
-.table td {
-  border-bottom: 1px solid #ecf3f9;
-  padding: 0.45rem 0.5rem;
-  text-align: left;
+.circleSvg {
+  transform: rotate(-90deg);
 }
 
-.table th {
-  font-size: 0.72rem;
-  color: #5a738d;
+.circleVal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.circleVal strong {
+  font-size: 1.5rem;
+  display: block;
+}
+
+.circleVal span {
+  font-size: 0.7rem;
+  color: #64748b;
   text-transform: uppercase;
+  font-weight: 700;
 }
 
-@media (max-width: 768px) {
-  .controls {
+.goalText {
+  font-size: 0.875rem;
+  color: #64748b;
+  color: #334155;
+}
+
+.goalText b {
+  color: #0f172a;
+}
+
+@media (max-width: 1024px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpiGrid {
     grid-template-columns: 1fr 1fr;
   }
-
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
-@media (max-width: 520px) {
-  .controls {
+@media (max-width: 640px) {
+  .kpiGrid {
     grid-template-columns: 1fr;
+  }
+
+  .bannerContent {
+    max-width: 100%;
+  }
+
+  .bannerAlpha {
+    display: none;
   }
 }

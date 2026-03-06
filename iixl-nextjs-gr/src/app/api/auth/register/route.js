@@ -42,6 +42,7 @@ export async function POST(req) {
             email: email.trim().toLowerCase(),
             password_hash: passwordHash,
             name: name || email.split('@')[0],
+            role: 'student',
             birth_year: birthYear || null,
             grade_id: gradeId || null,
             created_at: now,
@@ -56,6 +57,7 @@ export async function POST(req) {
             user: {
                 id: newUser.id,
                 email: newUser.email,
+                role: 'student',
                 user_metadata: {
                     name: newUser.name,
                     birthYear: newUser.birth_year,

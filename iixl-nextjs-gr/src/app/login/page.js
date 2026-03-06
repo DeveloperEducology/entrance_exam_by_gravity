@@ -50,11 +50,18 @@ export default function LoginPage() {
       });
       if (signInError) throw signInError;
       const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (userId) {
+      const user = userData?.user;
+      const userId = user?.id;
+
+      if (userId && user.role !== 'teacher') {
         await mergeGuestProgress(userId);
       }
-      router.push('/');
+
+      if (user?.role === 'teacher') {
+        router.push('/teacher/dashboard');
+      } else {
+        router.push('/');
+      }
       router.refresh();
     } catch (err) {
       setError(err?.message || 'Login failed. Please try again.');

@@ -21,6 +21,8 @@ const RENDERER_MAP = {
     fourPicsOneWord: FourPicsRenderer,
     measure: MeasureRenderer,
     shadeGrid: ShadeGridRenderer,
+    table: FillInTheBlankRenderer,
+    smartTable: FillInTheBlankRenderer,
 };
 
 export default function QuestionRenderer({

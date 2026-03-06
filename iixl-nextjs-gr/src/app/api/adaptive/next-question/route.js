@@ -34,16 +34,16 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });
   }
 
-  const supabase = createServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase is not configured on server.' }, { status: 500 });
-  }
-
   try {
+    const { connectMongo } = require('@/lib/db/mongo');
+    const mongoose = require('mongoose');
+    await connectMongo();
+    const db = mongoose.connection.db;
+
     const [sessionState, skillState, questions] = await Promise.all([
-      getSessionState(supabase, sessionId),
-      getStudentSkillState(supabase, studentId, microskillId),
-      fetchQuestionsByMicroskill(supabase, microskillId),
+      getSessionState(db, sessionId),
+      getStudentSkillState(db, studentId, microskillId),
+      fetchQuestionsByMicroskill(db, microskillId),
     ]);
 
     const targetDifficulty =
@@ -51,7 +51,7 @@ export async function POST(req) {
       skillState?.difficulty_band ??
       'easy';
 
-    const recoveryContext = await getRecoveryContextFromAttempts(supabase, { sessionId });
+    const recoveryContext = await getRecoveryContextFromAttempts(db, { sessionId });
 
     const result = chooseNextQuestion({
       questions,
@@ -61,9 +61,9 @@ export async function POST(req) {
       excludeQuestionId: sessionState?.last_question_id || null,
       remediation: recoveryContext.inRecovery
         ? {
-            misconceptionCode: recoveryContext.misconceptionCode,
-            remaining: recoveryContext.remediationRemaining,
-          }
+          misconceptionCode: recoveryContext.misconceptionCode,
+          remaining: recoveryContext.remediationRemaining,
+        }
         : null,
     });
 
@@ -74,7 +74,7 @@ export async function POST(req) {
         availableQuestionIds: questions.map((q) => q.id),
       });
 
-      await upsertSessionState(supabase, {
+      await upsertSessionState(db, {
         ...sessionState,
         id: sessionState.id,
         last_question_id: result.question.id,
