@@ -252,10 +252,11 @@ export async function fetchQuestionsByMicroskill(db, microskillId) {
 
 export function validateAnswer(question, answer) {
   if (!question) return false;
+  const type = String(question.type || '').trim().toLowerCase();
 
-  switch (question.type) {
+  switch (type) {
     case 'mcq':
-    case 'imageChoice':
+    case 'imagechoice':
       if (question.isMultiSelect) {
         const selected = Array.isArray(answer) ? [...answer].map(Number).sort() : [];
         const correct = Array.isArray(question.correctAnswerIndices)
@@ -265,19 +266,25 @@ export function validateAnswer(question, answer) {
       }
       return Number(answer) === Number(question.correctAnswerIndex);
 
-    case 'textInput':
+    case 'textinput':
       return String(answer ?? '').trim().toLowerCase() === String(question.correctAnswerText ?? '').trim().toLowerCase();
 
-    case 'fillInTheBlank':
-    case 'gridArithmetic': {
-      const correctAnswers = parseMaybeJson(question.correctAnswerText, {});
-      if (!correctAnswers || typeof correctAnswers !== 'object') return false;
-      return Object.keys(correctAnswers).every((key) => (
-        String(answer?.[key] ?? '').trim().toLowerCase() === String(correctAnswers[key]).trim().toLowerCase()
+    case 'fillintheblank':
+    case 'gridarithmetic':
+    case 'table':
+    case 'smarttable': {
+      const rawText = question.correctAnswerText;
+      const parsed = (typeof rawText === 'object' && rawText !== null)
+        ? rawText
+        : parseMaybeJson(rawText, null);
+
+      if (!parsed || typeof parsed !== 'object') return false;
+      return Object.keys(parsed).every((key) => (
+        String(answer?.[key] ?? '').trim().toLowerCase() === String(parsed[key] ?? '').trim().toLowerCase()
       ));
     }
 
-    case 'dragAndDrop':
+    case 'draganddrop':
       return (question.dragItems || [])
         .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '')
         .every((item) => String(answer?.[item.id] ?? '') === String(item.targetGroupId));
@@ -290,7 +297,7 @@ export function validateAnswer(question, answer) {
       return false;
     }
 
-    case 'fourPicsOneWord':
+    case 'fourpicsoneword':
       return (Array.isArray(answer) ? answer.join('') : String(answer ?? '')).toUpperCase() === String(question.correctAnswerText ?? '').toUpperCase();
 
     case 'measure': {
@@ -300,7 +307,7 @@ export function validateAnswer(question, answer) {
       return Math.abs(actual - expected) < 0.0001;
     }
 
-    case 'shadeGrid': {
+    case 'shadegrid': {
       const expected = parseShadeGridTarget(question);
       if (expected == null) return false;
       const actual = (
@@ -410,8 +417,9 @@ export async function getRecoveryContextFromAttempts(db, { sessionId }) {
 export function detectMisconceptionCode({ question, answer, isCorrect }) {
   if (!question || isCorrect) return null;
   const config = question.adaptiveConfig ?? {};
+  const type = String(question.type || '').trim().toLowerCase();
 
-  if (question.type === 'mcq' || question.type === 'imageChoice') {
+  if (type === 'mcq' || type === 'imagechoice') {
     const optionMap = config.misconceptionByOption || config.misconception_map || {};
     if (question.isMultiSelect) {
       const selected = normalizeAnswerArray(answer).map(Number).filter(Number.isFinite);
@@ -441,7 +449,7 @@ export function detectMisconceptionCode({ question, answer, isCorrect }) {
     return config.misconceptionCode ? String(config.misconceptionCode) : 'mcq_unanswered';
   }
 
-  if (question.type === 'fillInTheBlank' || question.type === 'textInput' || question.type === 'measure') {
+  if (type === 'fillintheblank' || type === 'textinput' || type === 'measure' || type === 'table' || type === 'smarttable') {
     const expectedRaw = question.correctAnswerText;
     const expectedNumeric = parseNumber(expectedRaw);
     const actualNumeric = parseNumber(

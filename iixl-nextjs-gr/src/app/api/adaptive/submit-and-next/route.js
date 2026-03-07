@@ -45,7 +45,8 @@ function buildBasicFeedback(question) {
     solution: question?.solution ?? '',
     correctAnswerDisplay: (() => {
       if (!question) return '';
-      if (question.type === 'mcq' || question.type === 'imageChoice') {
+      const type = String(question.type || '').trim().toLowerCase();
+      if (type === 'mcq' || type === 'imagechoice') {
         if (question.isMultiSelect) {
           const indices = Array.isArray(question.correctAnswerIndices)
             ? question.correctAnswerIndices.map((i) => Number(i)).filter(Number.isFinite)
@@ -57,9 +58,18 @@ function buildBasicFeedback(question) {
           return getOptionLabel(question.options?.[idx], idx);
         }
       }
-      if (question.type === 'fillInTheBlank' || question.type === 'gridArithmetic') {
+      if (
+        type === 'fillintheblank' ||
+        type === 'gridarithmetic' ||
+        type === 'table' ||
+        type === 'smarttable'
+      ) {
         try {
-          const parsed = JSON.parse(String(question.correctAnswerText ?? ''));
+          const rawText = question.correctAnswerText;
+          const parsed = (typeof rawText === 'object' && rawText !== null)
+            ? rawText
+            : JSON.parse(String(rawText ?? '{}'));
+
           if (parsed && typeof parsed === 'object') {
             const arithmeticPart = (question.parts || []).find((part) => part?.type === 'arithmeticLayout');
             const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
@@ -72,7 +82,8 @@ function buildBasicFeedback(question) {
               return `${prefix}${joined}`.trim();
             }
 
-            return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join(', ');
+            if (Object.keys(parsed).length === 0) return String(question.correctAnswerText ?? '');
+            return Object.values(parsed).join(', ');
           }
         } catch { }
       }

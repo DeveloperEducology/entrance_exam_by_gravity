@@ -127,10 +127,11 @@ function getOptionLabel(option, idx) {
 
 function validateAnswer(question, answer) {
   if (!question) return false;
+  const type = String(question.type || '').trim().toLowerCase();
 
-  switch (question.type) {
+  switch (type) {
     case 'mcq':
-    case 'imageChoice':
+    case 'imagechoice':
       if (question.isMultiSelect) {
         const selected = Array.isArray(answer) ? [...answer].map(Number).sort() : [];
         const correct = Array.isArray(question.correctAnswerIndices)
@@ -140,11 +141,13 @@ function validateAnswer(question, answer) {
       }
       return Number(answer) === Number(question.correctAnswerIndex);
 
-    case 'textInput':
+    case 'textinput':
       return String(answer ?? '').trim().toLowerCase() === String(question.correctAnswerText ?? '').trim().toLowerCase();
 
-    case 'fillInTheBlank':
-    case 'gridArithmetic':
+    case 'fillintheblank':
+    case 'gridarithmetic':
+    case 'table':
+    case 'smarttable':
     case 'advanced_math': {
       const correctAnswers = parseMaybeJson(question.correctAnswerText, {});
       if (!correctAnswers || typeof correctAnswers !== 'object') return false;
@@ -153,7 +156,7 @@ function validateAnswer(question, answer) {
       });
     }
 
-    case 'dragAndDrop':
+    case 'draganddrop':
       return (question.dragItems || [])
         .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '')
         .every((item) => String(answer?.[item.id] ?? '') === String(item.targetGroupId));
@@ -172,7 +175,7 @@ function validateAnswer(question, answer) {
       return false;
     }
 
-    case 'fourPicsOneWord':
+    case 'fourpicsoneword':
       return (Array.isArray(answer) ? answer.join('') : String(answer ?? '')).toUpperCase() === String(question.correctAnswerText ?? '').toUpperCase();
 
     case 'measure': {
@@ -187,7 +190,7 @@ function validateAnswer(question, answer) {
       return Math.abs(actual - expected) < 0.0001;
     }
 
-    case 'shadeGrid': {
+    case 'shadegrid': {
       const expected = parseShadeGridTarget(question);
       if (expected == null) return false;
       const actual = (
@@ -212,10 +215,11 @@ function buildFeedback(question) {
     correctOptionIndices: [],
   };
   if (!question) return feedback;
+  const type = String(question.type || '').trim().toLowerCase();
 
-  switch (question.type) {
+  switch (type) {
     case 'mcq':
-    case 'imageChoice':
+    case 'imagechoice':
       if (question.isMultiSelect) {
         const indices = Array.isArray(question.correctAnswerIndices) ? question.correctAnswerIndices : [];
         feedback.correctOptionIndices = indices.map((i) => Number(i)).filter(Number.isFinite);
@@ -230,8 +234,10 @@ function buildFeedback(question) {
         : '';
       return feedback;
 
-    case 'fillInTheBlank':
-    case 'gridArithmetic':
+    case 'fillintheblank':
+    case 'gridarithmetic':
+    case 'table':
+    case 'smarttable':
     case 'advanced_math': {
       const parsed = parseMaybeJson(question.correctAnswerText, {});
       if (parsed && typeof parsed === 'object') {
@@ -245,7 +251,7 @@ function buildFeedback(question) {
           const joined = cells.map((cell, idx) => String(parsed[cell?.id ?? `cell_${idx}`] ?? '')).join('');
           feedback.correctAnswerDisplay = `${prefix}${joined}`.trim();
         } else {
-          feedback.correctAnswerDisplay = Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join(', ');
+          feedback.correctAnswerDisplay = Object.values(parsed).join(', ');
         }
       } else {
         feedback.correctAnswerDisplay = String(question.correctAnswerText ?? '');
@@ -264,7 +270,7 @@ function buildFeedback(question) {
       return feedback;
     }
 
-    case 'dragAndDrop': {
+    case 'draganddrop': {
       const groupMap = new Map((question.dropGroups || []).map((g) => [String(g.id), String(g.label || g.id)]));
       const textHints = (question.dragItems || [])
         .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '')
@@ -278,12 +284,12 @@ function buildFeedback(question) {
       return feedback;
     }
 
-    case 'fourPicsOneWord':
+    case 'fourpicsoneword':
       feedback.correctAnswerDisplay = String(question.correctAnswerText ?? '').toUpperCase();
       return feedback;
 
-    case 'textInput':
-    case 'shadeGrid':
+    case 'textinput':
+    case 'shadegrid':
     case 'measure':
     default:
       feedback.correctAnswerDisplay = String(question.correctAnswerText ?? '');

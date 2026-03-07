@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import styles from './QuestionParts.module.css';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SpeakerButton from './SpeakerButton';
@@ -246,55 +247,86 @@ function renderSmartTable(part, index, styles) {
     const rows = Array.isArray(part?.rows) ? part.rows : [];
 
     return (
-        <div key={index} className={styles.smartTableContainer}>
-            {title && <div className={styles.smartTableTitle}>{title}</div>}
-            <div style={{ overflowX: 'auto' }}>
-                <table className={styles.smartTable}>
-                    <thead>
-                        <tr>
-                            {columns.map((col, i) => (
-                                <th key={col.key || i} className={styles.smartTableHeaderCell}>
-                                    {col.header}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row, rowIndex) => {
-                            const rowLabel = String(row.label || '').toLowerCase();
-                            const isTotal = rowLabel === 'total';
-                            const isCarry = rowLabel === 'carry' || rowLabel === 'borrow' || row.kind === 'carry';
-                            return (
-                                <tr key={rowIndex} className={`${isTotal ? styles.smartTableRowTotal : ''} ${isCarry ? styles.smartTableRowCarry : ''}`}>
-                                    {columns.map((col, colIndex) => {
-                                        const cellValue = row[col.key];
-                                        const isLabelColumn = col.key === 'label';
-                                        const val = (cellValue && typeof cellValue === 'object')
-                                            ? (cellValue.value || cellValue.correctValue || '')
-                                            : cellValue;
-                                        return (
-                                            <td
-                                                key={`${rowIndex}-${colIndex}`}
-                                                className={`${styles.smartTableCell} ${isLabelColumn ? styles.smartTableLabelCell : ''}`}
-                                            >
-                                                {isCarry && !isLabelColumn && val !== "" ? (
-                                                    <span className={styles.smartTableCarryCircle}>{val}</span>
-                                                ) : val}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+        <div key={index} className={styles.smartTableOuter}>
+            <div className={styles.smartTableContainer}>
+                {title && <div className={styles.smartTableTitle}>{title}</div>}
+                <div className={styles.smartTableScroll}>
+                    <table className={styles.smartTable}>
+                        <thead>
+                            <tr>
+                                {columns.map((col, i) => (
+                                    <th key={col.key || i} className={`${styles.smartTableHeaderCell} ${!col.header ? styles.smartTableNarrowCell : ''}`}>
+                                        {col.header}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row, rowIndex) => {
+                                const rowLabel = String(row.label || '').toLowerCase();
+                                const isTotal = rowLabel === 'total';
+                                const isCarry = rowLabel === 'carry' || rowLabel === 'borrow' || row.kind === 'carry';
+                                return (
+                                    <tr key={rowIndex} className={`${isTotal ? styles.smartTableRowTotal : ''} ${isCarry ? styles.smartTableRowCarry : ''}`}>
+                                        {columns.map((col, colIndex) => {
+                                            const cellValue = row[col.key];
+                                            const isLabelColumn = col.key === 'label';
+                                            const val = (cellValue && typeof cellValue === 'object')
+                                                ? (cellValue.value || cellValue.correctValue || '')
+                                                : cellValue;
+                                            return (
+                                                <td
+                                                    key={`${rowIndex}-${colIndex}`}
+                                                    className={`${styles.smartTableCell} ${isLabelColumn ? styles.smartTableLabelCell : ''} ${!col.header ? styles.smartTableNarrowCell : ''}`}
+                                                >
+                                                    {isCarry && !isLabelColumn && val !== "" ? (
+                                                        <span className={styles.smartTableCarryCircle}>{val}</span>
+                                                    ) : val}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
 }
 
 export default function QuestionParts({ parts, className = '' }) {
-    const safeParts = Array.isArray(parts) ? parts : [];
+    const safeParts = useMemo(() => {
+        let rawParts = parts;
+        if (typeof parts === 'string') {
+            try {
+                rawParts = JSON.parse(parts);
+            } catch {
+                rawParts = [];
+            }
+        }
+        if (!Array.isArray(rawParts)) rawParts = [];
+
+        const normalize = (obj) => {
+            if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+            const res = { ...obj };
+            // Root/part normalization
+            if (res.question_text !== undefined && res.questionText === undefined) res.questionText = res.question_text;
+            if (res.correct_answer_value !== undefined && res.correctAnswerValue === undefined) res.correctAnswerValue = res.correct_answer_value;
+            if (res.micro_skill_id !== undefined && res.microSkillId === undefined) res.microSkillId = res.micro_skill_id;
+
+            if (Array.isArray(res.children)) {
+                res.children = res.children.map(normalize);
+            }
+            if (Array.isArray(res.parts)) {
+                res.parts = res.parts.map(normalize);
+            }
+            return res;
+        };
+
+        return rawParts.map(normalize);
+    }, [parts]);
     const getRepeatCount = (value) => {
         const parsed = Number(value);
         if (!Number.isFinite(parsed) || parsed <= 0) return 1;

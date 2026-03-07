@@ -153,6 +153,45 @@ export default function FillInTheBlankRenderer({
         return () => clearTimeout(timeoutId);
     }, [question?.id]);
 
+    const q = useMemo(() => {
+        if (!question) return { type: 'fillInTheBlank', parts: [] };
+
+        const normalize = (obj) => {
+            if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+            const res = { ...obj };
+
+            // Normalize common root and part fields
+            if (res.question_text !== undefined && res.questionText === undefined) res.questionText = res.question_text;
+            if (res.adaptive_config !== undefined && res.adaptiveConfig === undefined) res.adaptiveConfig = res.adaptive_config;
+            if (res.show_submit_button !== undefined && res.showSubmitButton === undefined) res.showSubmitButton = res.show_submit_button;
+            if (res.is_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.is_vertical;
+            if (res.correct_answer_text !== undefined && res.correctAnswerText === undefined) res.correctAnswerText = res.correct_answer_text;
+            if (res.correct_answer_index !== undefined && res.correctAnswerIndex === undefined) res.correctAnswerIndex = res.correct_answer_index;
+            if (res.micro_skill_id !== undefined && res.microSkillId === undefined) res.microSkillId = res.micro_skill_id;
+
+            // Handle stringified parts
+            if (typeof res.parts === 'string') {
+                try {
+                    res.parts = JSON.parse(res.parts);
+                } catch {
+                    res.parts = [];
+                }
+            }
+
+            // Recursively normalize parts
+            if (Array.isArray(res.parts)) {
+                res.parts = res.parts.map(normalize);
+            } else if (res.parts === undefined || res.parts === null) {
+                // If it's a table-type question without parts, it's effectively its own part
+                res.parts = [];
+            }
+
+            return res;
+        };
+
+        return normalize(question);
+    }, [question]);
+
     const getRepeatCount = (value) => {
         const parsed = Number(value);
         if (!Number.isFinite(parsed) || parsed <= 0) return 1;
@@ -161,7 +200,7 @@ export default function FillInTheBlankRenderer({
 
     const parseCorrectAnswers = () => {
         try {
-            const parsed = JSON.parse(question.correctAnswerText || '{}');
+            const parsed = JSON.parse(q.correctAnswerText || '{}');
             return parsed && typeof parsed === 'object' ? parsed : {};
         } catch {
             return {};
@@ -250,13 +289,13 @@ export default function FillInTheBlankRenderer({
         const arithmeticInputMode = String(
             part?.layout?.inputMode ||
             part?.layout?.input_mode ||
-            question?.adaptiveConfig?.inputMode ||
-            question?.adaptiveConfig?.input_mode ||
+            q.adaptiveConfig?.inputMode ||
+            q.adaptiveConfig?.input_mode ||
             ''
         ).toLowerCase();
         const useDigitPad = arithmeticInputMode === 'digitpad' || arithmeticInputMode === 'digit_pad';
         const isBeginnerMode =
-            String(question?.adaptiveConfig?.mode || '').toLowerCase() === 'beginner' ||
+            String(q.adaptiveConfig?.mode || '').toLowerCase() === 'beginner' ||
             String(part?.layout?.mode || '').toLowerCase() === 'beginner';
         const measureColumns = (text) => String(text || '').length;
         const maxColumns = rows.reduce((max, row) => {
@@ -947,9 +986,11 @@ export default function FillInTheBlankRenderer({
     };
 
     const renderSmartTable = (part) => {
-        const title = part?.title || '';
         const columns = Array.isArray(part?.columns) ? part.columns : [];
         const rows = Array.isArray(part?.rows) ? part.rows : [];
+        if (columns.length === 0 && rows.length === 0) return null;
+
+        const title = part?.title || '';
         const features = part?.features || {};
 
         // Calculate focus flow
@@ -991,88 +1032,92 @@ export default function FillInTheBlankRenderer({
             });
         }
         return (
-            <div className={styles.smartTableContainer}>
-                {title && (
-                    <div className={styles.smartTableTitle}>
-                        <span>{title}</span>
-                        {features.exportable && (
-                            <button className={styles.exportButton} onClick={() => { }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                                Export to Sheets
-                            </button>
-                        )}
-                    </div>
-                )}
-                <div style={{ overflowX: 'auto' }}>
-                    <table className={styles.smartTable}>
-                        <thead>
-                            <tr>
-                                {columns.map((col, i) => (
-                                    <th key={col.key || i} className={styles.smartTableHeaderCell}>
-                                        {col.header}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row, rowIndex) => {
-                                const rowLabel = String(row.label || '').toLowerCase();
-                                const isTotal = rowLabel === 'total';
-                                const isCarry = rowLabel === 'carry' || row.kind === 'carry';
-                                return (
-                                    <tr key={rowIndex} className={`${isTotal ? styles.smartTableRowTotal : ''} ${isCarry ? styles.smartTableRowCarry : ''}`}>
-                                        {columns.map((col, colIndex) => {
-                                            const cellValue = row[col.key];
-                                            const isLabelColumn = col.key === 'label';
+            <div className={styles.smartTableOuter}>
+                <div className={styles.smartTableContainer}>
+                    {title && (
+                        <div className={styles.smartTableTitle}>
+                            <span>{title}</span>
+                            {features.exportable && (
+                                <button className={styles.exportButton} onClick={() => { }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                                    Export to Sheets
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    <div className={styles.smartTableScroll}>
+                        <table className={styles.smartTable}>
+                            <thead>
+                                <tr>
+                                    {columns.map((col, i) => (
+                                        <th key={col.key || i} className={`${styles.smartTableHeaderCell} ${!col.header ? styles.smartTableNarrowCell : ''}`}>
+                                            {col.header}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, rowIndex) => {
+                                    const rowLabel = String(row.label || '').toLowerCase();
+                                    const isTotal = rowLabel === 'total';
+                                    const isCarry = rowLabel === 'carry' || row.kind === 'carry';
+                                    return (
+                                        <tr key={rowIndex} className={`${isTotal ? styles.smartTableRowTotal : ''} ${isCarry ? styles.smartTableRowCarry : ''}`}>
+                                            {columns.map((col, colIndex) => {
+                                                const cellValue = row[col.key];
+                                                const isLabelColumn = col.key === 'label';
 
-                                            if (cellValue && typeof cellValue === 'object' && cellValue.id) {
-                                                const isCarryInput = isCarry && !isLabelColumn;
-                                                return (
-                                                    <td key={`${rowIndex}-${colIndex}`} className={styles.smartTableCell}>
-                                                        <input
-                                                            type="text"
-                                                            className={isCarryInput ? styles.smartTableCarryInput : styles.smartTableInput}
-                                                            value={userAnswer?.[cellValue.id] ?? ''}
-                                                            ref={(el) => {
-                                                                if (el) arithmeticCellRefs.current[cellValue.id] = el;
-                                                            }}
-                                                            onChange={(e) => {
-                                                                let val = e.target.value.replace(/[^0-9]/g, '');
-                                                                const maxLen = isCarryInput ? 1 : (cellValue?.maxLength ? Number(cellValue.maxLength) : undefined);
-                                                                if (maxLen) val = val.slice(0, maxLen);
+                                                if (cellValue && typeof cellValue === 'object' && cellValue.id) {
+                                                    const isCarryInput = isCarry && !isLabelColumn;
+                                                    const maxLen = isCarryInput ? 1 : (cellValue?.maxLength ? Number(cellValue.maxLength) : undefined);
+                                                    return (
+                                                        <td key={`${rowIndex}-${colIndex}`} className={`${styles.smartTableCell} ${!col.header ? styles.smartTableNarrowCell : ''}`}>
+                                                            <input
+                                                                type="text"
+                                                                className={isCarryInput ? styles.smartTableCarryInput : styles.smartTableInput}
+                                                                value={userAnswer?.[cellValue.id] ?? ''}
+                                                                ref={(el) => {
+                                                                    if (el) arithmeticCellRefs.current[cellValue.id] = el;
+                                                                }}
+                                                                placeholder={cellValue.placeholder || ''}
+                                                                onChange={(e) => {
+                                                                    let val = e.target.value.replace(/[^0-9]/g, '');
+                                                                    if (maxLen) val = val.slice(0, maxLen);
 
-                                                                handleInputChange(cellValue.id, val);
+                                                                    handleInputChange(cellValue.id, val);
 
-                                                                // Custom focus flow
-                                                                if (val.length === (maxLen || 1) && !isAnswered) {
-                                                                    const currentIdx = focusFlow.indexOf(cellValue.id);
-                                                                    if (currentIdx !== -1 && currentIdx < focusFlow.length - 1) {
-                                                                        const nextId = focusFlow[currentIdx + 1];
-                                                                        arithmeticCellRefs.current[nextId]?.focus();
+                                                                    // Custom focus flow: only auto-move if maxLen is small (digits)
+                                                                    if (maxLen === 1 && val.length === 1 && !isAnswered) {
+                                                                        const currentIdx = focusFlow.indexOf(cellValue.id);
+                                                                        if (currentIdx !== -1 && currentIdx < focusFlow.length - 1) {
+                                                                            const nextId = focusFlow[currentIdx + 1];
+                                                                            arithmeticCellRefs.current[nextId]?.focus();
+                                                                        }
                                                                     }
-                                                                }
-                                                            }}
-                                                            onFocus={() => setLastFocusedId(cellValue.id)}
-                                                            maxLength={isCarryInput ? 1 : cellValue?.maxLength}
-                                                        />
+                                                                }}
+                                                                onFocus={() => setLastFocusedId(cellValue.id)}
+                                                                maxLength={maxLen}
+                                                                disabled={isAnswered}
+                                                            />
+                                                        </td>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <td
+                                                        key={`${rowIndex}-${colIndex}`}
+                                                        className={`${styles.smartTableCell} ${isLabelColumn ? styles.smartTableLabelCell : ''} ${!col.header ? styles.smartTableNarrowCell : ''}`}
+                                                    >
+                                                        {cellValue}
                                                     </td>
                                                 );
-                                            }
-
-                                            return (
-                                                <td
-                                                    key={`${rowIndex}-${colIndex}`}
-                                                    className={`${styles.smartTableCell} ${isLabelColumn ? styles.smartTableLabelCell : ''}`}
-                                                >
-                                                    {cellValue}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         );
@@ -1080,11 +1125,11 @@ export default function FillInTheBlankRenderer({
 
     useEffect(() => {
         // Focus logic for Arithmetic and Smart Tables
-        const parts = Array.isArray(question?.parts) ? question.parts : [];
+        const parts = Array.isArray(q?.parts) ? q.parts : [];
         const arithmeticPart = parts.find(p => p.type === 'arithmeticLayout');
         // Check if question itself is a table or has a table part
-        const tablePart = (question.type === 'smartTable' || question.type === 'table')
-            ? question
+        const tablePart = ((q.type === 'smartTable' || q.type === 'table') && (q.columns || q.rows))
+            ? q
             : parts.find(p => p.type === 'smartTable' || p.type === 'table');
 
         if (arithmeticPart) {
@@ -1312,10 +1357,10 @@ export default function FillInTheBlankRenderer({
     };
 
     const renderQuestionParts = () => {
-        if (question.type === 'table' || question.type === 'smartTable') {
-            return [renderPart(question, 0)];
+        if ((q.type === 'table' || q.type === 'smartTable') && q.parts.length === 0) {
+            return [renderPart(q, 0)];
         }
-        const parts = Array.isArray(question.parts) ? question.parts : [];
+        const parts = q.parts;
         const rows = [];
         for (let index = 0; index < parts.length; index += 1) {
             const part = parts[index];
@@ -1343,8 +1388,8 @@ export default function FillInTheBlankRenderer({
         return rows;
     };
 
-    const questionText = String(question?.questionText || '').trim();
-    const hasMatchingTextPart = Array.isArray(question?.parts) && question.parts.some((part) => {
+    const questionText = String(q?.questionText || '').trim();
+    const hasMatchingTextPart = Array.isArray(q?.parts) && q.parts.some((part) => {
         if (String(part?.type || '').toLowerCase() !== 'text') return false;
         return String(part?.content || '').trim() === questionText;
     });
@@ -1397,7 +1442,7 @@ export default function FillInTheBlankRenderer({
                     </div>
                 )}
 
-                {question.showSubmitButton && userAnswer && !isAnswered && (
+                {q.showSubmitButton && userAnswer && !isAnswered && (
                     <button className={styles.submitButton} onClick={() => onSubmit()}>
                         Submit Answer
                     </button>

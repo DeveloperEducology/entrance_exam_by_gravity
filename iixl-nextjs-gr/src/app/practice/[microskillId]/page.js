@@ -66,14 +66,16 @@ function normalizeSolutionSections(solutionParts) {
     .filter((section) => section.parts.length > 0 || section.title);
 }
 
-function parseMaybeJson(text, fallback = null) {
+const parseMaybeJson = (text, fallback = null) => {
+  if (text == null) return fallback;
+  if (typeof text === 'object') return text;
   if (typeof text !== 'string') return fallback;
   try {
     return JSON.parse(text);
   } catch {
     return fallback;
   }
-}
+};
 
 function parseFinite(value) {
   const parsed = Number(value);
@@ -188,10 +190,14 @@ function getCorrectAnswerDisplay(question) {
       return String(question.correctAnswerText || '');
 
     case 'fillInTheBlank':
-    case 'gridArithmetic': {
+    case 'gridArithmetic':
+    case 'table':
+    case 'smartTable': {
       const parsed = parseMaybeJson(question.correctAnswerText, {});
       if (!parsed || typeof parsed !== 'object') return String(question.correctAnswerText || '');
-      return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join(', ');
+      const entries = Object.entries(parsed);
+      if (entries.length === 0) return String(question.correctAnswerText || '');
+      return entries.map(([k, v]) => `${k}: ${v}`).join(', ');
     }
 
     case 'sorting': {
@@ -257,7 +263,12 @@ function getSelectedAnswerDisplay(question, answer) {
     return getOptionLabel(question.options?.[idx], idx);
   }
 
-  if (question.type === 'fillInTheBlank' || question.type === 'gridArithmetic') {
+  if (
+    question.type === 'fillInTheBlank' ||
+    question.type === 'gridArithmetic' ||
+    question.type === 'table' ||
+    question.type === 'smartTable'
+  ) {
     if (!answer || typeof answer !== 'object') return 'No answer';
     const parts = Array.isArray(question.parts) ? question.parts : [];
     const arithmeticPart = parts.find((part) => part?.type === 'arithmeticLayout');
@@ -273,7 +284,9 @@ function getSelectedAnswerDisplay(question, answer) {
       return `${prefix}${joined}`.trim() || 'No answer';
     }
 
-    return Object.entries(answer).map(([k, v]) => `${k}: ${v}`).join(', ');
+    const entries = Object.entries(answer);
+    if (entries.length === 0) return 'No answer';
+    return entries.map(([k, v]) => `${v}`).join(', ');
   }
 
   if (question.type === 'shadeGrid') {

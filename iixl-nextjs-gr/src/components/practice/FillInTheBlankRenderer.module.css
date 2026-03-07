@@ -721,10 +721,16 @@
     }
 }
 
+.smartTableOuter {
+    width: 100%;
+    padding: 1rem 0.5rem;
+    display: flex;
+    justify-content: center;
+}
+
 .smartTableContainer {
     width: 100%;
-    max-width: fit-content;
-    margin: 1.5rem auto;
+    max-width: 100%;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     overflow: hidden;
@@ -744,13 +750,25 @@
     justify-content: space-between;
 }
 
+.smartTableScroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    text-align: center;
+}
+
 .smartTable {
     border-collapse: collapse;
-    width: 100%;
+    width: auto;
+    max-width: none;
+    /* Allow it to be wider than container for scrolling */
+    min-width: auto;
+    display: inline-table;
+    margin: 0 auto;
 }
 
 .smartTableHeaderCell {
-    padding: 0.85rem 1.25rem;
+    padding: 0.75rem 1rem;
     text-align: center;
     font-size: 0.75rem;
     font-weight: 700;
@@ -762,12 +780,19 @@
 }
 
 .smartTableCell {
-    padding: 0.85rem 1.25rem;
+    padding: 0.75rem 1rem;
     text-align: center;
     font-size: 1.4rem;
     font-weight: 600;
     color: #111827;
     border-bottom: 1px solid #f3f4f6;
+}
+
+.smartTableNarrowCell {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+    width: 1px;
+    white-space: nowrap;
 }
 
 .smartTableLabelCell {
@@ -862,14 +887,18 @@
 }
 
 @media (max-width: 600px) {
+    .smartTableOuter {
+        padding: 0.75rem 0.25rem;
+    }
+
     .smartTableContainer {
         border-radius: 8px;
-        margin: 1rem 0;
+        margin: 0.5rem 0;
     }
 
     .smartTableHeaderCell,
     .smartTableCell {
-        padding: 0.5rem 0.65rem;
+        padding: 0.4rem 0.5rem;
         font-size: 1.1rem;
     }
 
@@ -888,6 +917,30 @@
         width: 28px;
         height: 28px;
         font-size: 0.9rem;
+    }
+
+    .smartTable {
+        min-width: auto;
+    }
+}
+
+@media (max-width: 400px) {
+
+    .smartTableHeaderCell,
+    .smartTableCell {
+        padding: 0.4rem 0.5rem;
+        font-size: 1rem;
+    }
+
+    .smartTableInput {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .smartTableLabelCell {
+        font-size: 0.85rem;
+        padding-left: 0.5rem;
     }
 }
 

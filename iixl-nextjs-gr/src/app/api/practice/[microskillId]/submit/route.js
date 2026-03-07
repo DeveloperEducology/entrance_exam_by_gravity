@@ -98,30 +98,34 @@ function getOptionLabel(option, index) {
 function validateAnswer(question, answer) {
   if (!question) return false;
 
-  switch (question.type) {
+  const type = String(question.type || '').trim().toLowerCase();
+
+  switch (type) {
     case 'mcq':
-    case 'imageChoice':
+    case 'imagechoice':
       if (question.isMultiSelect) {
         const selected = Array.isArray(answer) ? [...answer].map(Number).sort() : [];
         const correct = Array.isArray(question.correctAnswerIndices) ? [...question.correctAnswerIndices].map(Number).sort() : [];
         return JSON.stringify(selected) === JSON.stringify(correct);
       }
       return Number(answer) === Number(question.correctAnswerIndex);
-    case 'textInput':
+    case 'textinput':
       return String(answer ?? '').trim().toLowerCase() === String(question.correctAnswerText ?? '').trim().toLowerCase();
-    case 'fillInTheBlank':
-    case 'gridArithmetic': {
+    case 'fillintheblank':
+    case 'gridarithmetic':
+    case 'table':
+    case 'smarttable': {
       const correctAnswers = parseMaybeJson(question.correctAnswerText, {});
       if (!correctAnswers || typeof correctAnswers !== 'object') return false;
       return Object.keys(correctAnswers).every((key) => String(answer?.[key] ?? '').trim().toLowerCase() === String(correctAnswers[key]).trim().toLowerCase());
     }
-    case 'dragAndDrop':
+    case 'draganddrop':
       return (question.dragItems || []).filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '').every((item) => String(answer?.[item.id] ?? '') === String(item.targetGroupId));
     case 'sorting':
       const expectedOrder = parseMaybeJson(question.correctAnswerText, null);
       if (Array.isArray(expectedOrder) && expectedOrder.length > 0) return JSON.stringify((answer || []).map(String)) === JSON.stringify(expectedOrder.map(String));
       return false;
-    case 'fourPicsOneWord':
+    case 'fourpicsoneword':
       return (Array.isArray(answer) ? answer.join('') : String(answer ?? '')).toUpperCase() === String(question.correctAnswerText ?? '').toUpperCase();
     case 'measure': {
       const expected = parseNumber(question.correctAnswerText);
@@ -137,13 +141,30 @@ function validateAnswer(question, answer) {
 function buildFeedback(question) {
   const feedback = { solution: question?.solution ?? '', correctAnswerDisplay: String(question?.correctAnswerText ?? ''), correctOptionIndices: [] };
   if (!question) return feedback;
-  if (question.type === 'mcq' || question.type === 'imageChoice') {
+  const type = String(question.type || '').trim().toLowerCase();
+  if (type === 'mcq' || type === 'imagechoice') {
     if (question.isMultiSelect) {
       feedback.correctOptionIndices = (question.correctAnswerIndices || []).map(Number).filter(Number.isFinite);
       feedback.correctAnswerDisplay = feedback.correctOptionIndices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
     } else {
       feedback.correctOptionIndices = [Number(question.correctAnswerIndex)].filter(Number.isFinite);
       feedback.correctAnswerDisplay = feedback.correctOptionIndices.length > 0 ? getOptionLabel(question.options?.[feedback.correctOptionIndices[0]], feedback.correctOptionIndices[0]) : '';
+    }
+  } else if (type === 'fillintheblank' || type === 'gridarithmetic' || type === 'table' || type === 'smarttable') {
+    const parsed = parseMaybeJson(question.correctAnswerText, {});
+    if (parsed && typeof parsed === 'object') {
+      const arithmeticPart = (question.parts || []).find((part) => part?.type === 'arithmeticLayout');
+      const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
+      const answerRow = rows.find((row) => String(row?.kind || '').toLowerCase() === 'answer');
+      const cells = Array.isArray(answerRow?.cells) ? answerRow.cells : [];
+
+      if (cells.length > 0) {
+        const prefix = String(answerRow?.prefix || '');
+        const joined = cells.map((cell, idx) => String(parsed[cell?.id ?? `cell_${idx}`] ?? '')).join('');
+        feedback.correctAnswerDisplay = `${prefix}${joined}`.trim();
+      } else {
+        feedback.correctAnswerDisplay = Object.values(parsed).join(', ');
+      }
     }
   }
   return feedback;
