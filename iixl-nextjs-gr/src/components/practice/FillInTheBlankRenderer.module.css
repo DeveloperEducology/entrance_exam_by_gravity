@@ -654,110 +654,86 @@
     box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
 }
 
-@media (max-width: 768px) {
-    .questionCard {
-        padding: 1.5rem;
-    }
 
-    .questionContent {
-        font-size: 0.96rem;
-        line-height: 1.8;
-    }
+.arithmeticLayout {
+    --ar-cell-size: 36px;
+}
 
-    .questionTextRow {
-        margin-bottom: 0.6rem;
-    }
+.arGridCell {
+    width: var(--ar-cell-size);
+    height: 44px;
+    font-size: 1.6rem;
+}
 
-    .questionText {
-        font-size: clamp(0.9rem, 4vw, 1.08rem);
-        line-height: 1.3;
-    }
+.arLabelRow {
+    min-height: 44px;
+    gap: 0.9rem;
+}
 
-    .input {
-        font-size: 0.9rem;
-        padding: 0.4rem 0.6rem;
-    }
+.arLabelWord {
+    font-size: 1.6rem;
+}
 
-    .arithmeticLayout {
-        --ar-cell-size: 36px;
-    }
+.arCellInput {
+    width: 30px;
+    height: 38px;
+    font-size: 1.3rem;
+}
 
-    .arGridCell {
-        width: var(--ar-cell-size);
-        height: 44px;
-        font-size: 1.6rem;
-    }
+.arDigitPad {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+}
 
-    .arLabelRow {
-        min-height: 44px;
-        gap: 0.9rem;
-    }
+.arPadBtn {
+    height: 32px;
+    font-size: 0.9rem;
+}
 
-    .arLabelWord {
-        font-size: 1.6rem;
-    }
+.bfInput {
+    font-size: 1rem;
+}
 
-    .arCellInput {
-        width: 30px;
-        height: 38px;
-        font-size: 1.3rem;
-    }
+.pictureEq {
+    grid-template-columns: auto;
+    justify-items: center;
+    align-items: center;
+    gap: 0.55rem;
+}
 
-    .arDigitPad {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.35rem;
-    }
+.pictureTerm {
+    min-width: 0;
+}
 
-    .arPadBtn {
-        height: 32px;
-        font-size: 0.9rem;
-    }
+.pictureEmoji {
+    font-size: 1.65rem;
+    min-height: 34px;
+}
 
-    .bfInput {
-        font-size: 1rem;
-    }
+.pictureOp {
+    font-size: 1.7rem;
+}
 
-    .pictureEq {
-        grid-template-columns: auto;
-        justify-items: center;
-        align-items: center;
-        gap: 0.55rem;
-    }
+.pictureBox {
+    width: 78px;
+    height: 40px;
+    font-size: 1.15rem;
+}
 
-    .pictureTerm {
-        min-width: 0;
-    }
+.pictureFooter {
+    font-size: 1.2rem;
+    text-align: center;
+}
 
-    .pictureEmoji {
-        font-size: 1.65rem;
-        min-height: 34px;
-    }
+.pairedRow {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
 
-    .pictureOp {
-        font-size: 1.7rem;
-    }
-
-    .pictureBox {
-        width: 78px;
-        height: 40px;
-        font-size: 1.15rem;
-    }
-
-    .pictureFooter {
-        font-size: 1.2rem;
-        text-align: center;
-    }
-
-    .pairedRow {
-        display: block;
-        width: 100%;
-        margin: 0;
-    }
-
-    .pairedRow .verticalPart,
-    .pairedRow .inlinePart {
-        width: 100%;
-    }
+.pairedRow .verticalPart,
+.pairedRow .inlinePart {
+    width: 100%;
 }
 
 .smartTableOuter {
@@ -925,63 +901,7 @@
     background: #eff6ff;
 }
 
-@media (max-width: 600px) {
-    .smartTableOuter {
-        padding: 0.75rem 0.25rem;
-    }
 
-    .smartTableContainer {
-        border-radius: 8px;
-        margin: 0.5rem 0;
-    }
-
-    .smartTableHeaderCell,
-    .smartTableCell {
-        padding: 0.4rem 0.5rem;
-        font-size: 1.1rem;
-    }
-
-    .smartTableLabelCell {
-        padding-left: 0.75rem;
-        font-size: 0.9rem;
-    }
-
-    .smartTableInput {
-        width: 36px;
-        height: 36px;
-        font-size: 1.1rem;
-    }
-
-    .smartTableCarryInput {
-        width: 28px;
-        height: 28px;
-        font-size: 0.9rem;
-    }
-
-    .smartTable {
-        min-width: auto;
-    }
-}
-
-@media (max-width: 400px) {
-
-    .smartTableHeaderCell,
-    .smartTableCell {
-        padding: 0.4rem 0.5rem;
-        font-size: 1rem;
-    }
-
-    .smartTableInput {
-        width: 32px;
-        height: 32px;
-        font-size: 1rem;
-    }
-
-    .smartTableLabelCell {
-        font-size: 0.85rem;
-        padding-left: 0.5rem;
-    }
-}
 
 .virtualKeypad {
     display: flex;
@@ -1026,20 +946,129 @@
 }
 
 @media (max-width: 600px) {
+    .questionCard {
+        padding: 0.75rem;
+        padding-top: 2.5rem;
+    }
+
+    .questionContent {
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        font-size: 0.85rem;
+        gap: 0.25rem;
+    }
+
+    .questionTextRow {
+        margin-bottom: 0.4rem;
+    }
+
+    .questionText {
+        font-size: 0.9rem;
+        line-height: 1.25;
+    }
+
+    .input {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.4rem;
+        min-height: 32px;
+    }
+
+    .submitButton {
+        margin-top: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        width: 100%;
+        max-width: 280px;
+    }
+
+    .smartTableOuter {
+        padding: 0.4rem 0.1rem;
+    }
+
+    .smartTableContainer {
+        border-radius: 6px;
+        margin: 0.2rem 0;
+    }
+
+    .smartTableHeaderCell {
+        padding: 0.25rem 0.35rem !important;
+        font-size: 0.65rem !important;
+    }
+
+    .smartTableCell {
+        padding: 0.25rem 0.35rem !important;
+        font-size: 0.9rem !important;
+    }
+
+    .smartTableLabelCell {
+        padding-left: 0.4rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    .smartTableInput {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .smartTableCarryInput {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 0.75rem !important;
+    }
+
     .keypadButton {
-        width: 42px;
-        height: 42px;
-        font-size: 1.1rem;
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
     }
 
     .virtualKeypad {
-        gap: 6px;
-        padding: 0.75rem;
-        margin-top: 1rem;
+        gap: 5px;
+        padding: 0.4rem;
+        margin-top: 0.75rem;
         width: calc(100% + 1rem);
         margin-left: -0.5rem;
         border-radius: 0;
         border-left: none;
         border-right: none;
+    }
+}
+
+@media (max-width: 400px) {
+    .questionCard {
+        padding: 0.5rem;
+        padding-top: 2.25rem;
+    }
+
+    .questionText {
+        font-size: 0.85rem;
+    }
+
+    .smartTableHeaderCell {
+        padding: 0.2rem 0.25rem !important;
+        font-size: 0.6rem !important;
+    }
+
+    .smartTableCell {
+        padding: 0.2rem 0.25rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    .smartTableInput {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.85rem !important;
+    }
+
+    .keypadButton {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    .virtualKeypad {
+        gap: 4px;
+        padding: 0.35rem;
     }
 }
