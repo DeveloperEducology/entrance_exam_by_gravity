@@ -6,6 +6,7 @@ import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml
 import SpeakerButton from './SpeakerButton';
 import SafeImage from './SafeImage';
 import { latexWithPlaceholderBoxes, renderLatexToHtml } from './latexUtils';
+import FractionModelVisual from './FractionModelVisual';
 
 /**
  * @typedef {Object} QuestionPart

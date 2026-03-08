@@ -1,0 +1,70 @@
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 1.5rem 0;
+}
+
+.pieSvg {
+    width: min(100%, 260px);
+    height: auto;
+    display: block;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+    gap: var(--cell-gap, 0px);
+    width: min(100%, 360px);
+    aspect-ratio: auto;
+    border: 2px solid var(--grid-line-color, #1F2937);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--grid-base-color, #ffffff);
+}
+
+.barGrid {
+    height: clamp(60px, 15vw, 100px);
+}
+
+.barHorizontal {
+    width: clamp(60px, 15vw, 100px);
+    height: clamp(240px, 40vw, 360px);
+}
+
+.cell {
+    border-right: 1px solid var(--grid-line-color, #1F2937);
+    border-bottom: 1px solid var(--grid-line-color, #1F2937);
+    background: var(--grid-base-color, #ffffff);
+}
+
+.shaded {
+    background: var(--grid-fill-color, #F59E0B);
+}
+
+.cellCircle {
+    border: 1px solid var(--grid-line-color, #1F2937);
+    border-radius: 999px;
+    margin: var(--cell-inset, 1px);
+}
+
+@media (max-width: 600px) {
+    .pieSvg {
+        max-width: 200px;
+    }
+
+    .grid {
+        max-width: 280px;
+    }
+
+    .barGrid {
+        height: clamp(50px, 12vw, 80px);
+    }
+
+    .barHorizontal {
+        width: clamp(50px, 12vw, 80px);
+        height: clamp(180px, 40vw, 280px);
+    }
+}

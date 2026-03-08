@@ -11,6 +11,7 @@ import {
     latexWithPlaceholderBoxes,
     renderLatexToHtml
 } from './latexUtils';
+import FractionModelVisual from './FractionModelVisual';
 
 function InlineLatexBlanks({
     part,
@@ -21,7 +22,8 @@ function InlineLatexBlanks({
     onInputChange,
     onFocus,
     getInputConfig,
-    inputRefs
+    inputRefs,
+    showKeypad
 }) {
     const wrapperRef = useRef(null);
     const [anchors, setAnchors] = useState([]);
@@ -91,7 +93,7 @@ function InlineLatexBlanks({
                             onChange={(e) => onInputChange(anchor.id, e.target.value)}
                             disabled={isAnswered}
                             aria-label={anchor.id}
-                            inputMode={inputConfig.inputMode}
+                            inputMode={showKeypad ? 'none' : inputConfig.inputMode}
                             pattern={inputConfig.pattern}
                             maxLength={Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : undefined}
                             ref={(el) => {
@@ -526,7 +528,7 @@ export default function FillInTheBlankRenderer({
                                                 onClick={() => setActiveArithmeticCellId(id)}
                                                 disabled={isAnswered}
                                                 readOnly={useDigitPad}
-                                                inputMode="numeric"
+                                                inputMode={showKeypad ? 'none' : "numeric"}
                                                 maxLength={1}
                                             />
                                         </div>
@@ -640,7 +642,7 @@ export default function FillInTheBlankRenderer({
                                                     onClick={() => setActiveArithmeticCellId(id)}
                                                     disabled={isAnswered || isRowLocked}
                                                     readOnly={useDigitPad}
-                                                    inputMode={useDigitPad ? 'none' : cfg.inputMode}
+                                                    inputMode={(showKeypad || useDigitPad) ? 'none' : cfg.inputMode}
                                                     pattern={cfg.pattern}
                                                     maxLength={cfg.maxLength}
                                                 />
@@ -723,7 +725,7 @@ export default function FillInTheBlankRenderer({
                         value={userAnswer?.[left.inputId || 'left_count'] ?? ''}
                         onChange={(e) => handleInputChange(left.inputId || 'left_count', e.target.value)}
                         disabled={isAnswered}
-                        inputMode="numeric"
+                        inputMode={showKeypad ? "none" : "numeric"}
                         pattern="[0-9]*"
                     />
                 </div>
@@ -738,7 +740,7 @@ export default function FillInTheBlankRenderer({
                         value={userAnswer?.[right.inputId || 'right_count'] ?? ''}
                         onChange={(e) => handleInputChange(right.inputId || 'right_count', e.target.value)}
                         disabled={isAnswered}
-                        inputMode="numeric"
+                        inputMode={showKeypad ? "none" : "numeric"}
                         pattern="[0-9]*"
                     />
                 </div>
@@ -753,7 +755,7 @@ export default function FillInTheBlankRenderer({
                         value={userAnswer?.[total.inputId || 'total_count'] ?? ''}
                         onChange={(e) => handleInputChange(total.inputId || 'total_count', e.target.value)}
                         disabled={isAnswered}
-                        inputMode="numeric"
+                        inputMode={showKeypad ? "none" : "numeric"}
                         pattern="[0-9]*"
                     />
                 </div>
@@ -819,7 +821,7 @@ export default function FillInTheBlankRenderer({
                             onChange={(e) => handleInputChange(inputId, e.target.value)}
                             disabled={isAnswered}
                             aria-label={inputId}
-                            inputMode={inputConfig.inputMode}
+                            inputMode={showKeypad ? "none" : inputConfig.inputMode}
                             pattern={inputConfig.pattern}
                             maxLength={Number.isFinite(Number(cell?.maxLength)) ? Number(cell.maxLength) : 1}
                         />
@@ -967,7 +969,7 @@ export default function FillInTheBlankRenderer({
                                     onChange={(e) => handleInputChange(inputId, e.target.value)}
                                     disabled={isAnswered}
                                     aria-label={inputId}
-                                    inputMode={inputConfig.inputMode}
+                                    inputMode={showKeypad ? 'none' : inputConfig.inputMode}
                                     pattern={inputConfig.pattern}
                                     maxLength={Number.isFinite(Number(input?.maxLength)) ? Number(input.maxLength) : 4}
                                     style={{
@@ -1079,6 +1081,7 @@ export default function FillInTheBlankRenderer({
                                                                 ref={(el) => {
                                                                     if (el) arithmeticCellRefs.current[cellValue.id] = el;
                                                                 }}
+                                                                inputMode={showKeypad ? 'none' : (isCarryInput ? 'numeric' : 'text')}
                                                                 placeholder={cellValue.placeholder || ''}
                                                                 onChange={(e) => {
                                                                     let val = e.target.value.replace(/[^0-9]/g, '');
@@ -1298,7 +1301,7 @@ export default function FillInTheBlankRenderer({
                         placeholder={part?.placeholder || ''}
                         aria-label={part?.placeholder || part?.id || 'blank input'}
                         style={{ width: part.width || '80px' }}
-                        inputMode={inputConfig.inputMode}
+                        inputMode={showKeypad ? 'none' : inputConfig.inputMode}
                         pattern={inputConfig.pattern}
                         maxLength={Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : undefined}
                     />
@@ -1323,6 +1326,7 @@ export default function FillInTheBlankRenderer({
                         onFocus={setLastFocusedId}
                         inputRefs={arithmeticCellRefs}
                         getInputConfig={getInputConfig}
+                        showKeypad={showKeypad}
                     />
                 ));
             }
@@ -1350,6 +1354,10 @@ export default function FillInTheBlankRenderer({
             case 'table':
             case 'smartTable':
                 return wrapPart(part, index, renderSmartTable(part));
+
+            case 'shadeGrid':
+            case 'fractionModel':
+                return wrapPart(part, index, <FractionModelVisual part={part} />);
 
             default:
                 return null;
