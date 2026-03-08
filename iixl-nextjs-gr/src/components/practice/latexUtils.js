@@ -1,6 +1,6 @@
 import katex from 'katex';
 
-const LATEX_PLACEHOLDER_RE = /\[\[([a-zA-Z][\w-]{0,30})\]\]|\[([a-zA-Z][\w-]{0,30})\]/g;
+const LATEX_PLACEHOLDER_RE = /\[\[([a-zA-Z][\w:.-]{0,30})\]\]|\[([a-zA-Z][\w:.-]{0,30})\]/g;
 
 export function extractLatexPlaceholderIds(latex) {
     const expression = String(latex ?? '');
