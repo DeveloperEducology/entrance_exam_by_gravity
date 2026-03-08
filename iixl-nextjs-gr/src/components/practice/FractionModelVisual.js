@@ -28,8 +28,8 @@ function describeSectorPath(cx, cy, radius, startAngle, endAngle) {
 }
 
 function resolveGrid(config) {
-    const explicitRows = parseFinite(config.gridRows);
-    const explicitCols = parseFinite(config.gridCols);
+    const explicitRows = parseFinite(config.gridRows) ?? parseFinite(config.rows);
+    const explicitCols = parseFinite(config.gridCols) ?? parseFinite(config.cols);
     const orientation = String(
         config.orientation || config.gridOrientation || config.barOrientation || 'vertical'
     ).toLowerCase() === 'horizontal'
@@ -40,7 +40,7 @@ function resolveGrid(config) {
     const denominator = parseFinite(config.denominator) || 1;
     const shouldUseFractionBar = (
         gridMode === 'fractionbar' ||
-        (gridMode === 'auto' && denominator > 1 && denominator <= 20)
+        (gridMode === 'auto' && denominator > 1 && denominator <= 20 && !explicitRows && !explicitCols)
     );
 
     let rows = explicitRows;
