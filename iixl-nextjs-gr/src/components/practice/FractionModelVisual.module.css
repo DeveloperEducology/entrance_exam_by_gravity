@@ -7,8 +7,9 @@
 }
 
 .pieSvg {
-    width: min(100%, 260px);
-    height: auto;
+    width: 260px;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
     display: block;
 }
 
@@ -17,8 +18,8 @@
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
     grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
     gap: var(--cell-gap, 0px);
-    width: min(100%, 360px);
-    aspect-ratio: auto;
+    width: 360px;
+    max-width: 100%;
     border: 2px solid var(--grid-line-color, #1F2937);
     border-radius: 4px;
     overflow: hidden;
@@ -38,6 +39,12 @@
     border-right: 1px solid var(--grid-line-color, #1F2937);
     border-bottom: 1px solid var(--grid-line-color, #1F2937);
     background: var(--grid-base-color, #ffffff);
+    aspect-ratio: 1 / 1;
+}
+
+.barGrid .cell,
+.barHorizontal .cell {
+    aspect-ratio: auto;
 }
 
 .shaded {
