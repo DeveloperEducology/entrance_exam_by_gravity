@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  width: 360px;
+  border: 2px solid red;
+  gap: 2px;
+  background: black;
+  /* aspect-ratio: var(--cols) / var(--rows); */
+}
+.cell {
+  background: yellow;
+  aspect-ratio: 1 / 1;
+}
+</style>
+</head>
+<body>
+<div class="grid" style="--cols: 6; --rows: 6;">
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+</div>
+</body>
+</html>

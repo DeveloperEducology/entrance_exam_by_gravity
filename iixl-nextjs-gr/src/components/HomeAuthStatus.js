@@ -82,6 +82,11 @@ export default function HomeAuthStatus() {
 
   return (
     <>
+      {user.role === 'teacher' && (
+        <Link href="/teacher/dashboard" className={styles.teacherBtn}>
+          Teacher Dashboard
+        </Link>
+      )}
       <div className={styles.userBadge} title={user.email || ''}>
         Hi, {getDisplayName(user)}
       </div>

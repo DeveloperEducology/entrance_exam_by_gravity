@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_not_for_prod';
 
 export async function POST(req) {
     try {
-        const { email, password, name, birthYear, gradeId } = await req.json();
+        const { email, password, name, birthYear, gradeId, role } = await req.json();
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -36,13 +36,16 @@ export async function POST(req) {
         // UUID v4 format generator
         const uuid = crypto.randomUUID();
 
+        const chosenRole = role === 'teacher' ? 'teacher' : 'student';
+
         const newUser = {
             _id: uuid,  // Using UUID for ID to match existing Supabase id shape
             id: uuid,
             email: email.trim().toLowerCase(),
             password_hash: passwordHash,
             name: name || email.split('@')[0],
-            role: 'student',
+            role: chosenRole,
+            status: chosenRole === 'teacher' ? 'pending' : 'active',
             birth_year: birthYear || null,
             grade_id: gradeId || null,
             created_at: now,
@@ -57,7 +60,8 @@ export async function POST(req) {
             user: {
                 id: newUser.id,
                 email: newUser.email,
-                role: 'student',
+                role: chosenRole,
+                status: newUser.status,
                 user_metadata: {
                     name: newUser.name,
                     birthYear: newUser.birth_year,

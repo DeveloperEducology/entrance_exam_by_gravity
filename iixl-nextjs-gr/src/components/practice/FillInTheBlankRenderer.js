@@ -124,6 +124,7 @@ export default function FillInTheBlankRenderer({
     const arithmeticCellRefs = useRef({});
     const containerRef = useRef(null);
     const [lastFocusedId, setLastFocusedId] = useState(null);
+    const [activeArithmeticCellId, setActiveArithmeticCellId] = useState(null);
     const [viewportWidth, setViewportWidth] = useState(null);
     const [showKeypad, setShowKeypad] = useState(false);
 

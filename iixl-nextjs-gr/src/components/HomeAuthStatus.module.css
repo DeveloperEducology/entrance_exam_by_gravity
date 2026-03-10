@@ -9,7 +9,8 @@
 .signInBtn,
 .joinBtn,
 .signOutBtn,
-.userBadge {
+.userBadge,
+.teacherBtn {
   padding: 0.625rem 1.1rem;
   border-radius: 999px;
   font-weight: 700;
@@ -28,6 +29,11 @@
   color: white;
 }
 
+.teacherBtn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+}
+
 .userBadge {
   background: #e8f6ff;
   color: #0f6ea8;
@@ -41,10 +47,12 @@
 }
 
 @media (max-width: 768px) {
+
   .signInBtn,
   .joinBtn,
   .signOutBtn,
-  .userBadge {
+  .userBadge,
+  .teacherBtn {
     padding: 0.45rem 0.75rem;
     font-size: 0.78rem;
   }

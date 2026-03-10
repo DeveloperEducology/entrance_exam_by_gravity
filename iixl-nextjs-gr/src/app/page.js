@@ -5,6 +5,7 @@ import styles from './page.module.css';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import GradesDisplay, { GradesSkeleton } from '@/components/home/GradesDisplay';
+import StudentAssignments from '@/components/home/StudentAssignments';
 
 export const metadata = {
   title: 'Home',
@@ -36,6 +37,10 @@ export default async function Home() {
       </header>
 
       <Hero />
+
+      <Suspense fallback={null}>
+        <StudentAssignments />
+      </Suspense>
 
       <section className={styles.gradesSection}>
         <div className={styles.container}>

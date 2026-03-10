@@ -735,3 +735,40 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+/* Live Grid */
+.liveDashboard {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.liveCard {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+}
+
+.liveCard:hover {
+    transform: translateY(-2px);
+}
+
+.pulsingAlert {
+    background: #FEF2F2;
+    color: #EF4444;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

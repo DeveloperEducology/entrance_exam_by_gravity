@@ -26,6 +26,7 @@ export default function AdminDashboardClient() {
   const [success, setSuccess] = useState('');
   const [catalog, setCatalog] = useState({ grades: [], subjects: [], units: [], microskills: [] });
   const [questions, setQuestions] = useState([]);
+  const [teachers, setTeachers] = useState([]);
 
   const [gradeForm, setGradeForm] = useState({ name: '', code: '', sort_order: 0 });
   const [subjectForm, setSubjectForm] = useState({ grade_id: '', name: '', slug: '', sort_order: 0 });
@@ -97,6 +98,40 @@ export default function AdminDashboardClient() {
       setSuccess('Catalog loaded');
     } catch (err) {
       setError(err?.message || 'Failed to load catalog');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTeachers = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/teachers', { cache: 'no-store' });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Failed to load teachers');
+      setTeachers(payload.teachers || []);
+    } catch (err) {
+      setError(err?.message || 'Failed to load teachers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTeacherStatus = async (id, status) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/teachers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      });
+      if (!res.ok) throw new Error('Failed to update teacher');
+      setSuccess(`Teacher marked as ${status}`);
+      await loadTeachers();
+    } catch (err) {
+      setError(err?.message || 'Failed to update teacher');
     } finally {
       setLoading(false);
     }
@@ -242,13 +277,48 @@ export default function AdminDashboardClient() {
           <p>Create and manage grades, subjects, units, microskills, and questions.</p>
         </div>
         <div className={styles.headerActions}>
-          <button onClick={loadCatalog} disabled={loading}>{loading ? 'Loading...' : 'Load Data'}</button>
+          <button onClick={() => { loadCatalog(); loadTeachers(); }} disabled={loading}>{loading ? 'Loading...' : 'Load Data'}</button>
           <Link href="/">Back Home</Link>
         </div>
       </header>
 
       {error && <div className={styles.error}>{error}</div>}
       {success && <div className={styles.success}>{success}</div>}
+
+      {teachers.length > 0 && (
+        <section className={styles.catalogSection}>
+          <h2>Teachers ({teachers.length})</h2>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teachers.map(t => (
+                  <tr key={t.id}>
+                    <td>{t.name}</td>
+                    <td>{t.email}</td>
+                    <td><strong style={{ color: t.status === 'approved' ? '#22c55e' : t.status === 'pending' ? '#eab308' : '#ef4444' }}>{t.status}</strong></td>
+                    <td style={{ display: 'flex', gap: '8px' }}>
+                      {t.status !== 'approved' && (
+                        <button onClick={() => updateTeacherStatus(t.id, 'approved')}>Approve</button>
+                      )}
+                      {t.status !== 'rejected' && (
+                        <button onClick={() => updateTeacherStatus(t.id, 'rejected')}>Reject</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className={styles.grid4}>
         <article className={styles.card}>

@@ -67,13 +67,13 @@ export function createClient() {
           return { data: null, error };
         }
       },
-      async signUp({ email, password, name, birthYear, gradeId }) {
+      async signUp({ email, password, name, birthYear, gradeId, role }) {
         if (typeof window === 'undefined') return { error: { message: 'Server context' } };
         try {
           const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name, birthYear, gradeId }),
+            body: JSON.stringify({ email, password, name, birthYear, gradeId, role }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Registration failed');

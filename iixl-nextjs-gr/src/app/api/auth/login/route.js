@@ -29,6 +29,10 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
+        if (user.role === 'teacher' && user.status === 'pending') {
+            return NextResponse.json({ error: 'Your teacher account is pending admin approval.' }, { status: 403 });
+        }
+
         const userId = String(user.id || user._id);
         const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -37,6 +41,7 @@ export async function POST(req) {
                 id: userId,
                 email: user.email,
                 role: user.role || 'student',
+                status: user.status || 'active',
                 user_metadata: {
                     name: user.name,
                     birthYear: user.birth_year,

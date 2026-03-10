@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [birthYear, setBirthYear] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isTeacher, setIsTeacher] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -63,7 +64,8 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         name: name.trim(),
-        birthYear: birthYear ? Number(birthYear) : null
+        birthYear: birthYear ? Number(birthYear) : null,
+        role: isTeacher ? 'teacher' : 'student'
       });
       if (signUpError) throw signUpError;
 
@@ -148,6 +150,15 @@ export default function RegisterPage() {
               autoComplete="new-password"
               placeholder="Re-enter password"
             />
+          </label>
+
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={isTeacher}
+              onChange={(e) => setIsTeacher(e.target.checked)}
+            />
+            Register as a Teacher
           </label>
 
           {error ? <p className={styles.error}>{error}</p> : null}
