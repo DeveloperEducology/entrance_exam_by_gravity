@@ -57,7 +57,11 @@ export default function LoginPage() {
         await mergeGuestProgress(userId);
       }
 
-      if (user?.role === 'teacher') {
+      if (user?.role === 'admin') {
+        router.push('/super-admin');
+      } else if (user?.role === 'school_admin') {
+        router.push('/school-admin');
+      } else if (user?.role === 'teacher') {
         router.push('/teacher/dashboard');
       } else {
         router.push('/');

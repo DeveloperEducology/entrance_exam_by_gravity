@@ -28,7 +28,7 @@ export default async function Home() {
           <nav className={styles.nav}>
             <a href="#" className={styles.navLink}>Learning</a>
             <Link href="/analytics" className={styles.navLink}>Analytics</Link>
-            <Link href="/admin" className={styles.navLink}>Admin</Link>
+            <Link href="/super-admin" className={styles.navLink}>Admin</Link>
           </nav>
           <div className={styles.authButtons}>
             <HomeAuthStatus />

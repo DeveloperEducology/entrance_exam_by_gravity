@@ -1,0 +1,350 @@
+.container {
+    padding: 2rem 3rem;
+    background: #f8fafc;
+    min-height: calc(100vh - 60px);
+    color: #334155;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2.5rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 1.5rem;
+}
+
+.headerInfo h1 {
+    font-size: 2.25rem;
+    color: #0f172a;
+    margin: 0 0 0.5rem 0;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.headerInfo p {
+    color: #64748b;
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.navTabs {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+    color: #64748b;
+}
+
+.tab:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.activeTab {
+    background: #3b82f6;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.activeTab:hover {
+    background: #2563eb;
+    color: white;
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.statCard {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.statCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.statIcon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.statValue {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.statLabel {
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+/* Tables & Lists */
+.tableContainer {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.tableHeader {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+}
+
+.tableHeader h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.baseTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.baseTable th {
+    background: #f1f5f9;
+    padding: 1rem 2rem;
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 700;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.baseTable td {
+    padding: 1.25rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    font-weight: 500;
+}
+
+.baseTable tr:last-child td {
+    border-bottom: none;
+}
+
+.baseTable tr:hover td {
+    background: #f8fafc;
+}
+
+/* Forms */
+.formRow {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: #f1f5f9;
+    border-radius: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.inputGroup label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.inputGroup input,
+.inputGroup select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.inputGroup input:focus,
+.inputGroup select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btnPrimary {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: fit-content;
+    white-space: nowrap;
+}
+
+.btnPrimary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btnDanger {
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fca5a5;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btnDanger:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.statusBadge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-block;
+}
+
+.statusActive {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.statusPending {
+    background: #fef08a;
+    color: #854d0e;
+}
+
+/* Analytics Performance Tab */
+.analyticsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.analyticsCard {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.analyticsCard h3 {
+    margin: 0 0 0.5rem 0;
+    color: #1e293b;
+    font-size: 1.25rem;
+}
+
+.analyticsSubtitle {
+    color: #64748b;
+    margin: 0 0 1.5rem 0;
+    font-size: 0.9rem;
+}
+
+.masteryList {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.masteryItem {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.masteryHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.subjectName {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.95rem;
+}
+
+.masteryPercent {
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.progressBarBg {
+    width: 100%;
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progressBarFill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+
+.rankBadge {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    background: #f1f5f9;
+    border-radius: 50%;
+    font-weight: 800;
+    color: #64748b;
+    font-size: 0.8rem;
+}
