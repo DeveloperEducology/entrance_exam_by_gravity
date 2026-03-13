@@ -1,30 +1,62 @@
 .container {
     width: 100%;
-    max-width: 900px;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1rem;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .questionCard {
-    background: white;
-    border-radius: var(--border-radius-xl);
-    padding: 2rem;
-    box-shadow: var(--card-shadow);
-    animation: fadeIn 0.4s ease-out;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 24px;
+    padding: 1.5rem 2rem;
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.05), 
+        0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    animation: cardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .questionContent {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     font-size: 1.1rem;
-    line-height: 1.6;
-    color: var(--text-primary);
+    line-height: 1.4;
+    color: #1e293b;
     text-align: center;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .instruction {
-    font-size: 0.84rem;
-    color: #4b6078;
+    font-size: 0.8rem;
+    color: #64748b;
     text-align: center;
-    margin-bottom: 0.9rem;
+    margin-bottom: 1.25rem;
+    background: #f1f5f9;
+    padding: 0.35rem 0.8rem;
+    border-radius: 100px;
+    display: inline-block;
+    width: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.instructionWrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 .itemsPool {
@@ -33,223 +65,260 @@
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-bottom: 2rem;
-    padding: 1.25rem;
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-radius: var(--border-radius-lg);
-    border: 2px dashed #7dd3fc;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    border: 2px dashed rgba(148, 163, 184, 0.3);
     min-height: 100px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.itemsPool.activeDropTarget {
+    background: rgba(241, 245, 249, 0.8);
+    border-color: #94a3b8;
+    transform: scale(1.01);
 }
 
 .dragItem {
     background: white;
-    border: 3px solid #e5e7eb;
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem 1rem;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 12px;
+    padding: 0.6rem 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    cursor: pointer;
-    transition:
-        transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
-        box-shadow 160ms ease,
-        border-color 140ms ease,
-        opacity 120ms ease;
+    cursor: grab;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
     min-width: 100px;
     touch-action: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: relative;
+    z-index: 1;
 }
 
-.dragItem:disabled {
-    cursor: not-allowed;
-    opacity: 0.8;
-}
-
-.dragItem:hover {
-    border-color: #22c55e;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+.dragItem:hover:not(:disabled) {
+    border-color: #3b82f6;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -8px rgba(59, 130, 246, 0.3);
 }
 
 .dragItem.dragging {
-    opacity: 0.35;
+    opacity: 0;
     cursor: grabbing;
-    transition: none;
 }
 
-.dragItem.placed {
-    background: #f0fdf4;
-    border-color: #22c55e;
-}
-
-.dragItem.selected {
-    border-color: #0ea5e9;
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
-}
-
-.itemImage {
-    width: 60px;
-    height: 60px;
+.dragOverlay {
+    background: white;
+    border: 2px solid #3b82f6;
+    border-radius: 12px;
+    padding: 0.6rem 1rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-}
-
-.image {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+    gap: 0.5rem;
+    cursor: grabbing;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+    transform: scale(1.05);
+    z-index: 9999;
 }
 
 .itemLabel {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #334155;
     text-align: center;
+    line-height: 1.3;
 }
 
 .dropGroups {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.25rem;
-    margin-bottom: 1.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 0.25rem;
-    scroll-snap-type: x proximity;
+    margin-bottom: 2rem;
 }
 
 .dropGroup {
-    background: #f8f9fa;
-    border-radius: var(--border-radius-lg);
-    padding: 1rem;
-    border: 2px solid #e5e7eb;
-    text-align: left;
-    cursor: pointer;
-    flex: 1 0 240px;
-    min-width: 220px;
-    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-.dropGroup:disabled {
-    cursor: not-allowed;
-}
-
-.groupTap {
-    width: 100%;
-    border: none;
-    background: transparent;
-    padding: 0;
-    text-align: left;
-}
-
-.activeDropTarget {
-    border-color: #38bdf8;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+.groupHeader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .groupLabel {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 0.875rem;
-    text-align: center;
-    padding: 0.5rem;
-    background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
-    color: white;
-    border-radius: var(--border-radius-md);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .dropZone {
-    min-height: 200px;
-    background: white;
+    min-height: 120px;
+    background: #f8fafc;
     border: 2px dashed #cbd5e1;
-    border-radius: var(--border-radius-md);
-    padding: 0.75rem;
+    border-radius: 16px;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
+    justify-content: flex-start;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
 }
 
-.dropZone:hover {
-    border-color: #22c55e;
-    background: #f0fdf4;
+.dropZone.activeDropTarget {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    border-style: solid;
+    transform: scale(1.02);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1);
 }
 
 .emptyZone {
-    color: #9ca3af;
-    font-size: 0.875rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
     font-style: italic;
     text-align: center;
+    margin: auto;
+    pointer-events: none;
 }
 
 .submitButton {
     width: 100%;
-    max-width: 500px;
+    max-width: 320px;
     margin: 0 auto;
     display: block;
-    background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
     border: none;
-    padding: 0.875rem 2rem;
-    border-radius: var(--border-radius-lg);
-    font-weight: 600;
+    padding: 0.875rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
     font-size: 1rem;
     cursor: pointer;
-    transition: var(--transition-base);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
 }
 
 .submitButton:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
+    background: #94a3b8;
     box-shadow: none;
+    transform: none;
 }
 
-.submitButton:hover {
+.submitButton:not(:disabled):hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.4);
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
+.submitButton:not(:disabled):active {
+    transform: translateY(0);
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* Color variations for groups */
+.dropGroup:nth-child(1) .groupLabel { color: #2563eb; }
+.dropGroup:nth-child(2) .groupLabel { color: #059669; }
+.dropGroup:nth-child(3) .groupLabel { color: #d97706; }
+
+.dropGroup:nth-child(1) .groupHeader { border-bottom: 3px solid #3b82f6; }
+.dropGroup:nth-child(2) .groupHeader { border-bottom: 3px solid #10b981; }
+.dropGroup:nth-child(3) .groupHeader { border-bottom: 3px solid #f59e0b; }
+
+.dragItem.correct {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.dragItem.incorrect {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.correctBadge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #10b981;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 2;
+}
+
+.incorrectBadge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 2;
 }
 
 @media (max-width: 768px) {
+    .container {
+        padding: 0.5rem;
+    }
+
     .questionCard {
-        padding: 1.5rem;
+        padding: 1.25rem 1rem;
+        border-radius: 16px;
     }
 
     .questionContent {
         font-size: 1rem;
     }
 
-    .dropGroups {
-        gap: 0.75rem;
-    }
-
     .itemsPool {
         padding: 1rem;
+        min-height: 80px;
+        gap: 0.5rem;
     }
 
-    .dropGroup {
-        flex-basis: 180px;
-        min-width: 170px;
+    .dragItem {
+        padding: 0.5rem 0.75rem;
+        min-width: 80px;
+    }
+
+    .itemLabel {
+        font-size: 0.75rem;
+    }
+
+    .dropGroups {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 
     .dropZone {
-        min-height: 220px;
+        min-height: 100px;
+        padding: 0.75rem;
     }
 }
+
