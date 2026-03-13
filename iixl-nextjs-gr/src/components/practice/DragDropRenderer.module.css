@@ -109,6 +109,13 @@
     cursor: grabbing;
 }
 
+.dragItem.selected {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    transform: scale(1.02);
+}
+
 .dragOverlay {
     background: white;
     border: 2px solid #3b82f6;

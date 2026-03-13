@@ -31,7 +31,7 @@ const dropAnimationConfig = {
   }),
 };
 
-function DroppableArea({ id, className, children }) {
+function DroppableArea({ id, className, onClick, children }) {
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
@@ -39,13 +39,14 @@ function DroppableArea({ id, className, children }) {
       ref={setNodeRef}
       className={`${className} ${isOver ? styles.activeDropTarget : ''}`.trim()}
       data-drop-id={id}
+      onClick={onClick}
     >
       {children}
     </div>
   );
 }
 
-function DraggableItem({ item, disabled, isDragging, isAnswered, isCorrect, children }) {
+function DraggableItem({ item, disabled, isDragging, isAnswered, isCorrect, isSelected, onClick, children }) {
   const {
     attributes,
     listeners,
@@ -58,7 +59,7 @@ function DraggableItem({ item, disabled, isDragging, isAnswered, isCorrect, chil
 
   const stateClass = isAnswered 
     ? (isCorrect ? styles.correct : styles.incorrect) 
-    : '';
+    : isSelected ? styles.selected : '';
 
   return (
     <motion.div
@@ -68,8 +69,14 @@ function DraggableItem({ item, disabled, isDragging, isAnswered, isCorrect, chil
       className={`${styles.dragItem} ${activeDragging ? styles.dragging : ''} ${stateClass}`}
       {...listeners}
       {...attributes}
+      onClick={(e) => {
+        if (!disabled && onClick) {
+          e.stopPropagation();
+          onClick(item.id);
+        }
+      }}
       initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={{ opacity: 1, scale: isSelected ? 1.05 : 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
       transition={{ 
         type: 'spring', 
@@ -133,6 +140,7 @@ export default function DragDropRenderer({
   }, [userAnswer]);
 
   const [activeId, setActiveId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
 
   const q = useMemo(() => {
     if (!question) return {};
@@ -307,6 +315,29 @@ export default function DragDropRenderer({
     setActiveId(null);
   };
 
+  const handleItemClick = (id) => {
+    if (isAnswered) return;
+    setSelectedId(prev => prev === id ? null : id);
+  };
+
+  const handleZoneClick = (groupId) => {
+    if (isAnswered || !selectedId) return;
+    
+    onAnswer({ ...placements, [selectedId]: String(groupId) });
+    setSelectedId(null);
+  };
+
+  const handlePoolClick = () => {
+    if (isAnswered || !selectedId) return;
+    
+    if (placements[selectedId]) {
+      const next = { ...placements };
+      delete next[selectedId];
+      onAnswer(next);
+    }
+    setSelectedId(null);
+  };
+
   const activeItem = useMemo(() => 
     dragItems.find(item => String(item.id) === activeId),
     [activeId, dragItems]
@@ -320,7 +351,7 @@ export default function DragDropRenderer({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className={styles.container}>
+      <div className={styles.container} onClick={() => setSelectedId(null)}>
         <motion.div 
           className={styles.questionCard}
           initial={{ opacity: 0, y: 20 }}
@@ -344,13 +375,17 @@ export default function DragDropRenderer({
           {!isAnswered && dragItems.length > 0 && (
             <div className={styles.instructionWrapper}>
               <p className={styles.instruction}>
-                Drag the items below into the correct categories.
+                {selectedId ? 'Click a category to place the item' : 'Tap an item to select, or drag to move'}
               </p>
             </div>
           )}
 
           <LayoutGroup>
-            <DroppableArea id={POOL_ID} className={styles.itemsPool}>
+            <DroppableArea 
+              id={POOL_ID} 
+              className={styles.itemsPool}
+              onClick={handlePoolClick}
+            >
               <AnimatePresence mode="popLayout">
                 {getUnplacedItems().map((item) => (
                   <DraggableItem
@@ -358,6 +393,8 @@ export default function DragDropRenderer({
                     item={item}
                     disabled={isAnswered}
                     isAnswered={isAnswered}
+                    isSelected={selectedId === item.id}
+                    onClick={handleItemClick}
                     isCorrect={placements[item.id] === String(item.targetGroupId)}
                   >
                     <ItemVisual item={item} />
@@ -381,7 +418,11 @@ export default function DragDropRenderer({
                   <div className={styles.groupHeader}>
                     <div className={styles.groupLabel}>{group.label}</div>
                   </div>
-                  <DroppableArea id={`group:${group.id}`} className={styles.dropZone}>
+                  <DroppableArea 
+                    id={`group:${group.id}`} 
+                    className={styles.dropZone}
+                    onClick={() => handleZoneClick(group.id)}
+                  >
                     <AnimatePresence mode="popLayout">
                       {getItemsInGroup(group.id).length === 0 ? (
                         <motion.div 
@@ -391,7 +432,7 @@ export default function DragDropRenderer({
                           exit={{ opacity: 0 }}
                           className={styles.emptyZone}
                         >
-                          Drop items here
+                          {selectedId ? 'Tap to drop' : 'Empty'}
                         </motion.div>
                       ) : (
                         getItemsInGroup(group.id).map((item) => (
@@ -400,6 +441,8 @@ export default function DragDropRenderer({
                             item={item}
                             disabled={isAnswered}
                             isAnswered={isAnswered}
+                            isSelected={selectedId === item.id}
+                            onClick={handleItemClick}
                             isCorrect={placements[item.id] === String(item.targetGroupId)}
                           >
                             <ItemVisual item={item} />
