@@ -23,7 +23,8 @@ function InlineLatexBlanks({
     onFocus,
     getInputConfig,
     inputRefs,
-    showKeypad
+    showKeypad,
+    isCorrect // Add this
 }) {
     const wrapperRef = useRef(null);
     const [anchors, setAnchors] = useState([]);
@@ -89,7 +90,11 @@ function InlineLatexBlanks({
                             key={`latex-inline-${anchor.id}`}
                             type="text"
                             className={`${styles.input} ${styles.latexInlineInput}`}
-                            value={userAnswer?.[anchor.id] ?? ''}
+                            value={
+                                (typeof userAnswer === 'object' && userAnswer !== null)
+                                    ? (userAnswer[anchor.id] ?? '')
+                                    : (userAnswer != null ? String(userAnswer) : '')
+                            }
                             onChange={(e) => onInputChange(anchor.id, e.target.value)}
                             disabled={isAnswered}
                             aria-label={anchor.id}
@@ -119,7 +124,8 @@ export default function FillInTheBlankRenderer({
     userAnswer,
     onAnswer,
     onSubmit,
-    isAnswered
+    isAnswered,
+    isCorrect
 }) {
     const arithmeticCellRefs = useRef({});
     const containerRef = useRef(null);
@@ -127,6 +133,13 @@ export default function FillInTheBlankRenderer({
     const [activeArithmeticCellId, setActiveArithmeticCellId] = useState(null);
     const [viewportWidth, setViewportWidth] = useState(null);
     const [showKeypad, setShowKeypad] = useState(false);
+
+    const getValue = (id) => {
+        if (typeof userAnswer === 'object' && userAnswer !== null) {
+            return userAnswer[id] ?? '';
+        }
+        return userAnswer != null ? String(userAnswer) : '';
+    };
 
     useEffect(() => {
         const updateViewport = () => {
@@ -818,7 +831,7 @@ export default function FillInTheBlankRenderer({
                         <input
                             type="text"
                             className={styles.gridCellInput}
-                            value={userAnswer?.[inputId] ?? ''}
+                            value={getValue(inputId)}
                             onChange={(e) => handleInputChange(inputId, e.target.value)}
                             disabled={isAnswered}
                             aria-label={inputId}
@@ -966,7 +979,7 @@ export default function FillInTheBlankRenderer({
                                     key={`bf-${inputId}`}
                                     type="text"
                                     className={styles.bfInput}
-                                    value={userAnswer?.[inputId] ?? ''}
+                                    value={getValue(inputId)}
                                     onChange={(e) => handleInputChange(inputId, e.target.value)}
                                     disabled={isAnswered}
                                     aria-label={inputId}
@@ -1078,7 +1091,7 @@ export default function FillInTheBlankRenderer({
                                                             <input
                                                                 type="text"
                                                                 className={isCarryInput ? styles.smartTableCarryInput : styles.smartTableInput}
-                                                                value={userAnswer?.[cellValue.id] ?? ''}
+                                                                value={getValue(cellValue.id)}
                                                                 ref={(el) => {
                                                                     if (el) arithmeticCellRefs.current[cellValue.id] = el;
                                                                 }}
@@ -1292,7 +1305,7 @@ export default function FillInTheBlankRenderer({
                     <input
                         type="text"
                         className={styles.input}
-                        value={userAnswer?.[part.id] ?? ''}
+                        value={getValue(part.id)}
                         onChange={(e) => handleInputChange(part.id, e.target.value)}
                         onFocus={() => setLastFocusedId(part.id)}
                         ref={(el) => {

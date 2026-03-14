@@ -42,7 +42,8 @@ function buildBasicFeedback(question) {
   };
 
   return {
-    solution: question?.solution ?? '',
+    solution: question?.solution || "Review the corrected answers shown in the question card above to understand the solution.",
+    correctAnswerText: question?.correctAnswerText ?? '',
     correctAnswerDisplay: (() => {
       if (!question) return '';
       const type = String(question.type || '').trim().toLowerCase();

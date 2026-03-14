@@ -557,6 +557,13 @@ export default function PracticePage() {
   const correctAnswerDisplay = feedbackData?.correctAnswerDisplay || '';
   const selectedAnswerDisplay = getSelectedAnswerDisplay(currentQuestion, userAnswer);
   const shadeGridCorrectAnswer = getShadeGridCorrectAnswer(currentQuestion, correctAnswerDisplay);
+  const isFillInTheBlankType = ['fillInTheBlank', 'smartTable', 'table', 'gridArithmetic', 'longMultiplication', 'longDivision'].includes(currentQuestion?.type);
+  const correctFillInTheBlankAnswer = isFillInTheBlankType ? (
+    (typeof feedbackData?.correctAnswerText === 'object' && feedbackData?.correctAnswerText !== null)
+      ? feedbackData.correctAnswerText
+      : (parseMaybeJson(feedbackData?.correctAnswerText, feedbackData?.correctAnswerText))
+  ) : null;
+
   const reviewQuestion =
     currentQuestion?.type === 'shadeGrid' && shadeGridCorrectAnswer
       ? {
@@ -1090,7 +1097,11 @@ export default function PracticePage() {
                     {currentQuestion?.type === 'fillInTheBlank' || currentQuestion?.type === 'gridArithmetic' || currentQuestion?.type === 'shadeGrid' ? (
                       <QuestionRenderer
                         question={reviewQuestion}
-                        userAnswer={currentQuestion?.type === 'shadeGrid' ? shadeGridCorrectAnswer : userAnswer}
+                        userAnswer={
+                          currentQuestion?.type === 'shadeGrid' ? shadeGridCorrectAnswer :
+                            (isFillInTheBlankType && correctFillInTheBlankAnswer) ? correctFillInTheBlankAnswer :
+                              userAnswer
+                        }
                         onAnswer={() => { }}
                         onSubmit={() => { }}
                         isAnswered

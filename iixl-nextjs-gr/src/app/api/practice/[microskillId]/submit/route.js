@@ -138,8 +138,12 @@ function validateAnswer(question, answer) {
   }
 }
 
-function buildFeedback(question) {
-  const feedback = { solution: question?.solution ?? '', correctAnswerDisplay: String(question?.correctAnswerText ?? ''), correctOptionIndices: [] };
+function buildFeedback(question, isCorrect) {
+  const feedback = {
+    solution: question?.solution || (isCorrect ? '' : "Review the corrected answers shown in the question card above to understand the solution."),
+    correctAnswerDisplay: String(question?.correctAnswerText ?? ''),
+    correctOptionIndices: []
+  };
   if (!question) return feedback;
   const type = String(question.type || '').trim().toLowerCase();
   if (type === 'mcq' || type === 'imagechoice') {
@@ -240,7 +244,7 @@ export async function POST(req, { params }) {
     if (!currentQuestion) return NextResponse.json({ error: 'Question not found.' }, { status: 404 });
 
     const isCorrect = validateAnswer(currentQuestion, answer);
-    const feedback = buildFeedback(currentQuestion);
+    const feedback = buildFeedback(currentQuestion, isCorrect);
 
     await insertLog(db, { studentId, microskillId, questionId, isCorrect, answer, responseMs });
 
