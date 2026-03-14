@@ -38,7 +38,7 @@ export default function MCQRenderer({
             <div className={styles.questionCard}>
                 {/* Question Parts */}
                 <div className={styles.questionContent}>
-                    <QuestionParts parts={question.parts} />
+                    <QuestionParts parts={question.parts} isVertical={question.isVertical} />
                 </div>
 
                 {/* Options */}

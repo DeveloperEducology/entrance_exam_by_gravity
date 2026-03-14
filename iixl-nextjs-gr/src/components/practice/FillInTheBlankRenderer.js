@@ -181,6 +181,8 @@ export default function FillInTheBlankRenderer({
             if (res.adaptive_config !== undefined && res.adaptiveConfig === undefined) res.adaptiveConfig = res.adaptive_config;
             if (res.show_submit_button !== undefined && res.showSubmitButton === undefined) res.showSubmitButton = res.show_submit_button;
             if (res.is_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.is_vertical;
+            if (res.inVertical !== undefined && res.isVertical === undefined) res.isVertical = res.inVertical;
+            if (res.in_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.in_vertical;
             if (res.correct_answer_text !== undefined && res.correctAnswerText === undefined) res.correctAnswerText = res.correct_answer_text;
             if (res.correct_answer_index !== undefined && res.correctAnswerIndex === undefined) res.correctAnswerIndex = res.correct_answer_index;
             if (res.micro_skill_id !== undefined && res.microSkillId === undefined) res.microSkillId = res.micro_skill_id;
@@ -1204,7 +1206,7 @@ export default function FillInTheBlankRenderer({
 
     const wrapPart = (part, index, content) => {
         if (content === null) return null;
-        const isVertical = Boolean(part?.isVertical);
+        const isVertical = Boolean(part?.isVertical ?? q.isVertical);
         return (
             <div
                 key={`wrap-${index}`}
@@ -1393,7 +1395,7 @@ export default function FillInTheBlankRenderer({
                 part.content.trim().endsWith('=');
             const isPairableInput = nextPart?.type === 'input' || nextPart?.type === 'blank';
 
-            if (isEquationLabel && isPairableInput) {
+            if (isEquationLabel && isPairableInput && !q.isVertical) {
                 rows.push(
                     <div key={`pair-${index}`} className={styles.pairedRow}>
                         {renderPart(part, index)}

@@ -297,7 +297,7 @@ function renderSmartTable(part, index, styles) {
     );
 }
 
-export default function QuestionParts({ parts, className = '' }) {
+export default function QuestionParts({ parts, isVertical: defaultVertical = false, className = '' }) {
     const safeParts = useMemo(() => {
         let rawParts = parts;
         if (typeof parts === 'string') {
@@ -314,6 +314,9 @@ export default function QuestionParts({ parts, className = '' }) {
             const res = { ...obj };
             // Root/part normalization
             if (res.question_text !== undefined && res.questionText === undefined) res.questionText = res.question_text;
+            if (res.is_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.is_vertical;
+            if (res.inVertical !== undefined && res.isVertical === undefined) res.isVertical = res.inVertical;
+            if (res.in_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.in_vertical;
             if (res.correct_answer_value !== undefined && res.correctAnswerValue === undefined) res.correctAnswerValue = res.correct_answer_value;
             if (res.micro_skill_id !== undefined && res.microSkillId === undefined) res.microSkillId = res.micro_skill_id;
 
@@ -508,7 +511,7 @@ export default function QuestionParts({ parts, className = '' }) {
         const content = renderPartContent(part, index);
         if (content === null) return null;
 
-        const isVertical = Boolean(part?.isVertical);
+        const isVertical = Boolean(part?.isVertical ?? defaultVertical);
         return (
             <div
                 key={`wrap-${index}`}
