@@ -36,8 +36,10 @@
     color: var(--text-primary);
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    text-align: center;
 }
 
 @media (max-width: 600px) {
@@ -50,6 +52,10 @@
 .questionTextRow {
     width: 100%;
     margin-bottom: 1.25rem;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .keypadToggle {
@@ -111,16 +117,17 @@
 .partWrapper {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
 }
 
 .inlinePart {
     width: auto;
-    justify-content: left;
+    justify-content: center;
 }
 
 .verticalPart {
     width: 100%;
-    justify-content: left;
+    justify-content: center;
 }
 
 .pairedRow {
