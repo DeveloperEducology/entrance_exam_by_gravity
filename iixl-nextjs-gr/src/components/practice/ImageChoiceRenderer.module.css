@@ -7,7 +7,7 @@
     background: white;
     border-radius: var(--border-radius-xl);
     padding: 2.5rem;
-    box-shadow: var(--card-shadow);
+    /* box-shadow: var(--card-shadow); */
     animation: fadeIn 0.4s ease-out;
     width: 100%;
     min-width: 0;

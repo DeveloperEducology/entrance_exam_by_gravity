@@ -5,9 +5,9 @@
 
 .questionCard {
     background: white;
-    border-radius: var(--border-radius-xl);
+    /* border-radius: var(--border-radius-xl); */
     padding: 2.5rem;
-    box-shadow: var(--card-shadow);
+    /* box-shadow: var(--card-shadow); */
     animation: fadeIn 0.4s ease-out;
 }
 
