@@ -37,9 +37,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 0.75rem;
-    text-align: center;
+    text-align: left;
+    padding-left: 0.5rem;
 }
 
 @media (max-width: 600px) {
@@ -113,17 +114,17 @@
 .partWrapper {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .inlinePart {
     width: auto;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .verticalPart {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .pairedRow {
@@ -648,8 +649,8 @@
     font-size: 0.88rem;
     cursor: pointer;
     transition: var(--transition-base);
-    margin: 0.75rem auto 0;
-    display: block;
+    margin-left: 0.5rem;
+    display: inline-block;
 }
 
 .submitButton:hover {
