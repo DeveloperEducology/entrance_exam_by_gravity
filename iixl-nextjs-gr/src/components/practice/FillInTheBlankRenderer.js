@@ -1413,11 +1413,8 @@ export default function FillInTheBlankRenderer({
     };
 
     const questionText = String(q?.questionText || '').trim();
-    const hasMatchingTextPart = Array.isArray(q?.parts) && q.parts.some((part) => {
-        if (String(part?.type || '').toLowerCase() !== 'text') return false;
-        return String(part?.content || '').trim() === questionText;
-    });
-    const showQuestionText = Boolean(questionText) && !hasMatchingTextPart;
+    // Logic updated to ensure instructions are handled separately
+    const showQuestionText = Boolean(questionText);
 
     return (
         <div className={styles.container} ref={containerRef}>
@@ -1445,7 +1442,13 @@ export default function FillInTheBlankRenderer({
                 )}
 
                 <div className={styles.questionContent}>
-                    {renderQuestionParts()}
+                    {renderQuestionParts().filter(row => {
+                         // Skip rendering the part if it's an exact duplicate of the header text we already showed
+                         if (!row) return false;
+                         const partIndex = row.key?.split('-')[1];
+                         const part = q.parts[partIndex];
+                         return !(part?.type === 'text' && String(part?.content || '').trim() === questionText);
+                    })}
                 </div>
 
                 {!isAnswered && showKeypad && (
