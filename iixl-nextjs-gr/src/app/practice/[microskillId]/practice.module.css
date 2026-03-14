@@ -1,11 +1,47 @@
 .container {
     min-height: 100vh;
-    background: linear-gradient(180deg, #c8eafe 0%, #dff3ff 28%, #f3fbff 100%);
-    padding: 0.75rem;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #e0f2fe 100%);
+    padding: 1.5rem 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: #1f2f46;
+    color: #1e293b;
+    position: relative;
+    overflow-x: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    opacity: 0.6;
+    pointer-events: none;
+    animation: blobFloat 10s infinite ease-in-out;
+}
+
+.blob1 {
+    width: 500px;
+    height: 500px;
+    background: #c7d2fe;
+    top: -100px;
+    left: -100px;
+}
+
+.blob2 {
+    width: 400px;
+    height: 400px;
+    background: #bae6fd;
+    bottom: -50px;
+    right: -100px;
+    animation-delay: -2s;
+}
+
+@keyframes blobFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -50px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
 }
 
 .mobileProgress {
@@ -186,15 +222,21 @@
 }
 
 .mainContent {
-    background: #ffffff;
-    border: 1px solid #d4e8f7;
-    border-radius: 18px;
-    box-shadow: 0 12px 24px rgba(14, 73, 116, 0.1);
-    padding: 1rem;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px solid white;
+    border-radius: 32px;
+    box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.05),
+        0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
-    min-height: 540px;
+    gap: 1.25rem;
+    min-height: 600px;
+    position: relative;
+    z-index: 10;
 }
 
 .questionStage {
@@ -286,11 +328,16 @@
 }
 
 .sidebarCard {
-    background: #ffffff;
-    border: 1px solid #d4e8f7;
-    border-radius: 12px;
-    box-shadow: 0 8px 18px rgba(14, 73, 116, 0.08);
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid white;
+    border-radius: 20px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
     overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.sidebarCard:hover {
+    transform: translateY(-2px);
 }
 
 .sidebarLabel {
@@ -312,11 +359,11 @@
 }
 
 .sidebarValue {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #334c64;
+    font-size: 2.25rem;
+    font-weight: 900;
+    color: #1e293b;
     text-align: center;
-    padding: 0.85rem 0.6rem;
+    padding: 0.75rem 0.5rem;
     line-height: 1;
 }
 

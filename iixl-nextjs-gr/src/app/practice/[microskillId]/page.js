@@ -912,6 +912,8 @@ export default function PracticePage() {
 
   return (
     <div className={styles.container}>
+      <div className={`${styles.blob} ${styles.blob1}`} />
+      <div className={`${styles.blob} ${styles.blob2}`} />
       <div className={styles.mobileProgress}>
         <div className={styles.mobileProgressLeft}>
           <div className={styles.mobileProgressItem}>

@@ -57,16 +57,24 @@ function DraggableItem({ item, disabled, isDragging, isAnswered, isCorrect, isSe
     disabled,
   });
 
+  const hasImage = useMemo(() => {
+    const contentText = String(item.content ?? '');
+    const imageSource = getImageSrc(item.imageUrl || contentText);
+    return isImageUrl(imageSource) || isInlineSvg(imageSource);
+  }, [item]);
+
   const stateClass = isAnswered 
     ? (isCorrect ? styles.correct : styles.incorrect) 
     : isSelected ? styles.selected : '';
+  
+  const typeClass = hasImage ? styles.imageItem : styles.textItem;
 
   return (
     <motion.div
       layout
       layoutId={`item-${item.id}`}
       ref={setNodeRef}
-      className={`${styles.dragItem} ${activeDragging ? styles.dragging : ''} ${stateClass}`}
+      className={`${styles.dragItem} ${activeDragging ? styles.dragging : ''} ${stateClass} ${typeClass}`}
       {...listeners}
       {...attributes}
       onClick={(e) => {
