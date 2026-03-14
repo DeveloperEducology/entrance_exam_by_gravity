@@ -52,10 +52,6 @@
 .questionTextRow {
     width: 100%;
     margin-bottom: 1.25rem;
-    text-align: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .keypadToggle {
