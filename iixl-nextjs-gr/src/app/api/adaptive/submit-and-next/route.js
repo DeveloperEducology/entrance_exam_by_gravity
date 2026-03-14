@@ -244,8 +244,20 @@ export async function POST(req) {
       updated_at: new Date().toISOString(),
     });
 
+    const smartScoreBreakdown = computeServerSmartScoreDelta({
+      isCorrect,
+      masteryScore: mastery.masteryScore,
+      confidence: mastery.confidence,
+      difficulty: currentQuestion?.difficulty || mastery.difficultyBand,
+      phase: priorRecoveryContext?.inRecovery ? 'recovery' : (prevSession?.phase || 'warmup'),
+      responseMs,
+      streak: mastery.streak,
+      missStreak: isCorrect ? 0 : Number(prevSession?.miss_streak ?? 0) + 1,
+    });
+    const newSessionSmartScore = Math.max(0, Math.min(100, (Number(prevSession?.smart_score ?? 0) + smartScoreBreakdown.delta)));
+
     const sessionUpdate = computeSessionUpdate({
-      prevSession,
+      prevSession: { ...prevSession, smart_score: newSessionSmartScore },
       isCorrect,
       currentQuestionId: questionId,
       activeDifficulty: skillRow?.difficulty_band ?? mastery.difficultyBand,
@@ -280,6 +292,7 @@ export async function POST(req) {
       asked_count: sessionUpdate.askedCount,
       correct_count: sessionUpdate.correctCount,
       active_difficulty: sessionUpdate.activeDifficulty,
+      smart_score: newSessionSmartScore,
       last_question_id: questionId,
       recent_question_ids: cycleRecentQuestionIds,
       remediation_recent_question_ids: inRecoveryNow
@@ -305,16 +318,7 @@ export async function POST(req) {
         : null,
     });
 
-    const smartScoreBreakdown = computeServerSmartScoreDelta({
-      isCorrect,
-      masteryScore: mastery.masteryScore,
-      confidence: mastery.confidence,
-      difficulty: currentQuestion?.difficulty || mastery.difficultyBand,
-      phase: effectivePhase,
-      responseMs,
-      streak: sessionUpdate.currentStreak,
-      missStreak: isCorrect ? 0 : Number(prevSession?.miss_streak ?? 0) + 1,
-    });
+    // We already calculated smartScoreBreakdown above to determine the band
 
     const responsePayload = {
       result: {

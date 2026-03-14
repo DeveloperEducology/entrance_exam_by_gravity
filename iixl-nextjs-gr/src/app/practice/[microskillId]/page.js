@@ -533,6 +533,8 @@ export default function PracticePage() {
   const [currentStage, setCurrentStage] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isWorkPadOpen, setIsWorkPadOpen] = useState(false);
+  const [sessionHistory, setSessionHistory] = useState([]);
+  const [showDebugTable, setShowDebugTable] = useState(false);
 
   const currentChallengeStage = CHALLENGE_STAGES[currentStage];
   const teacherToolsHref = currentStudentId
@@ -842,6 +844,21 @@ export default function PracticePage() {
       } else {
         // keep tokens untouched on wrong answers
       }
+
+      setSessionHistory((prev) => [
+        ...prev,
+        {
+          id: currentQuestion.id,
+          text: currentQuestion.questionText || (currentQuestion.parts?.[0]?.content) || 'N/A',
+          difficulty: currentQuestion.difficulty,
+          isCorrect: correct,
+          smartScore: Math.max(0, Math.min(100, (smartScore + Number(effectiveScore.delta || 0)))),
+          delta: Number(effectiveScore.delta || 0),
+          phase: returnedPhase,
+          time: (responseMs / 1000).toFixed(1) + 's',
+          meta: payload?.selectionMeta || adaptiveMeta,
+        }
+      ]);
 
       const upcoming = payload?.nextQuestion ?? null;
       setNextQuestion(upcoming);
@@ -1207,6 +1224,76 @@ export default function PracticePage() {
       >
         ✏️
       </button>
+
+      {/* Adaptive Debug Analysis Table */}
+      <div style={{ width: '100%', maxWidth: '1180px', marginTop: '3rem', padding: '1rem', background: 'rgba(255,255,255,0.8)', borderRadius: '16px', border: '1px solid #cbd5e1' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1e293b' }}>Adaptive Session Analysis (Debug)</h2>
+          <button 
+            onClick={() => setShowDebugTable(!showDebugTable)}
+            style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', background: '#e2e8f0', border: '1px solid #cbd5e1', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+          >
+            {showDebugTable ? 'Hide Table' : 'Show Table'}
+          </button>
+        </div>
+        
+        {showDebugTable && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>#</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Question ID</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Text Preview</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Difficulty</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Correct?</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Phase</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Delta</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>SmartScore</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Time</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Selection Meta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessionHistory.map((entry, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: entry.isCorrect ? 'transparent' : '#fff1f2' }}>
+                    <td style={{ padding: '0.75rem' }}>{idx + 1}</td>
+                    <td style={{ padding: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>{String(entry.id).slice(-8)}...</td>
+                    <td style={{ padding: '0.75rem', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.text}</td>
+                    <td style={{ padding: '0.75rem' }}>
+                      <span style={{ 
+                        padding: '0.2rem 0.5rem', 
+                        borderRadius: '999px', 
+                        background: entry.difficulty === 'hard' ? '#fee2e2' : entry.difficulty === 'medium' ? '#fef3c7' : '#f0fdf4',
+                        color: entry.difficulty === 'hard' ? '#991b1b' : entry.difficulty === 'medium' ? '#92400e' : '#166534',
+                        fontSize: '0.75rem',
+                        fontWeight: '700'
+                      }}>
+                        {entry.difficulty}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem' }}>{entry.isCorrect ? '✅' : '❌'}</td>
+                    <td style={{ padding: '0.75rem' }}>{entry.phase}</td>
+                    <td style={{ padding: '0.75rem', fontWeight: '700', color: entry.delta >= 0 ? '#166534' : '#991b1b' }}>
+                      {entry.delta >= 0 ? `+${entry.delta}` : entry.delta}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontWeight: '800' }}>{entry.smartScore}</td>
+                    <td style={{ padding: '0.75rem' }}>{entry.time}</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.7rem', color: '#64748b' }}>
+                      {entry.meta ? JSON.stringify(entry.meta) : 'N/A'}
+                    </td>
+                  </tr>
+                ))}
+                {sessionHistory.length === 0 && (
+                  <tr>
+                    <td colSpan="10" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>No questions answered yet in this session.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

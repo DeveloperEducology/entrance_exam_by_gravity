@@ -1,0 +1,385 @@
+[
+  {
+    "id": "easy-mult-1",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "questionText": "Multiply the numbers.",
+    "parts": [
+      { "type": "text", "content": "3 × 4 =" },
+      { "type": "input", "id": "ans", "answerType": "number" }
+    ],
+    "correctAnswerText": { "ans": "12" }
+  },
+  {
+    "id": "easy-mult-2",
+    "type": "mcq",
+    "difficulty": "easy",
+    "questionText": "What is 5 times 2?",
+    "options": ["7", "10", "12", "15"],
+    "correctAnswerIndex": 1
+  },
+  {
+    "id": "easy-mult-3",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "questionText": "Fill in the blank.",
+    "parts": [
+      { "type": "text", "content": "10 × 5 =" },
+      { "type": "input", "id": "ans", "answerType": "number" }
+    ],
+    "correctAnswerText": { "ans": "50" }
+  },
+  {
+    "id": "easy-mult-4",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "questionText": "Multiply.",
+    "parts": [
+      { "type": "text", "content": "6 × 3 =" },
+      { "type": "input", "id": "ans", "answerType": "number" }
+    ],
+    "correctAnswerText": { "ans": "18" }
+  },
+  {
+    "id": "easy-mult-5",
+    "type": "mcq",
+    "difficulty": "easy",
+    "questionText": "7 × 4 = ?",
+    "options": ["21", "24", "28", "32"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "id": "easy-mult-6",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "8 × 2 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "16" }
+  },
+  {
+    "id": "easy-mult-7",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "9 × 1 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "9" }
+  },
+  {
+    "id": "easy-mult-8",
+    "type": "mcq",
+    "difficulty": "easy",
+    "questionText": "Which is equal to 4 × 4?",
+    "options": ["8", "12", "16", "20"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "id": "easy-mult-9",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "0 × 7 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "0" }
+  },
+  {
+    "id": "easy-mult-10",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "5 × 5 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "25" }
+  },
+  {
+    "id": "easy-mult-11",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "2 × 8 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "16" }
+  },
+  {
+    "id": "easy-mult-12",
+    "type": "mcq",
+    "difficulty": "easy",
+    "questionText": "3 × 9 = ?",
+    "options": ["18", "21", "27", "30"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "id": "easy-mult-13",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "4 × 7 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "28" }
+  },
+  {
+    "id": "easy-mult-14",
+    "type": "fillInTheBlank",
+    "difficulty": "easy",
+    "parts": [
+      { "type": "text", "content": "6 × 6 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "36" }
+  },
+  {
+    "id": "easy-mult-15",
+    "type": "mcq",
+    "difficulty": "easy",
+    "questionText": "10 × 2 = ?",
+    "options": ["12", "18", "20", "22"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "id": "med-mult-1",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "12 × 5 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "60" }
+  },
+  {
+    "id": "med-mult-2",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "15 × 3 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "45" }
+  },
+  {
+    "id": "med-mult-3",
+    "type": "mcq",
+    "difficulty": "medium",
+    "questionText": "24 × 2 = ?",
+    "options": ["42", "48", "52", "60"],
+    "correctAnswerIndex": 1
+  },
+  {
+    "id": "med-mult-4",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "11 × 9 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "99" }
+  },
+  {
+    "id": "med-mult-5",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "13 × 4 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "52" }
+  },
+  {
+    "id": "med-mult-6",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "20 × 8 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "160" }
+  },
+  {
+    "id": "med-mult-7",
+    "type": "mcq",
+    "difficulty": "medium",
+    "questionText": "30 × 5 = ?",
+    "options": ["100", "150", "200", "250"],
+    "correctAnswerIndex": 1
+  },
+  {
+    "id": "med-mult-8",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "14 × 6 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "84" }
+  },
+  {
+    "id": "med-mult-9",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "18 × 2 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "36" }
+  },
+  {
+    "id": "med-mult-10",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "25 × 4 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "100" }
+  },
+  {
+    "id": "med-mult-11",
+    "type": "mcq",
+    "difficulty": "medium",
+    "questionText": "16 × 3 = ?",
+    "options": ["36", "48", "54", "60"],
+    "correctAnswerIndex": 1
+  },
+  {
+    "id": "med-mult-12",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "17 × 5 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "85" }
+  },
+  {
+    "id": "med-mult-13",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "21 × 4 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "84" }
+  },
+  {
+    "id": "med-mult-14",
+    "type": "fillInTheBlank",
+    "difficulty": "medium",
+    "parts": [
+      { "type": "text", "content": "19 × 3 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "57" }
+  },
+  {
+    "id": "med-mult-15",
+    "type": "mcq",
+    "difficulty": "medium",
+    "questionText": "12 × 12 = ?",
+    "options": ["124", "132", "144", "156"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "id": "hard-mult-1",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "questionText": "Calculate the value of 124 × 6.",
+    "parts": [
+      { "type": "text", "content": "124 × 6 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "744" }
+  },
+  {
+    "id": "hard-mult-2",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "questionText": "A store has 8 shelves. Each shelf has 245 books. How many books are there in total?",
+    "parts": [
+      { "type": "text", "content": "Total books =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "1960" }
+  },
+  {
+    "id": "hard-mult-3",
+    "type": "mcq",
+    "difficulty": "hard",
+    "questionText": "What is 350 × 4?",
+    "options": ["1200", "1350", "1400", "1500"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "id": "hard-mult-4",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "parts": [
+      { "type": "text", "content": "812 × 3 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "2436" }
+  },
+  {
+    "id": "hard-mult-5",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "questionText": "Multiply 1056 by 5.",
+    "parts": [
+      { "type": "text", "content": "Result =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "5280" }
+  },
+  {
+    "id": "hard-mult-6",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "questionText": "If one ticket costs $15 and you buy 42 tickets, what is the total cost?",
+    "parts": [
+      { "type": "text", "content": "Total cost = $" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "630" }
+  },
+  {
+    "id": "hard-mult-7",
+    "type": "mcq",
+    "difficulty": "hard",
+    "questionText": "Which product is the largest?",
+    "options": ["120 × 5", "200 × 3", "250 × 2", "150 × 4"],
+    "correctAnswerIndex": 1
+  },
+  {
+    "id": "hard-mult-8",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "parts": [
+      { "type": "text", "content": "999 × 2 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "1998" }
+  },
+  {
+    "id": "hard-mult-9",
+    "type": "fillInTheBlank",
+    "difficulty": "hard",
+    "parts": [
+      { "type": "text", "content": "315 × 7 =" },
+      { "type": "input", "id": "ans" }
+    ],
+    "correctAnswerText": { "ans": "2205" }
+  },
+  {
+    "id": "hard-mult-10",
+    "type": "mcq",
+    "difficulty": "hard",
+    "questionText": "What is 125 × 8?",
+    "options": ["800", "950", "1000", "1250"],
+    "correctAnswerIndex": 2
+  }
+]

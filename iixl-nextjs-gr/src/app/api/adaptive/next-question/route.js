@@ -46,10 +46,16 @@ export async function POST(req) {
       fetchQuestionsByMicroskill(db, microskillId),
     ]);
 
-    const targetDifficulty =
-      sessionState?.active_difficulty ??
-      skillState?.difficulty_band ??
-      'easy';
+    const currentSmartScore = Number(sessionState?.smart_score ?? 0);
+    let targetDifficulty = 'easy';
+    
+    if (currentSmartScore >= 70) {
+      targetDifficulty = 'hard';
+    } else if (currentSmartScore >= 40) {
+      targetDifficulty = 'medium';
+    } else {
+      targetDifficulty = 'easy';
+    }
 
     const recoveryContext = await getRecoveryContextFromAttempts(db, { sessionId });
 

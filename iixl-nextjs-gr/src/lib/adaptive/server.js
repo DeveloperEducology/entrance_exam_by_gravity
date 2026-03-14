@@ -490,18 +490,17 @@ export function chooseNextQuestion({
     ? candidates
     : questions.filter((q) => String(q.id) !== String(excludeQuestionId || ''));
   const normalizedTarget = normalizeDifficulty(targetDifficulty);
-  const sameDifficultyCountInPool = pool.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget).length;
   const debug = {
     totalQuestions: questions.length,
     unseenQuestions: candidates.length,
     poolQuestions: pool.length,
-    sameDifficultyInPool: sameDifficultyCountInPool,
     targetDifficulty: normalizedTarget,
     recentCount: recentSet.size,
   };
 
   if (pool.length === 0) return { question: null, reason: 'no_questions', debug };
 
+  // 0. Remediation Logic (High Priority)
   const remediationCode = String(remediation?.misconceptionCode ?? '').trim();
   const remediationEnabled = Boolean(remediationCode) && Number(remediation?.remaining ?? 0) > 0;
   if (remediationEnabled) {
@@ -513,7 +512,7 @@ export function chooseNextQuestion({
     });
 
     if (remediationPool.length > 0) {
-      const byDifficulty = remediationPool.filter((q) => normalizeDifficulty(q.difficulty) === normalizeDifficulty(targetDifficulty));
+      const byDifficulty = remediationPool.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget);
       const preferred = byDifficulty.length > 0 ? byDifficulty : remediationPool;
       const randomIndex = Math.floor(Math.random() * preferred.length);
       return {
@@ -524,10 +523,36 @@ export function chooseNextQuestion({
     }
   }
 
+  // 1. Try for target difficulty in candidates (unseen questions)
+  const sameDifficultyCandidates = candidates.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget);
+  if (sameDifficultyCandidates.length > 0) {
+    const randomIndex = Math.floor(Math.random() * sameDifficultyCandidates.length);
+    return {
+      question: sameDifficultyCandidates[randomIndex],
+      reason: 'target_band_reinforcement',
+      debug: { ...debug, searchStage: 'unseen_target' }
+    };
+  }
+
+  // 2. If target band is exhausted in candidates, check if we can repeat a question of the SAME difficulty
+  const sameDifficultyRepeats = questions.filter((q) => 
+    normalizeDifficulty(q.difficulty) === normalizedTarget && 
+    String(q.id) !== String(excludeQuestionId || '')
+  );
+  if (sameDifficultyRepeats.length > 0) {
+    const randomIndex = Math.floor(Math.random() * sameDifficultyRepeats.length);
+    return {
+      question: sameDifficultyRepeats[randomIndex],
+      reason: 'target_band_cycle_repeat',
+      debug: { ...debug, searchStage: 'seen_target_repeat' }
+    };
+  }
+
+  // 3. Fallback to pool (adjacent or any available)
   const same = pool.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget);
   if (same.length > 0) {
     const randomIndex = Math.floor(Math.random() * same.length);
-    return { question: same[randomIndex], reason: 'target_band_reinforcement', debug };
+    return { question: same[randomIndex], reason: 'pool_target_fallback', debug };
   }
 
   const currentIdx = DIFFICULTIES.indexOf(normalizedTarget);
@@ -590,14 +615,15 @@ export function computeMasteryUpdate({
   const prevAvgLatency = Number(prevState?.avg_latency_ms ?? 0);
   const prevDifficulty = normalizeDifficulty(prevState?.difficulty_band ?? 'easy');
 
-  let delta = isCorrect ? 0.05 : -0.06;
-  if (Number(responseMs) > 0 && Number(responseMs) <= 6000) delta += 0.01;
-  if (Number(responseMs) > 12000) delta -= 0.01;
+  // Slower mastery progression
+  let delta = isCorrect ? 0.025 : -0.04; 
+  if (Number(responseMs) > 0 && Number(responseMs) <= 6000) delta += 0.005;
+  if (Number(responseMs) > 15000) delta -= 0.01;
   if (hintUsed) delta -= 0.02;
   if (Number(attemptsOnQuestion ?? 1) > 1) delta -= 0.01;
 
   const masteryScore = Math.max(0.01, Math.min(0.99, prevScore + delta));
-  const confidence = Math.max(0.05, Math.min(0.99, prevConfidence + 0.03));
+  const confidence = Math.max(0.05, Math.min(0.99, prevConfidence + 0.02));
   const streak = isCorrect ? prevStreak + 1 : 0;
   const attemptsTotal = prevAttemptsTotal + 1;
   const correctTotal = prevCorrectTotal + (isCorrect ? 1 : 0);
@@ -605,9 +631,11 @@ export function computeMasteryUpdate({
     ? Math.round(((prevAvgLatency * prevAttemptsTotal) + Number(responseMs || 0)) / attemptsTotal)
     : Math.round(Number(responseMs || 0));
 
+  // Difficulty will now be primarily driven by SmartScore in the session update logic,
+  // but we keep a mastery fallback here.
   let difficultyBand = prevDifficulty;
-  if (streak >= 5 && masteryScore > 0.75) difficultyBand = shiftDifficulty(prevDifficulty, 1);
-  if (!isCorrect && masteryScore < 0.35) difficultyBand = shiftDifficulty(prevDifficulty, -1);
+  if (streak >= 8 && masteryScore > 0.8) difficultyBand = shiftDifficulty(prevDifficulty, 1);
+  if (!isCorrect && masteryScore < 0.3) difficultyBand = shiftDifficulty(prevDifficulty, -1);
 
   const nextReviewHours = masteryScore >= 0.85 ? 72 : (masteryScore >= 0.6 ? 24 : 8);
   const nextReviewAt = new Date(Date.now() + nextReviewHours * 60 * 60 * 1000).toISOString();
@@ -642,24 +670,38 @@ export function computeSessionUpdate({
   const currentStreak = isCorrect ? Number(prevSession?.current_streak ?? 0) + 1 : 0;
   const targetCorrectStreak = Number(prevSession?.target_correct_streak ?? 5);
   const priorPhase = String(prevSession?.phase ?? 'warmup');
-  const accuracy = askedCount > 0 ? correctCount / askedCount : 0;
-  const safeMastery = Number(masteryScore ?? 0);
-  const safeConfidence = Number(confidence ?? 0);
-  const safeLatency = Number(avgLatencyMs ?? 0);
-
+  const currentSmartScore = Number(prevSession?.smart_score ?? 0);
+  
+  // Enforce strict difficulty bands requested by user:
+  // 40: Easy, 70: Medium, 100: Hard
   let phase = priorPhase;
-  if (priorPhase === 'warmup' && askedCount >= 3) phase = 'core';
-  if (priorPhase === 'core' && currentStreak >= 3 && accuracy >= 0.6) phase = 'challenge';
-  if (priorPhase === 'challenge' && !isCorrect) phase = 'recovery';
-  if (!isCorrect && misconceptionCode) phase = 'recovery';
-  if (priorPhase === 'recovery' && currentStreak >= 2) phase = 'core';
+  let difficulty = 'easy';
+  
+  if (currentSmartScore >= 70) {
+    difficulty = 'hard';
+    phase = priorPhase === 'recovery' ? 'recovery' : 'challenge';
+  } else if (currentSmartScore >= 40) {
+    difficulty = 'medium';
+    phase = priorPhase === 'warmup' ? 'core' : priorPhase;
+  } else {
+    difficulty = 'easy';
+    phase = askedCount < 3 ? 'warmup' : 'core';
+  }
+
+  // Recovery override
+  if (!isCorrect && (priorPhase === 'challenge' || priorPhase === 'core')) {
+    phase = 'recovery';
+  }
+  if (priorPhase === 'recovery' && currentStreak >= 2) {
+    phase = currentSmartScore >= 70 ? 'challenge' : 'core';
+  }
+
+  const accuracy = askedCount > 0 ? correctCount / askedCount : 0;
   const stableForDone =
+    currentSmartScore >= 98 &&
     currentStreak >= targetCorrectStreak &&
-    accuracy >= 0.8 &&
-    safeMastery >= 0.85 &&
-    safeConfidence >= 0.65 &&
-    (safeLatency <= 9000 || safeLatency === 0);
-  if (stableForDone && activeDifficulty === 'hard') phase = 'done';
+    accuracy >= 0.8;
+  if (stableForDone && difficulty === 'hard') phase = 'done';
 
   const recentQuestionIds = [
     ...((prevSession?.recent_question_ids || []).map(String)),
@@ -672,7 +714,7 @@ export function computeSessionUpdate({
     correctCount,
     currentStreak,
     targetCorrectStreak,
-    activeDifficulty,
+    activeDifficulty: difficulty, // Override with strict band
     recentQuestionIds,
     accuracy,
   };
@@ -719,35 +761,29 @@ export function computeServerSmartScoreDelta({
   };
 
   if (isCorrect) {
-    const baseGain = 2.6 + (safeMastery * 2.8) + (safeConfidence * 1.6);
-    const streakBoost = Math.min(1.35, 1 + (Math.max(0, streak) * 0.06));
-    const raw = (baseGain * difficultyWeight * phaseWeight * streakBoost) - fastGuessPenalty - lowConfidencePenalty;
-    const delta = Math.round(Math.max(1, raw));
+    // Heavily reduced base gain to target ~4 points per question average
+    const baseGain = 1.2 + (safeMastery * 1.5) + (safeConfidence * 0.8);
+    const streakBoost = Math.min(1.2, 1 + (Math.max(0, streak) * 0.04));
+    
+    // Scale weights significantly down
+    const adjDiffWeight = 1.0 + (difficultyWeight - 1) * 0.5; // easy=1.0, med=1.1, hard=1.22
+    const adjPhaseWeight = 1.0 + (phaseWeight - 1) * 0.5;
+
+    const raw = (baseGain * adjDiffWeight * adjPhaseWeight * streakBoost) - (fastGuessPenalty * 0.5);
+    const delta = Math.round(Math.max(1, Math.min(8, raw))); // Cap gain at 8 to prevent jumps
     return {
       delta,
-      details: {
-        ...details,
-        mode: 'gain',
-        base: baseGain,
-        streakBoost,
-      },
+      details: { ...details, mode: 'gain', base: baseGain, streakBoost },
     };
   }
 
-  const baseLoss = 3.8 + (Math.max(0, missStreak) * 0.8);
-  const phaseLossWeight = String(phase || 'core').toLowerCase() === 'recovery' ? 0.8 : 1.0;
-  const difficultyLossWeight = 0.85 + ((difficultyWeight - 1) * 0.5);
+  const baseLoss = 4.0 + (Math.max(0, missStreak) * 1.0);
+  const phaseLossWeight = String(phase || 'core').toLowerCase() === 'recovery' ? 0.7 : 1.0;
+  const difficultyLossWeight = 0.8; // Lose less on harder questions
   const raw = (baseLoss * phaseLossWeight * difficultyLossWeight) + fastGuessPenalty;
-  const delta = -Math.round(Math.max(2, raw));
+  const delta = -Math.round(Math.max(3, raw));
   return {
     delta,
-    details: {
-      ...details,
-      mode: 'loss',
-      base: baseLoss,
-      phaseLossWeight,
-      difficultyLossWeight,
-      missStreak: Math.max(0, missStreak),
-    },
+    details: { ...details, mode: 'loss', base: baseLoss, missStreak: Math.max(0, missStreak) },
   };
 }
