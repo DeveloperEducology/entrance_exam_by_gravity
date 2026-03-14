@@ -440,9 +440,18 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 );
 
             case 'sequence':
+                const isCommaSeparated = Boolean(part?.isCommaSeparated || part?.is_comma_separated);
+                const children = Array.isArray(part.children) ? part.children : [];
                 return (
-                    <div key={index} className={styles.sequence}>
-                        {part.children.map((child, childIndex) => renderPart(child, `${index}-${childIndex}`))}
+                    <div key={index} className={`${styles.sequence} ${isCommaSeparated ? styles.commaSeparated : ''}`}>
+                        {children.map((child, childIndex) => (
+                            <span key={`${index}-${childIndex}`} className={styles.sequenceItem}>
+                                {renderPart(child, `${index}-${childIndex}`)}
+                                {isCommaSeparated && childIndex < children.length - 1 && (
+                                    <span className={styles.sequenceComma}>,</span>
+                                )}
+                            </span>
+                        ))}
                     </div>
                 );
 
