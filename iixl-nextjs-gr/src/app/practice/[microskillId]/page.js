@@ -1004,35 +1004,40 @@ export default function PracticePage() {
 
           {submitError && <p className={styles.solution}>{submitError}</p>}
 
-          {smartScoreBreakdown && (
-            <div className={styles.scoreDebugCard}>
-              <div className={styles.scoreDebugTitle}>SmartScore Breakdown</div>
-              <div className={styles.scoreDebugDelta}>
-                Change: <strong>{smartScoreBreakdown.delta > 0 ? `+${smartScoreBreakdown.delta}` : smartScoreBreakdown.delta}</strong>
-              </div>
-              <div className={styles.scoreDebugGrid}>
-                <span>Phase: {smartScoreBreakdown.details?.phase}</span>
-                <span>Difficulty: {smartScoreBreakdown.details?.difficulty}</span>
-                <span>Mastery: {Number(smartScoreBreakdown.details?.masteryScore ?? 0).toFixed(2)}</span>
-                <span>Confidence: {Number(smartScoreBreakdown.details?.confidence ?? 0).toFixed(2)}</span>
-                <span>Response: {Math.round(Number(smartScoreBreakdown.details?.responseMs ?? 0))}ms</span>
-                <span>Fast-guess penalty: {Number(smartScoreBreakdown.details?.fastGuessPenalty ?? 0).toFixed(1)}</span>
-              </div>
-            </div>
-          )}
+          {/* Developer Debug Tools - Only visible with ?debug=true */}
+          {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'true' && (
+            <>
+              {smartScoreBreakdown && (
+                <div className={styles.scoreDebugCard}>
+                  <div className={styles.scoreDebugTitle}>SmartScore Breakdown</div>
+                  <div className={styles.scoreDebugDelta}>
+                    Change: <strong>{smartScoreBreakdown.delta > 0 ? `+${smartScoreBreakdown.delta}` : smartScoreBreakdown.delta}</strong>
+                  </div>
+                  <div className={styles.scoreDebugGrid}>
+                    <span>Phase: {smartScoreBreakdown.details?.phase}</span>
+                    <span>Difficulty: {smartScoreBreakdown.details?.difficulty}</span>
+                    <span>Mastery: {Number(smartScoreBreakdown.details?.masteryScore ?? 0).toFixed(2)}</span>
+                    <span>Confidence: {Number(smartScoreBreakdown.details?.confidence ?? 0).toFixed(2)}</span>
+                    <span>Response: {Math.round(Number(smartScoreBreakdown.details?.responseMs ?? 0))}ms</span>
+                    <span>Fast-guess penalty: {Number(smartScoreBreakdown.details?.fastGuessPenalty ?? 0).toFixed(1)}</span>
+                  </div>
+                </div>
+              )}
 
-          {adaptiveMeta && (
-            <div className={styles.adaptiveDebugCard}>
-              <div className={styles.adaptiveDebugTitle}>Adaptive Debug</div>
-              <div className={styles.adaptiveDebugGrid}>
-                <span>Policy: {adaptiveMeta.policy || 'n/a'}</span>
-                <span>Phase: {adaptiveMeta.phase || adaptivePhase || 'n/a'}</span>
-                <span>Reason: {adaptiveMeta.reason || 'n/a'}</span>
-                <span>Difficulty: {adaptiveMeta.difficulty || currentQuestion?.difficulty || 'n/a'}</span>
-                <span>Remediation code: {adaptiveMeta.remediationCode || 'none'}</span>
-                <span>Remediation left: {Number(adaptiveMeta.remediationRemaining ?? 0)}</span>
-              </div>
-            </div>
+              {adaptiveMeta && (
+                <div className={styles.adaptiveDebugCard}>
+                  <div className={styles.adaptiveDebugTitle}>Adaptive Debug</div>
+                  <div className={styles.adaptiveDebugGrid}>
+                    <span>Policy: {adaptiveMeta.policy || 'n/a'}</span>
+                    <span>Phase: {adaptiveMeta.phase || adaptivePhase || 'n/a'}</span>
+                    <span>Reason: {adaptiveMeta.reason || 'n/a'}</span>
+                    <span>Difficulty: {adaptiveMeta.difficulty || currentQuestion?.difficulty || 'n/a'}</span>
+                    <span>Remediation code: {adaptiveMeta.remediationCode || 'none'}</span>
+                    <span>Remediation left: {Number(adaptiveMeta.remediationRemaining ?? 0)}</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {isAnswered && isCorrect === null && (
@@ -1160,34 +1165,11 @@ export default function PracticePage() {
 
         <aside className={styles.sidebar}>
           <div className={styles.sidebarCard}>
-            <div className={styles.sidebarLabel}>Questions answered</div>
-            <div className={styles.sidebarValue}>{questionsAnswered}</div>
-          </div>
-
-          <div className={styles.sidebarCard}>
-            <div className={styles.sidebarLabel}>Time elapsed</div>
-            <div className={styles.timerDisplay}>
-              <div className={styles.timeUnit}><div className={styles.timeValue}>{time.hrs}</div><div className={styles.timeLabel}>HR</div></div>
-              <div className={styles.timeUnit}><div className={styles.timeValue}>{time.mins}</div><div className={styles.timeLabel}>MIN</div></div>
-              <div className={styles.timeUnit}><div className={styles.timeValue}>{time.secs}</div><div className={styles.timeLabel}>SEC</div></div>
-            </div>
-          </div>
-
-          <div className={styles.sidebarCard}>
-            <div className={styles.sidebarLabel}>Adaptive status</div>
-            <div className={styles.sidebarValue} style={{ fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>Level:</span>
-                <span style={{ fontWeight: 600, color: '#333', textTransform: 'capitalize' }}>
-                  {adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>Phase:</span>
-                <span style={{ fontWeight: 600, color: '#0070f3', textTransform: 'capitalize' }}>
-                  {adaptivePhase}
-                </span>
-              </div>
+            <div className={styles.sidebarLabel}>🏆 SmartScore</div>
+            <div className={styles.sidebarValue} style={{ color: '#0f6ea8' }}>{smartScore}</div>
+            <div className={styles.badgeContainer}>
+              <span className={styles.levelBadge}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</span>
+              <span className={styles.phaseBadge}>{adaptivePhase}</span>
             </div>
           </div>
 
