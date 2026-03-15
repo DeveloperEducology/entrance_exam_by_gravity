@@ -28,7 +28,10 @@ export default function SpeakerButton({ text, className = '' }) {
     <button
       type="button"
       className={`${styles.speakerButton} ${className}`.trim()}
-      onClick={() => speakText(text)}
+      onClick={(e) => {
+        e.stopPropagation();
+        speakText(text);
+      }}
       aria-label="Read question text aloud"
       title="Read aloud"
     >

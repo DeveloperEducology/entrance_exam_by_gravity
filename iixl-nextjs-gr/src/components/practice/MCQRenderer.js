@@ -53,11 +53,19 @@ export default function MCQRenderer({
                                 : (!isComplexParts ? (option?.label || option?.text || '') : '');
 
                             return (
-                                <button
+                                <div
                                     key={index}
                                     className={`${styles.option} ${isSelected(index) ? styles.selected : ''} ${isAnswered ? styles.disabled : ''}`}
                                     onClick={() => handleOptionClick(index)}
-                                    disabled={isAnswered}
+                                    role="button"
+                                    tabIndex={isAnswered ? -1 : 0}
+                                    aria-pressed={isSelected(index)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleOptionClick(index);
+                                        }
+                                    }}
                                 >
                                     {question.isMultiSelect && (
                                         <div className={styles.checkbox}>
@@ -92,7 +100,7 @@ export default function MCQRenderer({
                                             <span className={styles.optionText}>{optionText}</span>
                                         )
                                     )}
-                                </button>
+                                </div>
                             );
                         })()
                     ))}
