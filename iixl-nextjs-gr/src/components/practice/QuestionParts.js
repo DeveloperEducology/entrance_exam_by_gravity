@@ -319,6 +319,22 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             if (res.in_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.in_vertical;
             if (res.correct_answer_value !== undefined && res.correctAnswerValue === undefined) res.correctAnswerValue = res.correct_answer_value;
             if (res.micro_skill_id !== undefined && res.microSkillId === undefined) res.microSkillId = res.micro_skill_id;
+            if (res.is_multi_select !== undefined && res.isMultiSelect === undefined) res.isMultiSelect = res.is_multi_select;
+
+            // Simple table normalization (headers: [], rows: [[]])
+            if ((res.type === 'table' || res.type === 'smartTable') && Array.isArray(res.headers) && !res.columns) {
+                res.columns = res.headers.map((h, i) => ({ key: `col_${i}`, header: h }));
+                if (Array.isArray(res.rows)) {
+                    res.rows = res.rows.map(row => {
+                        if (Array.isArray(row)) {
+                            const rowObj = {};
+                            row.forEach((cell, i) => { rowObj[`col_${i}`] = cell; });
+                            return rowObj;
+                        }
+                        return row;
+                    });
+                }
+            }
 
             if (Array.isArray(res.children)) {
                 res.children = res.children.map(normalize);

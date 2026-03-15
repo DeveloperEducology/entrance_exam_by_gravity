@@ -178,3 +178,12 @@ p {
   font-size: clamp(0.95rem, 1.5vw, 1.1rem);
   line-height: 1.7;
 }
+
+/* Custom Color Tag Support */
+color[value="green"] { color: #16a34a; font-weight: 600; }
+color[value="red"] { color: #dc2626; font-weight: 600; }
+color[value="blue"] { color: #2563eb; font-weight: 600; }
+color[value="orange"] { color: #ea580c; font-weight: 600; }
+color[value="purple"] { color: #9333ea; font-weight: 600; }
+color[value="gray"] { color: #4b5563; font-weight: 600; }
+color[value="black"] { color: #000000; font-weight: 600; }
