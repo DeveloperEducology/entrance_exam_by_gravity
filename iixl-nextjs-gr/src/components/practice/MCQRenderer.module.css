@@ -99,6 +99,19 @@
     justify-content: center;
 }
 
+.optionParts {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.partsInOption {
+    justify-content: center !important;
+    gap: 0.4rem !important;
+    flex-wrap: nowrap !important;
+}
+
 .optionMedia svg {
     width: 100%;
     max-height: 140px;

@@ -45,46 +45,54 @@ export default function MCQRenderer({
                 <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''}`}>
                     {question.options.map((option, index) => (
                         (() => {
-                            const optionImageSrc = getImageSrc(option);
-                            const optionText = typeof option === 'string' ? option : option?.label || option?.text || '';
+                            // Support for complex parts in options
+                            const isComplexParts = Array.isArray(option);
+                            const optionImageSrc = !isComplexParts ? getImageSrc(option) : '';
+                            const optionText = typeof option === 'string' 
+                                ? option 
+                                : (!isComplexParts ? (option?.label || option?.text || '') : '');
 
                             return (
-                        <button
-                            key={index}
-                            className={`${styles.option} ${isSelected(index) ? styles.selected : ''} ${isAnswered ? styles.disabled : ''}`}
-                            onClick={() => handleOptionClick(index)}
-                            disabled={isAnswered}
-                        >
-                            {question.isMultiSelect && (
-                                <div className={styles.checkbox}>
-                                    {isSelected(index) && '✓'}
-                                </div>
-                            )}
-                            {isInlineSvg(option) ? (
-                                <div
-                                    className={styles.optionMedia}
-                                    dangerouslySetInnerHTML={{ __html: option }}
-                                />
-                            ) : isImageUrl(optionImageSrc) ? (
-                                <SafeImage
-                                    src={optionImageSrc}
-                                    alt={`Option ${index + 1}`}
-                                    className={styles.optionImage}
-                                    width={220}
-                                    height={140}
-                                    sizes="(max-width: 768px) 40vw, 220px"
-                                />
-                            ) : (
-                                hasInlineHtml(optionText) ? (
-                                    <span
-                                        className={styles.optionText}
-                                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(optionText) }}
-                                    />
-                                ) : (
-                                    <span className={styles.optionText}>{optionText}</span>
-                                )
-                            )}
-                        </button>
+                                <button
+                                    key={index}
+                                    className={`${styles.option} ${isSelected(index) ? styles.selected : ''} ${isAnswered ? styles.disabled : ''}`}
+                                    onClick={() => handleOptionClick(index)}
+                                    disabled={isAnswered}
+                                >
+                                    {question.isMultiSelect && (
+                                        <div className={styles.checkbox}>
+                                            {isSelected(index) && '✓'}
+                                        </div>
+                                    )}
+                                    {isComplexParts ? (
+                                        <div className={styles.optionParts}>
+                                            <QuestionParts parts={option} className={styles.partsInOption} />
+                                        </div>
+                                    ) : isInlineSvg(option) ? (
+                                        <div
+                                            className={styles.optionMedia}
+                                            dangerouslySetInnerHTML={{ __html: option }}
+                                        />
+                                    ) : isImageUrl(optionImageSrc) ? (
+                                        <SafeImage
+                                            src={optionImageSrc}
+                                            alt={`Option ${index + 1}`}
+                                            className={styles.optionImage}
+                                            width={220}
+                                            height={140}
+                                            sizes="(max-width: 768px) 40vw, 220px"
+                                        />
+                                    ) : (
+                                        hasInlineHtml(optionText) ? (
+                                            <span
+                                                className={styles.optionText}
+                                                dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(optionText) }}
+                                            />
+                                        ) : (
+                                            <span className={styles.optionText}>{optionText}</span>
+                                        )
+                                    )}
+                                </button>
                             );
                         })()
                     ))}
