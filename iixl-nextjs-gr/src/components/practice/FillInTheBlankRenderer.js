@@ -134,6 +134,7 @@ export default function FillInTheBlankRenderer({
     const [viewportWidth, setViewportWidth] = useState(null);
     const [showKeypad, setShowKeypad] = useState(false);
 
+
     const getValue = (id) => {
         if (typeof userAnswer === 'object' && userAnswer !== null) {
             return userAnswer[id] ?? '';
@@ -179,6 +180,13 @@ export default function FillInTheBlankRenderer({
             // Normalize common root and part fields
             if (res.question_text !== undefined && res.questionText === undefined) res.questionText = res.question_text;
             if (res.adaptive_config !== undefined && res.adaptiveConfig === undefined) res.adaptiveConfig = res.adaptive_config;
+            if (typeof res.adaptiveConfig === 'string') {
+                try {
+                    res.adaptiveConfig = JSON.parse(res.adaptiveConfig);
+                } catch {
+                    // stay as string
+                }
+            }
             if (res.show_submit_button !== undefined && res.showSubmitButton === undefined) res.showSubmitButton = res.show_submit_button;
             if (res.is_vertical !== undefined && res.isVertical === undefined) res.isVertical = res.is_vertical;
             if (res.inVertical !== undefined && res.isVertical === undefined) res.isVertical = res.inVertical;
@@ -209,6 +217,13 @@ export default function FillInTheBlankRenderer({
 
         return normalize(question);
     }, [question]);
+
+    useEffect(() => {
+        const configShow = q.adaptiveConfig?.showKeypad ?? q.showKeypad;
+        if (configShow !== undefined) {
+            setShowKeypad(Boolean(configShow));
+        }
+    }, [q.adaptiveConfig?.showKeypad, q.showKeypad]);
 
     const getRepeatCount = (value) => {
         const parsed = Number(value);
@@ -260,12 +275,19 @@ export default function FillInTheBlankRenderer({
         const newAnswer = { ...(userAnswer || {}), [inputId]: value };
         onAnswer(newAnswer);
 
-        // Check if we should move focus (shared logic for keypad and keyboard)
+        // Auto-advance logic
         const inputEl = arithmeticCellRefs.current[inputId];
-        if (inputEl && value.length > 0 && inputEl.maxLength > 0 && value.length >= inputEl.maxLength) {
-            // Find current focus flow for tables or arithmetic
-            // This is a bit complex as focusFlow is local to renderers.
-            // For now, let's keep it simple or lift focusFlow if needed.
+        const maxLen = inputEl?.maxLength || (q.adaptiveConfig?.autoAdvance ? 1 : 0);
+        
+        if (q.adaptiveConfig?.autoAdvance && value.length >= maxLen && value.length > 0) {
+            const inputs = Array.from(containerRef.current?.querySelectorAll('input:not([disabled])') || []);
+            const currentIndex = inputs.indexOf(inputEl);
+            if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+                setTimeout(() => {
+                    inputs[currentIndex + 1].focus();
+                    if (inputs[currentIndex + 1].select) inputs[currentIndex + 1].select();
+                }, 10);
+            }
         }
     };
 
@@ -280,12 +302,16 @@ export default function FillInTheBlankRenderer({
         } else if (keyValue === 'CLEAR') {
             newVal = '';
         } else {
-            const maxLen = inputEl ? inputEl.maxLength : (currentVal.length + 1);
-            if (maxLen <= 0 || currentVal.length < maxLen || (inputEl && inputEl.type !== 'text')) {
-                // If maxLen is 1 (digit) and we have a value, replace or ignore?
-                // Sudoku-style: replace if maxLen is 1.
-                if (maxLen === 1) newVal = keyValue;
+            const maxLen = inputEl ? inputEl.maxLength : (currentVal.length + (keyValue.length || 1));
+            // If it's a multi-character string (word/emoji) and we are at maxLen, should we replace or ignore?
+            // For strings, we usually want to allow them if they fit.
+            if (maxLen <= 0 || currentVal.length + keyValue.length <= maxLen || (inputEl && inputEl.type !== 'text')) {
+                // If maxLen is 1 (digit) and we have a value, replace if it's a single char, or append if it fits.
+                if (maxLen === 1 && currentVal.length > 0) newVal = keyValue;
                 else newVal = currentVal + keyValue;
+            } else if (maxLen > 0 && keyValue.length >= maxLen) {
+                // If the key itself is longer than or equal to maxLen, let it replace the whole thing if it fits maxLen
+                newVal = keyValue.slice(0, maxLen);
             }
         }
 
@@ -1462,19 +1488,32 @@ export default function FillInTheBlankRenderer({
 
                 {!isAnswered && showKeypad && (
                     <div className={styles.virtualKeypad}>
-                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', '>', '<', '=', '⌫'].map((key) => (
-                            <button
-                                key={key}
-                                type="button"
-                                className={styles.keypadButton}
-                                onMouseDown={(e) => {
-                                    e.preventDefault(); // Keep focus on input
-                                    handleKeypadPress(key === '⌫' ? 'BACKSPACE' : key);
-                                }}
-                            >
-                                {key}
-                            </button>
-                        ))}
+                        {(q.adaptiveConfig?.keypadKeys || q.keypadKeys || ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', '>', '<', '=', '⌫']).map((key, i) => {
+                            const label = typeof key === 'object' ? key.label : key;
+                            const value = typeof key === 'object' ? key.value : (key === '⌫' ? 'BACKSPACE' : key);
+                            const isIcon = typeof key === 'object' && (key.icon || key.image);
+                            
+                            return (
+                                <button
+                                    key={typeof key === 'object' ? (key.id || `key-${i}`) : `key-${key}-${i}`}
+                                    type="button"
+                                    className={`${styles.keypadButton} ${String(label).length > 2 ? styles.keypadButtonWide : ''}`}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault(); // Keep focus on input
+                                        handleKeypadPress(value);
+                                    }}
+                                >
+                                    {isIcon ? (
+                                        <SafeImage src={key.icon || key.image} alt={label} width={24} height={24} />
+                                    ) : (isInlineSvg(label) ? (
+                                        <div 
+                                            className={styles.keypadSvgWrap} 
+                                            dangerouslySetInnerHTML={{ __html: label }} 
+                                        />
+                                    ) : label)}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 

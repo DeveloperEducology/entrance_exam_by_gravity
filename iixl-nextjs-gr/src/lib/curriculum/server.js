@@ -287,7 +287,10 @@ export async function getHomeGradesData() {
     return acc;
   }, {});
 
-  return sortByOrder(grades).map((grade) => ({
+  // Only show grades that are marked as is_active: true (defaults to true if undefined)
+  const activeGrades = grades.filter((g) => g.is_active !== false);
+
+  return sortByOrder(activeGrades).map((grade) => ({
     ...grade,
     subjects: sortByOrder(subjectsByGrade[grade.id] || []),
   }));

@@ -28,6 +28,7 @@ export default async function Home() {
           <nav className={styles.nav}>
             <a href="#" className={styles.navLink}>Learning</a>
             <Link href="/analytics" className={styles.navLink}>Analytics</Link>
+            <Link href="/exam" className={styles.navLink}>Mock Exams</Link>
             <Link href="/super-admin" className={styles.navLink}>Admin</Link>
           </nav>
           <div className={styles.authButtons}>
