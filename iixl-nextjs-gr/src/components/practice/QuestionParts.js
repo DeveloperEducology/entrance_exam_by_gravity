@@ -7,6 +7,7 @@ import SpeakerButton from './SpeakerButton';
 import SafeImage from './SafeImage';
 import { latexWithPlaceholderBoxes, renderLatexToHtml } from './latexUtils';
 import FractionModelVisual from './FractionModelVisual';
+import ArithmeticBlock from './ArithmeticBlock';
 
 /**
  * @typedef {Object} QuestionPart
@@ -19,24 +20,104 @@ import FractionModelVisual from './FractionModelVisual';
  * @property {number} [count] - Repeat image part this many times.
  */
 
-function renderInlineMarkdown(text) {
-    const normalized = String(text ?? '');
+function renderInlineMarkdown(value) {
+    const normalized = String(value ?? '');
     if (!normalized) return null;
 
-    const tokens = normalized.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g).filter(Boolean);
+    const renderTextWithBoxes = (text, keyPrefix = '') => {
+        const tokens = text.split(/(\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\])/g).filter(Boolean);
+        return tokens.map((token, idx) => {
+            if (token.startsWith('[') && token.endsWith(']')) {
+                const content = token.slice(1, -1).trim();
+                return (
+                    <span key={`${keyPrefix}-box-${idx}`} className={styles.smallBox}>
+                        {content}
+                    </span>
+                );
+            }
+            if ((token.startsWith('\\(') && token.endsWith('\\)')) || (token.startsWith('\\[') && token.endsWith('\\]'))) {
+                const isDisplay = token.startsWith('\\[');
+                const latexContent = token.slice(2, -2).trim();
 
-    return tokens.map((token, idx) => {
-        if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
-            return <strong key={`md-b-${idx}`}>{token.slice(2, -2)}</strong>;
+                // If LaTeX contains placeholders [id], render it with boxes
+                if (latexContent.includes('[') && latexContent.includes(']')) {
+                    const latexWithBoxes = latexWithPlaceholderBoxes(latexContent);
+                    return (
+                        <span
+                            key={`${keyPrefix}-latex-int-${idx}`}
+                            className={isDisplay ? styles.mathLatexDisplay : ''}
+                            dangerouslySetInnerHTML={{ __html: renderLatexToHtml(latexWithBoxes, isDisplay) }}
+                        />
+                    );
+                }
+
+                return (
+                    <span
+                        key={`${keyPrefix}-latex-${idx}`}
+                        className={isDisplay ? styles.mathLatexDisplay : ''}
+                        dangerouslySetInnerHTML={{ __html: renderLatexToHtml(latexContent, isDisplay) }}
+                    />
+                );
+            }
+            const subTokens = token.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g).filter(Boolean);
+            return subTokens.map((st, sidx) => {
+                if (st.startsWith('**') && st.endsWith('**') && st.length > 4) {
+                    return <strong key={`${keyPrefix}-b-${idx}-${sidx}`}>{st.slice(2, -2)}</strong>;
+                }
+                if (st.startsWith('*') && st.endsWith('*') && st.length > 2) {
+                    return <em key={`${keyPrefix}-i-${idx}-${sidx}`}>{st.slice(1, -1)}</em>;
+                }
+                if (st.startsWith('`') && st.endsWith('`') && st.length > 2) {
+                    return <code key={`${keyPrefix}-c-${idx}-${sidx}`}>{st.slice(1, -1)}</code>;
+                }
+                return <span key={`${keyPrefix}-t-${idx}-${sidx}`}>{st}</span>;
+            });
+        });
+    };
+
+    // Check for markdown table (simple check for |---|)
+    if (normalized.includes('|') && normalized.includes('---')) {
+        const lines = normalized.trim().split('\n');
+        const tableLines = lines.filter(l => l.trim().startsWith('|') && l.trim().endsWith('|'));
+
+        if (tableLines.length >= 3) {
+            const parseRow = (line) => line.trim().split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1).map(c => c.trim());
+            const headers = parseRow(tableLines[0]);
+            const separator = parseRow(tableLines[1]);
+
+            if (separator.every(s => s.includes('-'))) {
+                const rows = tableLines.slice(2).map(parseRow);
+                return (
+                    <div className={styles.markdownTableWrap}>
+                        <table className={styles.smartTable}>
+                            <thead>
+                                <tr>
+                                    {headers.map((h, i) => <th key={i} className={styles.smartTableHeaderCell}>{renderTextWithBoxes(h, `h${i}`)}</th>)}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, ri) => (
+                                    <tr key={ri}>
+                                        {row.map((cell, ci) => (
+                                            <td key={ci} className={styles.smartTableCell}>
+                                                {renderTextWithBoxes(cell, `r${ri}c${ci}`)}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            }
         }
-        if (token.startsWith('*') && token.endsWith('*') && token.length > 2) {
-            return <em key={`md-i-${idx}`}>{token.slice(1, -1)}</em>;
-        }
-        if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
-            return <code key={`md-c-${idx}`}>{token.slice(1, -1)}</code>;
-        }
-        return <span key={`md-t-${idx}`}>{token}</span>;
-    });
+    }
+
+    return (
+        <span className={styles.markdownText}>
+            {renderTextWithBoxes(normalized, 'main')}
+        </span>
+    );
 }
 
 function renderLongMultiply(part, index, styles) {
@@ -205,6 +286,27 @@ function renderButterflyFraction(part, index, styles) {
                 <text x="360" y="230" className={styles.bfText}>{layout.rightFraction?.den}</text>
             </svg>
         </div>
+    );
+}
+
+function renderVerticalMultiply(part, index, styles) {
+    const cfg = part?.layout || {};
+    return (
+        <ArithmeticBlock
+            key={index}
+            v1={cfg.v1}
+            v2={cfg.v2}
+            operator={cfg.operator}
+            result={cfg.result || cfg.ans || cfg.answer}
+            showQuestionMark={cfg.showQuestionMark}
+            carries={Array.isArray(cfg.carries) ? cfg.carries : []}
+            highlights={{
+                top: Array.isArray(cfg.highlightTop) ? cfg.highlightTop : [],
+                bottom: Array.isArray(cfg.highlightBottom) ? cfg.highlightBottom : [],
+                result: Array.isArray(cfg.highlightResult) ? cfg.highlightResult : []
+            }}
+            extraSpacing={Boolean(cfg.extraSpacing)}
+        />
     );
 }
 
@@ -490,17 +592,6 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 );
             }
 
-            case 'math':
-                return (
-                    <div key={index} className={styles.mathLatex}>
-                        <span
-                            dangerouslySetInnerHTML={{
-                                __html: renderLatexToHtml(part.content, false),
-                            }}
-                        />
-                    </div>
-                );
-
             case 'mathText':
                 return (
                     <span key={index} className={styles.math}>
@@ -522,6 +613,10 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
 
             case 'longMultiply':
                 return renderLongMultiply(part, index, styles);
+
+            case 'verticalMultiply':
+            case 'v1v2Multiply':
+                return renderVerticalMultiply(part, index, styles);
 
             case 'table':
             case 'smartTable':
