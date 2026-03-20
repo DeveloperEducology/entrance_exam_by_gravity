@@ -43,6 +43,13 @@
     padding-left: 0.5rem;
 }
 
+@media (max-width: 768px) {
+    .questionContent {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 @media (max-width: 600px) {
     .questionContent {
         margin-bottom: 1rem;
@@ -550,6 +557,13 @@
     padding: 0.2rem 0;
 }
 
+@media (max-width: 768px) {
+    .gridArithmeticWrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 .gridArithmetic {
     display: grid;
     width: max-content;
@@ -784,6 +798,13 @@
     padding: 1rem 0.5rem;
     display: flex;
     justify-content: left;
+}
+
+@media (max-width: 768px) {
+    .smartTableOuter {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 .smartTableContainer {
