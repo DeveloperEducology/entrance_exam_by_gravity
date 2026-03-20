@@ -12,6 +12,7 @@ import {
     renderLatexToHtml
 } from './latexUtils';
 import FractionModelVisual from './FractionModelVisual';
+import ArithmeticBlock from './ArithmeticBlock';
 
 function InlineLatexBlanks({
     part,
@@ -24,6 +25,7 @@ function InlineLatexBlanks({
     getInputConfig,
     inputRefs,
     showKeypad,
+    correctAnswers, // Add this
     isCorrect // Add this
 }) {
     const wrapperRef = useRef(null);
@@ -74,11 +76,13 @@ function InlineLatexBlanks({
                 <span dangerouslySetInnerHTML={{ __html: html }} />
                 {visibleAnchors.map((anchor) => {
                     const inputConfig = getInputConfig({ id: anchor.id, answerType: part?.answerType });
-                    const maxLength = Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : 1;
+                    const expected = correctAnswers?.[anchor.id] ?? '';
+                    const defaultMax = expected ? String(expected).length : 8;
+                    const maxLength = Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : defaultMax;
                     const hasExplicitWidth = part?.blankWidth !== undefined && part?.blankWidth !== null && String(part.blankWidth).trim() !== '';
                     const autoWidth = maxLength <= 1
-                        ? Math.max(30, Math.min(44, (anchor.width || 40) * 0.62))
-                        : Math.max(46, Math.min(98, (anchor.width || 56) * 0.8));
+                        ? Math.max(28, Math.min(38, (anchor.width || 36) * 0.6))
+                        : Math.max(40, Math.min(80, (anchor.width || 50) * 0.8));
                     const width = hasExplicitWidth
                         ? (typeof part.blankWidth === 'number' ? `${part.blankWidth}px` : String(part.blankWidth))
                         : `${autoWidth}px`;
@@ -100,7 +104,7 @@ function InlineLatexBlanks({
                             aria-label={anchor.id}
                             inputMode={showKeypad ? 'none' : inputConfig.inputMode}
                             pattern={inputConfig.pattern}
-                            maxLength={Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : undefined}
+                            maxLength={maxLength}
                             ref={(el) => {
                                 if (el && inputRefs) inputRefs.current[anchor.id] = el;
                             }}
@@ -289,6 +293,112 @@ export default function FillInTheBlankRenderer({
                 }, 10);
             }
         }
+    };
+
+    const renderInput = (partId, properties = {}) => {
+        const inputConfig = getInputConfig({ id: partId, ...properties });
+        const val = getValue(partId);
+        
+        // Dynamic maxLength based on correct result if available
+        const expected = correctAnswers?.[partId] ?? '';
+        const defaultMax = expected ? String(expected).length : 4;
+        const maxLength = Number.isFinite(Number(properties?.maxLength)) 
+            ? Number(properties.maxLength) 
+            : defaultMax;
+
+        return (
+            <input
+                key={`raw-input-${partId}`}
+                type="text"
+                className={styles.input}
+                value={val}
+                onChange={(e) => handleInputChange(partId, e.target.value)}
+                onFocus={() => setLastFocusedId(partId)}
+                ref={(el) => {
+                    if (el) arithmeticCellRefs.current[partId] = el;
+                }}
+                disabled={isAnswered}
+                placeholder={properties.placeholder || ''}
+                aria-label={properties.placeholder || partId || 'blank input'}
+                style={{ width: properties.width || (maxLength <= 1 ? '32px' : `${Math.max(44, maxLength * 10 + 12)}px`) }}
+                inputMode={showKeypad ? 'none' : inputConfig.inputMode}
+                pattern={inputConfig.pattern}
+                maxLength={maxLength}
+            />
+        );
+    };
+
+    const wrapPart = (part, index, content) => {
+        if (content === null) return null;
+        const isVertical = Boolean(part?.isVertical ?? q.isVertical);
+        return (
+            <div
+                key={`wrap-${index}`}
+                className={`${styles.partWrapper} ${isVertical ? styles.verticalPart : styles.inlinePart}`}
+            >
+                {content}
+            </div>
+        );
+    };
+
+    const renderTextWithBlanks = (text, keyPrefix = '') => {
+        const normalized = String(text ?? '');
+        const tokens = normalized.split(/(\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\])/g).filter(Boolean);
+        return tokens.map((token, idx) => {
+            if (token.startsWith('[') && token.endsWith(']')) {
+                const blankId = token.slice(1, -1).trim() || `md_p_${keyPrefix}_${idx}`;
+                return (
+                    <span key={`blank-${idx}`} className={styles.inlineBlankWrap}>
+                        {renderInput(blankId, { placeholder: '' })}
+                    </span>
+                );
+            }
+            if ((token.startsWith('\\(') && token.endsWith('\\)')) || (token.startsWith('\\[') && token.endsWith('\\]'))) {
+                const isDisplay = token.startsWith('\\[');
+                const latexContent = token.slice(2, -2).trim();
+
+                // If LaTeX contains placeholders [id], render it interactively
+                if (latexContent.includes('[') && latexContent.includes(']')) {
+                    const latexHoles = latexWithInteractivePlaceholders(latexContent);
+                    const placeholderIds = extractLatexPlaceholderIds(latexContent);
+                    const html = renderLatexToHtml(latexHoles, isDisplay);
+                    
+                    return (
+                        <div key={`latex-int-${idx}`} className={isDisplay ? styles.mathLatexDisplay : styles.mathLatexInteractive}>
+                            <InlineLatexBlanks
+                                part={{ content: latexContent }}
+                                html={html}
+                                placeholderIds={placeholderIds}
+                                userAnswer={userAnswer}
+                                isAnswered={isAnswered}
+                                onInputChange={handleInputChange}
+                                onFocus={setLastFocusedId}
+                                inputRefs={arithmeticCellRefs}
+                                getInputConfig={getInputConfig}
+                                showKeypad={showKeypad}
+                                correctAnswers={correctAnswers}
+                            />
+                        </div>
+                    );
+                }
+
+                return (
+                    <span
+                        key={`latex-${idx}`}
+                        className={isDisplay ? styles.mathLatexDisplay : ''}
+                        dangerouslySetInnerHTML={{ __html: renderLatexToHtml(latexContent, isDisplay) }}
+                    />
+                );
+            }
+            // Handle basic bold/italic within the text token
+            const subTokens = token.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g).filter(Boolean);
+            return subTokens.map((st, sidx) => {
+                if (st.startsWith('**') && st.endsWith('**')) return <strong key={sidx}>{st.slice(2, -2)}</strong>;
+                if (st.startsWith('*') && st.endsWith('*')) return <em key={sidx}>{st.slice(1, -1)}</em>;
+                if (st.startsWith('`') && st.endsWith('`')) return <code key={sidx}>{st.slice(1, -1)}</code>;
+                return <span key={sidx}>{st}</span>;
+            });
+        });
     };
 
     const handleKeypadPress = (keyValue) => {
@@ -737,6 +847,26 @@ export default function FillInTheBlankRenderer({
                     </div>
                 )}
             </div>
+        );
+    };
+    const renderVerticalMultiply = (part) => {
+        const cfg = part?.layout || {};
+        const inputId = part.id || 'vertical_input';
+        const expectedAns = String(cfg.expect || cfg.ans || cfg.answer || '');
+
+        return (
+            <ArithmeticBlock
+                v1={cfg.v1}
+                v2={cfg.v2}
+                operator={cfg.operator}
+                result={expectedAns}
+                inputId={inputId}
+                userValue={getValue(inputId)}
+                onInputChange={handleInputChange}
+                isAnswered={isAnswered}
+                showQuestionMark={cfg.showQuestionMark}
+                carries={Array.isArray(cfg.carries) ? cfg.carries : []}
+            />
         );
     };
 
@@ -1230,19 +1360,6 @@ export default function FillInTheBlankRenderer({
         }
     }, [question?.id, isAnswered]);
 
-    const wrapPart = (part, index, content) => {
-        if (content === null) return null;
-        const isVertical = Boolean(part?.isVertical ?? q.isVertical);
-        return (
-            <div
-                key={`wrap-${index}`}
-                className={`${styles.partWrapper} ${isVertical ? styles.verticalPart : styles.inlinePart}`}
-            >
-                {content}
-            </div>
-        );
-    };
-
     const renderPart = (part, index) => {
         switch (part.type) {
             case 'text':
@@ -1279,7 +1396,51 @@ export default function FillInTheBlankRenderer({
                                 dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
                             />
                         ) : (
-                            <span className={styles.text}>{part.content}</span>
+                            <span className={styles.text}>
+                                {(() => {
+                                    const normalized = String(part.content ?? '');
+                                    if (!normalized) return null;
+
+                                    if (normalized.includes('|') && normalized.includes('---')) {
+                                        const lines = normalized.trim().split('\n');
+                                        const tableLines = lines.filter(l => l.trim().startsWith('|') && l.trim().endsWith('|'));
+                                        
+                                        if (tableLines.length >= 3) {
+                                            const parseRow = (line) => line.trim().split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1).map(c => c.trim());
+                                            const headers = parseRow(tableLines[0]);
+                                            const separator = parseRow(tableLines[1]);
+
+                                            if (separator.every(s => s.includes('-'))) {
+                                                const rows = tableLines.slice(2).map(parseRow);
+                                                return (
+                                                    <div className={styles.markdownTableWrap}>
+                                                        <table className={styles.smartTable}>
+                                                            <thead>
+                                                                <tr>
+                                                                    {headers.map((h, i) => <th key={i} className={styles.smartTableHeaderCell}>{renderTextWithBlanks(h, `h${i}`)}</th>)}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {rows.map((row, ri) => (
+                                                                    <tr key={ri}>
+                                                                        {row.map((cell, ci) => (
+                                                                            <td key={ci} className={styles.smartTableCell}>
+                                                                                {renderTextWithBlanks(cell, `r${ri}c${ci}`)}
+                                                                            </td>
+                                                                        ))}
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                );
+                                            }
+                                        }
+                                    }
+
+                                    return renderTextWithBlanks(normalized, 'main');
+                                })()}
+                            </span>
                         )}
                     </span>
                 ));
@@ -1337,26 +1498,7 @@ export default function FillInTheBlankRenderer({
 
             case 'blank':
             case 'input':
-                const inputConfig = getInputConfig(part);
-                return wrapPart(part, index, (
-                    <input
-                        type="text"
-                        className={styles.input}
-                        value={getValue(part.id)}
-                        onChange={(e) => handleInputChange(part.id, e.target.value)}
-                        onFocus={() => setLastFocusedId(part.id)}
-                        ref={(el) => {
-                            if (el) arithmeticCellRefs.current[part.id] = el;
-                        }}
-                        disabled={isAnswered}
-                        placeholder={part?.placeholder || ''}
-                        aria-label={part?.placeholder || part?.id || 'blank input'}
-                        style={{ width: part.width || '80px' }}
-                        inputMode={showKeypad ? 'none' : inputConfig.inputMode}
-                        pattern={inputConfig.pattern}
-                        maxLength={Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : undefined}
-                    />
-                ));
+                return wrapPart(part, index, renderInput(part.id, part));
 
             case 'arithmeticLayout':
                 return wrapPart(part, index, renderArithmeticLayout(part));
@@ -1378,6 +1520,7 @@ export default function FillInTheBlankRenderer({
                         inputRefs={arithmeticCellRefs}
                         getInputConfig={getInputConfig}
                         showKeypad={showKeypad}
+                        correctAnswers={correctAnswers}
                     />
                 ));
             }
@@ -1401,6 +1544,10 @@ export default function FillInTheBlankRenderer({
 
             case 'butterflyFraction':
                 return wrapPart(part, index, renderButterflyFraction(part));
+
+            case 'verticalMultiply':
+            case 'v1v2Multiply':
+                return wrapPart(part, index, renderVerticalMultiply(part));
 
             case 'table':
             case 'smartTable':
@@ -1456,7 +1603,7 @@ export default function FillInTheBlankRenderer({
             <div className={styles.questionCard}>
                 {showQuestionText && (
                     <div className={styles.questionTextRow}>
-                        <span className={styles.questionText}>{questionText}</span>
+                        <span className={styles.questionText}>{renderTextWithBlanks(questionText, 'qtext')}</span>
                     </div>
                 )}
 

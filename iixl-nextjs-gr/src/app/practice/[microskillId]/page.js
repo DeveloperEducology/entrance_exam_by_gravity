@@ -236,14 +236,83 @@ function getOptionLabel(option, index) {
 }
 
 function renderMaybeInlineHtml(value, className = '') {
-  if (!hasInlineHtml(value)) {
-    return <span className={className}>{value}</span>;
+  const normalized = String(value ?? '');
+  if (!normalized) return null;
+
+  if (hasInlineHtml(normalized)) {
+    return (
+      <span
+        className={className}
+        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(normalized) }}
+      />
+    );
   }
+
+  // Markdown parsing for the plain text case
+  // Check for markdown table
+  if (normalized.includes('|') && normalized.includes('---')) {
+    const lines = normalized.trim().split('\n');
+    const tableLines = lines.filter((l) => l.trim().startsWith('|') && l.trim().endsWith('|'));
+
+    if (tableLines.length >= 3) {
+      const parseRow = (line) =>
+        line
+          .trim()
+          .split('|')
+          .filter((_, i, arr) => i > 0 && i < arr.length - 1)
+          .map((c) => c.trim());
+      const headers = parseRow(tableLines[0]);
+      const separator = parseRow(tableLines[1]);
+
+      if (separator.every((s) => s.includes('-'))) {
+        const rows = tableLines.slice(2).map(parseRow);
+        return (
+          <div className={styles.markdownTableWrap}>
+            <table className={styles.smartTable}>
+              <thead>
+                <tr>
+                  {headers.map((h, i) => (
+                    <th key={i} className={styles.smartTableHeaderCell}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr key={ri}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className={styles.smartTableCell}>
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+    }
+  }
+
+  const tokens = normalized.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g).filter(Boolean);
+
   return (
-    <span
-      className={className}
-      dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(String(value ?? '')) }}
-    />
+    <span className={className}>
+      {tokens.map((token, idx) => {
+        if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
+          return <strong key={`md-b-${idx}`}>{token.slice(2, -2)}</strong>;
+        }
+        if (token.startsWith('*') && token.endsWith('*') && token.length > 2) {
+          return <em key={`md-i-${idx}`}>{token.slice(1, -1)}</em>;
+        }
+        if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+          return <code key={`md-c-${idx}`}>{token.slice(1, -1)}</code>;
+        }
+        return <span key={`md-t-${idx}`}>{token}</span>;
+      })}
+    </span>
   );
 }
 
@@ -533,6 +602,9 @@ export default function PracticePage() {
   const [currentStage, setCurrentStage] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isWorkPadOpen, setIsWorkPadOpen] = useState(false);
+  const [showExampleModal, setShowExampleModal] = useState(false);
+  const [exampleQuestion, setExampleQuestion] = useState(null);
+  const [loadingExample, setLoadingExample] = useState(false);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [showDebugTable, setShowDebugTable] = useState(false);
 
@@ -731,6 +803,29 @@ export default function PracticePage() {
       mins: String(mins).padStart(2, '0'),
       secs: String(secs).padStart(2, '0'),
     };
+  };
+
+  const handleFetchExample = async () => {
+    if (exampleQuestion) {
+      setShowExampleModal(true);
+      return;
+    }
+
+    setLoadingExample(true);
+    setShowExampleModal(true);
+    try {
+      const res = await fetch(`/api/practice/${microskillId}/example`, { cache: 'no-store' });
+      const payload = await res.json();
+      if (res.ok && payload?.question) {
+        setExampleQuestion(payload.question);
+      } else {
+        setSubmitError(payload?.error || 'No example available.');
+      }
+    } catch (err) {
+      setSubmitError('Failed to fetch example.');
+    } finally {
+      setLoadingExample(false);
+    }
   };
 
   const time = formatTime(elapsedTime);
@@ -983,11 +1078,11 @@ export default function PracticePage() {
 
       <div className={styles.layout}>
         <main className={styles.mainContent}>
-          {/* <div className={styles.headerActions}>
-            <button className={styles.exampleButton}><span className={styles.buttonIcon}>💡</span>Learn with an example</button>
-            <span className={styles.orText}>or</span>
-            <button className={styles.videoButton}><span className={styles.buttonIcon}>▶</span>Watch a video</button>
-          </div> */}
+          <div className={styles.headerActions}>
+            <button className={styles.exampleButton} onClick={handleFetchExample}>
+              <span className={styles.buttonIcon}>💡</span>Learn with an example
+            </button>
+          </div>
 
           {!isAnswered && (
             <div
@@ -1294,6 +1389,57 @@ export default function PracticePage() {
           </div>
         )}
       </div>
+
+      {/* Learn from Example Modal Overlay */}
+      {showExampleModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowExampleModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>💡 Learn with an example</h2>
+              <button className={styles.closeModal} onClick={() => setShowExampleModal(false)}>×</button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              {loadingExample ? (
+                <div className={styles.modalLoading}>
+                  <div className={styles.loadingSpinner} />
+                  <p>Finding a perfect example for you...</p>
+                </div>
+              ) : exampleQuestion ? (
+                <div className={styles.exampleContainer}>
+                  <div className={styles.exampleSection}>
+                    <h3 className={styles.exampleTitle}>Example Question & Solution</h3>
+                    <div className={styles.exampleQuestionBox}>
+                      <QuestionRenderer 
+                        question={exampleQuestion} 
+                        isAnswered={true}
+                        userAnswer={(() => {
+                          try {
+                            const parsed = JSON.parse(exampleQuestion.correctAnswerText || '{}');
+                            return typeof parsed === 'object' ? parsed : exampleQuestion.correctAnswerText;
+                          } catch {
+                            return exampleQuestion.correctAnswerText;
+                          }
+                        })()}
+                        isCorrect={true}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.modalError}>
+                  <p>Sorry, we couldn't find a specific example for this skill.</p>
+                  <button className={styles.nextButton} onClick={() => setShowExampleModal(false)}>Back to Practice</button>
+                </div>
+              )}
+            </div>
+            
+            <div className={styles.modalFooter}>
+              <button className={styles.nextButton} onClick={() => setShowExampleModal(false)}>Got it, let's practice!</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

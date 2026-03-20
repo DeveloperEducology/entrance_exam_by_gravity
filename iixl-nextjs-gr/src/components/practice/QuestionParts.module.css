@@ -3,11 +3,16 @@
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 0.75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .partWrapper {
     display: inline-flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .inlinePart {
@@ -401,6 +406,19 @@
     font-size: 0.9rem;
 }
 
+.markdownTableWrap {
+    width: 100%;
+    overflow-x: auto;
+    margin: 1rem 0;
+    display: flex;
+    justify-content: center;
+}
+
+.markdownTableWrap table {
+    width: auto !important;
+    margin: 0 auto !important;
+}
+
 .smartTableOuter {
     width: 100%;
     padding: 1rem 0.5rem;
@@ -461,6 +479,14 @@
     font-weight: 600;
     color: #111827;
     border-bottom: 1px solid #f3f4f6;
+}
+
+.smartTableCell :global(.input) {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    text-align: center !important;
 }
 
 .smartTableNarrowCell {
@@ -546,4 +572,89 @@
         font-size: 0.8rem;
         padding-left: 0.4rem;
     }
+}
+/* Vertical Multiplication Layout */
+.vertMultContainer {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    min-width: 100px;
+}
+
+.vertMultRow {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.vertMultSpacingNormal {
+    letter-spacing: 0.4em;
+}
+
+.vertMultSpacingWide {
+    letter-spacing: 0.5em;
+}
+
+.vertMultMiddleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border-bottom: 3px solid #0f172a;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.vertMultOperator {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-right: 1.25rem;
+}
+
+.vertMultDigitHighlight {
+    color: #4f57ff;
+    font-weight: 800;
+}
+
+.vertMultBottomRow {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.vertMultQuestionMark {
+    font-size: 2.5rem;
+    padding-right: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+}
+
+@media (max-width: 768px) {
+    .vertMultRow { font-size: 1.5rem; }
+    .vertMultOperator { font-size: 1.35rem; }
+    .vertMultQuestionMark { font-size: 1.8rem; }
+}
+
+.smallBox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: #f8fafc;
+    color: #1e293b;
+    margin: 0 4px;
+    vertical-align: middle;
+}
+
+.inlineBlankWrap {
+    display: inline-flex;
+    vertical-align: middle;
+    margin: 0 4px;
 }

@@ -109,12 +109,15 @@
     font-weight: 700;
     color: #1f2937;
     word-break: break-word;
+    white-space: normal;
 }
 
 .partWrapper {
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .inlinePart {
@@ -255,13 +258,14 @@
 }
 
 .input {
-    padding: 0.3rem 0.75rem;
-    font-size: 0.96rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
     border: 2px solid #cbd5e1;
     border-radius: var(--border-radius-sm);
     text-align: center;
     transition: all 0.2s ease;
     font-weight: 600;
+    max-width: 100%;
 }
 
 .input:focus {
@@ -273,6 +277,26 @@
 .input:disabled {
     background: #f8f9fa;
     cursor: not-allowed;
+}
+
+.inlineBlankWrap {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 4px;
+}
+
+.inlineBlankWrap .input {
+    min-height: 28px;
+    height: 32px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    min-width: 30px;
+}
+
+.mathLatexInteractive {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 2px;
 }
 
 .arithmeticLayout {
@@ -523,7 +547,6 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    overflow: auto;
     padding: 0.2rem 0;
 }
 
@@ -1010,12 +1033,14 @@
     .questionText {
         font-size: 0.9rem;
         line-height: 1.25;
+        white-space: normal;
     }
 
     .input {
-        font-size: 0.8rem;
-        padding: 0.25rem 0.4rem;
-        min-height: 32px;
+        font-size: 0.75rem;
+        padding: 0.15rem 0.3rem;
+        min-height: 28px;
+        min-width: 28px;
     }
 
     .submitButton {
@@ -1119,4 +1144,146 @@
         gap: 4px;
         padding: 0.35rem;
     }
+}
+
+/* Vertical Multiplication Interactive Layout */
+.vertMultContainer {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    min-width: 100px;
+}
+
+.vertMultRow {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.vertMultSpacingNormal {
+    letter-spacing: 0.4em;
+}
+
+.vertMultMiddleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border-bottom: 3px solid #0f172a;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.vertMultOperator {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-right: 1.25rem;
+}
+
+.vertMultInputGroup {
+    display: flex;
+    align-items: center;
+}
+
+.vertMultInput {
+    width: 44px;
+    height: 52px;
+    border: 2px solid #3b82f6;
+    border-right-style: dashed;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    transition: all 0.2s;
+}
+
+.vertMultInput:last-child {
+    border-right-style: solid;
+}
+
+.vertMultInput:focus {
+    outline: none;
+    background: #eff6ff;
+    border-color: #2563eb;
+}
+
+@media (max-width: 768px) {
+    .vertMultRow { font-size: 1.5rem; }
+    .vertMultOperator { font-size: 1.35rem; }
+    .vertMultInput { width: 34px; height: 42px; font-size: 1.4rem; }
+}
+
+.markdownTableWrap {
+    width: 100%;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.markdownTableWrap table {
+    width: auto !important;
+    margin: 0 !important;
+}
+
+.smartTable {
+    border-collapse: collapse;
+    width: auto;
+    max-width: none;
+    display: inline-table;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.smartTableHeaderCell {
+    padding: 0.6rem 0.85rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.smartTableCell {
+    padding: 0.6rem 0.85rem;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.smartTableCell :global(.input) {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+}
+
+.smallBox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: #f8fafc;
+    color: #1e293b;
+    margin: 0 4px;
+    vertical-align: middle;
+}
+
+.inlineBlankWrap {
+    display: inline-flex;
+    vertical-align: middle;
+    margin: 0 4px;
 }
