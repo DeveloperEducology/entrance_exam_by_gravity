@@ -1657,6 +1657,407 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.type = 'mcq';
   }
 
+  if (logic === 'vertical_addition_v1' || logic === 'vertical_addition_with_regrouping_v1') {
+    let n1, n2, sum;
+    let digits1 = [], digits2 = [], sums = [], resDigits = [], finalCarries = [];
+    const isRegrouping = (logic === 'vertical_addition_with_regrouping_v1');
+    
+    const dataSource = (question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] });
+    const range = dataSource.range || [100, 999];
+    const numDigits = dataSource.num_digits || String(range[1]).length || 3;
+
+    if (overrideVariables) {
+      n1 = overrideVariables.num_1;
+      n2 = overrideVariables.num_2;
+      sum = overrideVariables.sum;
+      const s1 = String(n1).padStart(numDigits, '0');
+      const s2 = String(n2).padStart(numDigits, '0');
+      let carryIdx = 0;
+      for(let i=numDigits - 1; i>=0; i--) {
+          const d1 = Number(s1[i]);
+          const d2 = Number(s2[i]);
+          const s = d1 + d2 + carryIdx;
+          digits1.unshift(d1);
+          digits2.unshift(d2);
+          sums.unshift(s);
+          resDigits.unshift(s % 10);
+          finalCarries.unshift(carryIdx);
+          carryIdx = s > 9 ? 1 : 0;
+      }
+    } else {
+      let valid = false;
+      while (!valid) {
+        digits1 = []; digits2 = []; sums = []; resDigits = []; finalCarries = [];
+        let carry = 0;
+        let anyRegroup = false;
+        
+        for (let i = 0; i < numDigits; i++) {
+          const isLeading = (i === numDigits - 1);
+          const min1 = isLeading ? 1 : 0;
+          let d1, d2;
+          
+          if (isRegrouping) {
+            d1 = Math.floor(Math.random() * (9 - min1 + 1)) + min1;
+            // Attempt to force regrouping in at least one column
+            d2 = Math.floor(Math.random() * 10);
+          } else {
+            d1 = Math.floor(Math.random() * (9 - min1 + 1)) + min1;
+            d2 = Math.floor(Math.random() * (9 - d1 + 1));
+          }
+          
+          const colSum = d1 + d2 + carry;
+          if (colSum > 9) anyRegroup = true;
+          
+          digits1.unshift(d1);
+          digits2.unshift(d2);
+          sums.unshift(colSum);
+          resDigits.unshift(colSum % 10);
+          finalCarries.unshift(carry); // carry into this column
+          carry = colSum > 9 ? 1 : 0;
+        }
+        
+        if (!isRegrouping || anyRegroup) {
+          valid = true;
+          if (carry > 0) { // If final column carries, expand (e.g., 9+9=18)
+             resDigits.unshift(carry);
+             sums.unshift(carry);
+             digits1.unshift(0); // padding for layout
+             digits2.unshift(0);
+             finalCarries.unshift(0);
+          }
+        }
+      }
+      
+      n1 = Number(digits1.join(''));
+      n2 = Number(digits2.join(''));
+      sum = n1 + n2;
+    }
+
+    const customVars = {
+       ...(inst.adaptiveConfig?.variables || {}),
+       num_1: n1, num_2: n2, sum: sum,
+       digits1, digits2, sums, resDigits, finalCarries
+    };
+    inst.adaptiveConfig.variables = customVars;
+
+    // Build Arithmetic Rows
+    const rows = [];
+    if (isRegrouping) {
+        // Carry inputs row
+        const carryCells = finalCarries.map((c, i) => {
+            if (i === finalCarries.length - 1) return { kind: "empty" }; // No carry row for ones
+            // Carry is written in the cell to the LEFT of where it was generated
+            const carryValueFromNext = finalCarries[i+1];
+            if (carryValueFromNext > 0 || i < finalCarries.length - 1) { // Show box if carry exists or could exist
+                return { id: `carry_${i}`, type: "digit", variant: "circular", placeholder: "" };
+            }
+            return { kind: "empty" };
+        });
+        rows.push({ kind: "carry", cells: carryCells });
+    }
+    
+    rows.push({ kind: "text", text: '   ' + digits1.join('  ') });
+    rows.push({ kind: "text", text: '+  ' + digits2.join('  ') });
+    
+    const answerCells = resDigits.map((_, i) => ({
+      id: `ans_${resDigits.length - 1 - i}`,
+      type: "digit",
+      autoFocus: (i === resDigits.length - 1) 
+    }));
+
+    rows.push({
+      kind: "answer",
+      variant: "joined",
+      cells: answerCells
+    });
+
+    inst.parts = [
+      { type: "text", content: question.parts?.[0]?.content || (isRegrouping ? "Add. Don't forget to regroup!" : "Add.") },
+      {
+        type: "arithmeticLayout",
+        layout: { rows }
+      }
+    ];
+
+    const solHeader = { type: "text", content: "### Solution strategy", isVertical: true };
+    const solSteps = [];
+    const placeNames = ["ones", "tens", "hundreds", "thousands", "ten thousands"];
+
+    for (let i = digits1.length - 1; i >= 0; i--) {
+      const place = placeNames[digits1.length - 1 - i] || `position ${digits1.length - i}`;
+      const d1 = digits1[i];
+      const d2 = digits2[i];
+      const prevCarry = finalCarries[i];
+      const s = sums[i];
+      
+      let text = `Add the ${place}. `;
+      if (prevCarry > 0) text += `Add the carry: 1 + ${d1} + ${d2} = **${s}**. `;
+      else text += `Add ${d1} + ${d2} = **${s}**. `;
+      
+      if (s > 9 && i > 0) {
+          text += `Write the **${s % 10}** and carry the **1** to the ${placeNames[digits1.length - i] || 'next place'}.`;
+      }
+
+      solSteps.push({ type: "text", content: text, isVertical: true });
+      
+      // Grid for step showing carry
+      const highlightRow1 = '   ' + digits1.map((d, idx) => idx === i ? `*${d}` : d).join('  ');
+      const highlightRow2 = '+  ' + digits2.map((d, idx) => idx === i ? `*${d}` : d).join('  ');
+      const carryRowText = '   ' + finalCarries.map((c, idx) => idx === i && c > 0 ? `(${c})` : (idx === i-1 && sums[i] > 9 ? `[*1]` : ' ')).join('  ');
+      const resultStr = '   ' + resDigits.map((d, idx) => idx >= i ? `*${d}` : ' ').join('  ');
+      
+      // Simplified grid for solution
+      solSteps.push({
+        type: "arithmeticLayout",
+        layout: {
+          rows: [
+            { kind: "text", text: highlightRow1 },
+            { kind: "text", text: highlightRow2 },
+            { kind: "text", text: resultStr }
+          ]
+        },
+        isVertical: true
+      });
+    }
+
+    solSteps.push({ type: "text", content: `The sum is **${sum}**.`, isVertical: true });
+
+    inst.solution = [solHeader, ...solSteps];
+    inst.type = 'fillInTheBlank';
+    
+    const correctAns = {};
+    for(let i=0; i<resDigits.length; i++) {
+        correctAns[`ans_${i}`] = String(resDigits[resDigits.length - 1 - i]);
+    }
+    // Also include carries in correct answer for validation if student fills them
+    for(let i=0; i<finalCarries.length - 1; i++) {
+        if (finalCarries[i] > 0) correctAns[`carry_${i}`] = "1";
+        else correctAns[`carry_${i}`] = "";
+    }
+    
+    inst.correctAnswerText = JSON.stringify(correctAns);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'balanced_addition_equations_v1') {
+    let n1, n2, n3, n4, total;
+    let missingIndex = 0;
+    
+    if (overrideVariables) {
+      n1 = overrideVariables.num_1; n2 = overrideVariables.num_2;
+      n3 = overrideVariables.num_3; n4 = overrideVariables.num_4;
+      total = n1 + n2;
+      missingIndex = overrideVariables.missing_pos ?? 0;
+    } else {
+      const dataSource = (question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] });
+      const range = dataSource.range || [300, 999];
+      total = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      
+      const splitLeft = Math.floor(Math.random() * (total - 100)) + 50;
+      n1 = splitLeft; n2 = total - splitLeft;
+      
+      const splitRight = Math.floor(Math.random() * (total - 100)) + 50;
+      n3 = splitRight; n4 = total - splitRight;
+      
+      missingIndex = Math.floor(Math.random() * 4);
+    }
+
+    const nums = [n1, n2, n3, n4];
+    const missingAns = nums[missingIndex];
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      num_1: n1, num_2: n2, num_3: n3, num_4: n4,
+      missing_pos: missingIndex, missing_ans: missingAns, total
+    };
+    inst.adaptiveConfig.variables = customVars;
+
+    const displayVals = nums.map((v, i) => i === missingIndex ? '[[ans_equ]]' : String(v));
+    const equStr = `${displayVals[0]} + ${displayVals[1]} = ${displayVals[2]} + ${displayVals[3]}`;
+
+    inst.parts = [
+      { type: "text", content: question.parts?.[0]?.content || "Which number makes the equation true?" },
+      { type: "mathLatex", content: equStr }
+    ];
+
+    const isMissingOnLeft = missingIndex < 2;
+    const fullSideNums = isMissingOnLeft ? [n3, n4] : [n1, n2];
+    const knownPartOnMissingSide = isMissingOnLeft ? (missingIndex === 0 ? n2 : n1) : (missingIndex === 2 ? n4 : n3);
+
+    const solHeader = { type: "text", content: "### Balance Scale Strategy", isVertical: true };
+    const solSteps = [
+      { type: "text", content: "Think of the equals sign (=) as a balance scale. Both sides must have the same total value.", isVertical: true },
+      { type: "text", content: `**Step 1: Find the total of the full side.** Add ${fullSideNums[0]} + ${fullSideNums[1]} = **${total}**.`, isVertical: true },
+      { type: "text", content: `**Step 2: Identify the goal.** Now we know the missing side must also total **${total}**.`, isVertical: true },
+      { type: "text", content: `**Step 3: Subtract to find the missing part.** Take the total and subtract the part you know: ${total} - ${knownPartOnMissingSide} = **${missingAns}**.`, isVertical: true },
+      { type: "text", content: `The missing number is **${missingAns}**.`, isVertical: true }
+    ];
+
+    inst.solution = [solHeader, ...solSteps];
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ ans_equ: String(missingAns) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'vertical_addition_missing_addend_v1') {
+    let n1, n2, sum;
+    let digits1 = [], digits2 = [], sums = [];
+    
+    const dataSource = (question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] });
+    const range = dataSource.range || [100, 999];
+    const numDigits = dataSource.num_digits || String(range[1]).length || 3;
+
+    if (overrideVariables) {
+      n1 = overrideVariables.num_1; // missing
+      n2 = overrideVariables.num_2; // known
+      sum = overrideVariables.sum;  // result
+      const s1 = String(n1).padStart(numDigits, '0');
+      const s2 = String(n2).padStart(numDigits, '0');
+      const ss = String(sum).padStart(numDigits, '0');
+      for(let i=0; i<numDigits; i++) {
+        digits1.push(Number(s1[i]));
+        digits2.push(Number(s2[i]));
+        sums.push(Number(ss[i]));
+      }
+    } else {
+      // Subtraction must be borrowing-free: sum_digit >= known_digit
+      for (let i = 0; i < numDigits; i++) {
+        const isLeading = (i === numDigits - 1);
+        const minS = isLeading ? 1 : 0;
+        const sDigit = Math.floor(Math.random() * (9 - minS + 1)) + minS;
+        const knownDigit = Math.floor(Math.random() * (sDigit + 1));
+        const missingDigit = sDigit - knownDigit;
+        
+        sums.unshift(sDigit);
+        digits2.unshift(knownDigit); // known addend
+        digits1.unshift(missingDigit); // missing addend
+      }
+      
+      n1 = Number(digits1.join(''));
+      n2 = Number(digits2.join(''));
+      sum = Number(sums.join(''));
+    }
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      num_1: n1, num_2: n2, sum: sum,
+      digits1, digits2, sums
+    };
+    inst.adaptiveConfig.variables = customVars;
+
+    // Build Answer Cells for the TOP row
+    const answerCells = digits1.map((_, i) => ({
+      id: `ans_${numDigits - 1 - i}`,
+      type: "digit",
+      autoFocus: (i === numDigits - 1)
+    }));
+
+    inst.parts = [
+      { type: "text", content: question.parts?.[0]?.content || "Find the missing number." },
+      {
+        type: "arithmeticLayout",
+        layout: {
+          rows: [
+            { kind: "answer", variant: "joined", cells: answerCells },
+            { kind: "text", text: `+  ${digits2.join('  ')}` },
+            { kind: "divider" },
+            { kind: "text", text: `   ${sums.join('  ')}` }
+          ]
+        }
+      }
+    ];
+
+    const solHeader = { type: "text", content: "### Inverse Operation Strategy", isVertical: true };
+    const solSteps = [
+      { type: "text", content: `To find the missing number, use the opposite of addition, which is subtraction.`, isVertical: true },
+      { type: "text", content: `Set up the subtraction: Take the total (**${sum}**) and subtract the number you know (**${n2}**).`, isVertical: true }
+    ];
+
+    const placeNames = ["ones", "tens", "hundreds", "thousands", "ten thousands"];
+    for (let i = numDigits - 1; i >= 0; i--) {
+      const place = placeNames[numDigits - 1 - i] || `position ${numDigits - i}`;
+      const d1 = digits1[i];
+      const sDigit = sums[i];
+      const knownDigit = digits2[i];
+      
+      solSteps.push({ type: "text", content: `Subtract the ${place}: ${sDigit} - ${knownDigit} = **${d1}**.`, isVertical: true });
+    }
+    solSteps.push({ type: "text", content: `The missing number is **${n1}**.`, isVertical: true });
+
+    inst.solution = [solHeader, ...solSteps];
+    inst.type = 'fillInTheBlank';
+    
+    const correctAns = {};
+    for(let i=0; i<numDigits; i++) correctAns[`ans_${i}`] = String(digits1[numDigits - 1 - i]);
+    inst.correctAnswerText = JSON.stringify(correctAns);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'function_table_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { rule: "add 100", rule_val: 100 };
+    const ruleText = dataSource.rule || "add 100";
+    const ruleVal = dataSource.rule_val || 100;
+    
+    let inValues = [], outValues = [];
+    if (overrideVariables) {
+      inValues = overrideVariables.in_values;
+      outValues = overrideVariables.out_values;
+    } else {
+      for(let i=0; i<4; i++) {
+        const v = Math.floor(Math.random() * 900);
+        inValues.push(v);
+        outValues.push(v + ruleVal);
+      }
+    }
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      rule_val: ruleVal, in_values: inValues, out_values: outValues
+    };
+    inst.adaptiveConfig.variables = customVars;
+
+    // Header: "In" and "Out"
+    // Row 0: Example (fixed)
+    // Row 1-3: Inputs
+    const tableLines = [
+      `| In | Out |`,
+      `|:---:|:---:|`,
+      `| ${inValues[0]} | ${outValues[0]} |`,
+      `| ${inValues[1]} | [[ans1]] |`,
+      `| ${inValues[2]} | [[ans2]] |`,
+      `| ${inValues[3]} | [[ans3]] |`
+    ];
+    const tableMd = tableLines.join('\n');
+
+    inst.parts = [
+      { type: "text", content: question.parts?.[0]?.content || "Complete the table." },
+      { type: "text", content: `**Rule: ${ruleText}**` },
+      { type: "text", content: tableMd, isVertical: true }
+    ];
+
+    const solHeader = { type: "text", content: "### Hundreds Jump Strategy", isVertical: true };
+    const solSteps = [
+      { type: "text", content: `Start with the numbers in the 'In' column. Add ${ruleVal} to each number.`, isVertical: true }
+    ];
+    
+    if (ruleVal === 100) {
+      solSteps.push({ type: "text", content: "When you add 100, only the hundreds place changes (unless you are crossing 1,000).", isVertical: true });
+    }
+
+    for (let i = 1; i < 4; i++) {
+      solSteps.push({ type: "text", content: `${inValues[i]} + ${ruleVal} = **${outValues[i]}**`, isVertical: true });
+    }
+    solSteps.push({ type: "text", content: "Write the answers in the table.", isVertical: true });
+
+    inst.solution = [solHeader, ...solSteps];
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({
+      ans1: String(outValues[1]),
+      ans2: String(outValues[2]),
+      ans3: String(outValues[3])
+    });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
   if (logic === 'identifying_numbers_with_labeled_base_10_blocks_v1') {
     let num;
     if (overrideVariables) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './FillInTheBlankRenderer.module.css';
-import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
+import { getImageSrc, hasInlineHtml, hydrateTemplate, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SpeakerButton from './SpeakerButton';
 import SafeImage from './SafeImage';
 import {
@@ -13,6 +13,8 @@ import {
 } from './latexUtils';
 import FractionModelVisual from './FractionModelVisual';
 import ArithmeticBlock from './ArithmeticBlock';
+import BaseTenBlocks from './BaseTenBlocks';
+import NumberLineRounding from './NumberLineRounding';
 
 function InlineLatexBlanks({
     part,
@@ -161,12 +163,23 @@ export default function FillInTheBlankRenderer({
             if (!containerRef.current) return;
             const inputs = containerRef.current.querySelectorAll('input:not([disabled]):not([readonly]):not([type="hidden"])');
             if (inputs && inputs.length > 0) {
+                // Prioritize input with autoFocus property
+                const autoFocusInput = Array.from(inputs).find(i => i.hasAttribute('data-autofocus') || i.getAttribute('data-autofocus') === 'true');
+                const targetInput = autoFocusInput || inputs[0];
+
                 // Find the first input that isn't from a "fixed" or "text" cell in arithmetic
-                for (const input of Array.from(inputs)) {
-                    if (input.tabIndex !== -1 && !input.closest(`.${styles.arFixedCell}`)) {
-                        input.focus();
-                        if (input.select) input.select();
-                        break;
+                // (Unless it's explicitly marked for auto-focus)
+                if (targetInput.tabIndex !== -1) {
+                    targetInput.focus();
+                    if (targetInput.select) targetInput.select();
+                } else {
+                   // Fallback loop if target was fixed (which shouldn't happen with correct usage)
+                    for (const input of Array.from(inputs)) {
+                        if (input.tabIndex !== -1 && !input.closest(`.${styles.arFixedCell}`)) {
+                            input.focus();
+                            if (input.select) input.select();
+                            break;
+                        }
                     }
                 }
             }
@@ -177,7 +190,7 @@ export default function FillInTheBlankRenderer({
     const q = useMemo(() => {
         if (!question) return { type: 'fillInTheBlank', parts: [] };
 
-        const normalize = (obj) => {
+        const normalize = (obj, inheritedVars = null) => {
             if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
             const res = { ...obj };
 
@@ -208,12 +221,28 @@ export default function FillInTheBlankRenderer({
                 }
             }
 
+            const currentVars = res.adaptiveConfig?.variables || inheritedVars;
+
             // Recursively normalize parts
             if (Array.isArray(res.parts)) {
-                res.parts = res.parts.map(normalize);
+                res.parts = res.parts.map(p => normalize(p, currentVars));
             } else if (res.parts === undefined || res.parts === null) {
                 // If it's a table-type question without parts, it's effectively its own part
                 res.parts = [];
+            }
+
+
+            // Case 1 Implementation: Hydrate templates with variables from adaptiveConfig
+            if (currentVars) {
+                if (typeof res.questionText === 'string' && res.questionText.includes('{')) {
+                    res.questionText = hydrateTemplate(res.questionText, currentVars);
+                }
+                if (typeof res.content === 'string' && res.content.includes('{')) {
+                    res.content = hydrateTemplate(res.content, currentVars);
+                }
+                if (typeof res.question_text === 'string' && res.question_text.includes('{')) {
+                    res.question_text = hydrateTemplate(res.question_text, currentVars);
+                }
             }
 
             return res;
@@ -301,7 +330,7 @@ export default function FillInTheBlankRenderer({
         
         // Dynamic maxLength based on correct result if available
         const expected = correctAnswers?.[partId] ?? '';
-        const defaultMax = expected ? String(expected).length : 4;
+        const defaultMax = expected ? String(expected).length : 20;
         const maxLength = Number.isFinite(Number(properties?.maxLength)) 
             ? Number(properties.maxLength) 
             : defaultMax;
@@ -343,21 +372,34 @@ export default function FillInTheBlankRenderer({
 
     const renderTextWithBlanks = (text, keyPrefix = '') => {
         const normalized = String(text ?? '');
-        const tokens = normalized.split(/(\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\])/g).filter(Boolean);
-        return tokens.map((token, idx) => {
-            if (token.startsWith('[') && token.endsWith(']')) {
-                const blankId = token.slice(1, -1).trim() || `md_p_${keyPrefix}_${idx}`;
+        const tokens = normalized.split(/(\[\[.*?\]\]|\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)/g).filter(Boolean);
+
+        const renderTokens = (tkns, kp) => tkns.map((token, idx) => {
+            if ((token.startsWith('[[') && token.endsWith(']]')) || (token.startsWith('[') && token.endsWith(']'))) {
+                let blankId = '';
+                if (token.startsWith('[[') && token.endsWith(']]')) {
+                    blankId = token.slice(2, -2).trim();
+                } else if (token.startsWith('[blank:')) {
+                    blankId = token.slice(7, -1).trim();
+                } else if (token.startsWith('[input:')) {
+                    blankId = token.slice(7, -1).trim();
+                } else {
+                    blankId = token.slice(1, -1).trim();
+                }
                 return (
                     <span key={`blank-${idx}`} className={styles.inlineBlankWrap}>
-                        {renderInput(blankId, { placeholder: '' })}
+                        {renderInput(blankId || `md_p_${kp}_${idx}`, { placeholder: '' })}
                     </span>
                 );
             }
-            if ((token.startsWith('\\(') && token.endsWith('\\)')) || (token.startsWith('\\[') && token.endsWith('\\]'))) {
-                const isDisplay = token.startsWith('\\[');
-                const latexContent = token.slice(2, -2).trim();
+            const isStandardLatex = (token.startsWith('\\(') && token.endsWith('\\)')) || (token.startsWith('\\[') && token.endsWith('\\]'));
+            const isShorthandLatex = (token.startsWith('$') && token.endsWith('$'));
+            
+            if (isStandardLatex || isShorthandLatex) {
+                const isDisplay = token.startsWith('\\[') || token.startsWith('$$');
+                const sliceN = (token.startsWith('$$')) ? 2 : (token.startsWith('$') ? 1 : 2);
+                const latexContent = token.slice(sliceN, -sliceN).trim();
 
-                // If LaTeX contains placeholders [id], render it interactively
                 if (latexContent.includes('[') && latexContent.includes(']')) {
                     const latexHoles = latexWithInteractivePlaceholders(latexContent);
                     const placeholderIds = extractLatexPlaceholderIds(latexContent);
@@ -390,7 +432,6 @@ export default function FillInTheBlankRenderer({
                     />
                 );
             }
-            // Handle basic bold/italic within the text token
             const subTokens = token.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g).filter(Boolean);
             return subTokens.map((st, sidx) => {
                 if (st.startsWith('**') && st.endsWith('**')) return <strong key={sidx}>{st.slice(2, -2)}</strong>;
@@ -399,6 +440,46 @@ export default function FillInTheBlankRenderer({
                 return <span key={sidx}>{st}</span>;
             });
         });
+
+        // Markdown Table Support
+        if (normalized.includes('|') && normalized.includes('---')) {
+            const lines = normalized.trim().split('\n');
+            const tableLines = lines.filter(l => l.trim().startsWith('|') && l.trim().endsWith('|'));
+
+            if (tableLines.length >= 3) {
+                const parseRow = (line) => line.trim().split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1).map(c => c.trim());
+                const headers = parseRow(tableLines[0]);
+                const separator = parseRow(tableLines[1]);
+
+                if (separator.every(s => s.includes('-'))) {
+                    const rows = tableLines.slice(2).map(parseRow);
+                    return (
+                        <div className={styles.markdownTableWrap}>
+                            <table className={styles.smartTable}>
+                                <thead>
+                                    <tr>
+                                        {headers.map((h, i) => <th key={i} className={styles.smartTableHeaderCell}>{renderTokens(h.split(/(\[.*?\])/g), `h${i}`)}</th>)}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((row, ri) => (
+                                        <tr key={ri}>
+                                            {row.map((cell, ci) => (
+                                                <td key={ci} className={styles.smartTableCell}>
+                                                    {renderTokens(cell.split(/(\[.*?\])/g), `r${ri}c${ci}`)}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                }
+            }
+        }
+
+        return renderTokens(tokens, keyPrefix);
     };
 
     const handleKeypadPress = (keyValue) => {
@@ -466,15 +547,33 @@ export default function FillInTheBlankRenderer({
         }, 0);
 
         const renderTextGrid = (text) => {
-            const chars = String(text || '').split('');
-            const pad = Math.max(0, maxColumns - chars.length);
+            const rawText = String(text || '');
+            const tokens = [];
+            let i = 0;
+            let lenCount = 0;
+            while (i < rawText.length) {
+                if (rawText[i] === '*' && i + 1 < rawText.length) {
+                    tokens.push({ char: rawText[i + 1], highlight: true });
+                    i += 2;
+                } else {
+                    tokens.push({ char: rawText[i], highlight: false });
+                    i += 1;
+                }
+                lenCount += 1;
+            }
+            const pad = Math.max(0, maxColumns - lenCount);
             return (
                 <div className={styles.arGridRow} style={{ '--cols': maxColumns }}>
-                    {Array.from({ length: pad }).map((_, i) => (
-                        <span key={`pad-${i}`} className={styles.arGridCell} />
+                    {Array.from({ length: pad }).map((_, idx) => (
+                        <span key={`pad-${idx}`} className={styles.arGridCell} />
                     ))}
-                    {chars.map((ch, i) => (
-                        <span key={`ch-${i}`} className={styles.arGridCell}>{ch}</span>
+                    {tokens.map((token, idx) => (
+                        <span 
+                            key={`ch-${idx}`} 
+                            className={`${styles.arGridCell} ${token.highlight ? styles.arGridCellHighlighted : ''}`}
+                        >
+                            {token.char}
+                        </span>
                     ))}
                 </div>
             );
@@ -698,109 +797,121 @@ export default function FillInTheBlankRenderer({
                         const prefixChars = prefix.split('');
                         const usedColumns = prefixChars.length + cells.length;
                         const leftPad = Math.max(0, maxColumns - usedColumns);
+                        const startCol = leftPad + 1;
+                        const endCol = maxColumns + 1;
+                        const isJoined = row.variant === 'joined' || row.isJoined;
+
                         return (
                             <div key={`ar-row-${rowIndex}`} className={styles.arAnswerRow}>
                                 <div className={styles.arGridRow} style={{ '--cols': maxColumns }}>
                                     {Array.from({ length: leftPad }).map((_, i) => (
                                         <span key={`ans-pad-${i}`} className={styles.arGridCell} />
                                     ))}
-                                    {prefixChars.map((ch, i) => (
-                                        <span key={`pre-${i}`} className={`${styles.arGridCell} ${styles.arPrefixCell}`}>{ch}</span>
-                                    ))}
-                                    {cells.map((cell, cellIndex) => {
-                                        const cellKind = String(cell?.kind || '').toLowerCase();
-                                        if (cellKind === 'text' || cellKind === 'fixed') {
+                                    
+                                    <div 
+                                        className={isJoined ? styles.arAnswerJoinedGroup : styles.arAnswerSimpleGroup}
+                                        style={{ gridColumn: `${startCol} / ${endCol}` }}
+                                    >
+                                        {prefixChars.map((ch, i) => (
+                                            <span key={`pre-${i}`} className={`${styles.arGridCell} ${styles.arPrefixCell}`}>{ch}</span>
+                                        ))}
+                                        {cells.map((cell, cellIndex) => {
+                                            const cellKind = String(cell?.kind || '').toLowerCase();
+                                            if (cellKind === 'text' || cellKind === 'fixed') {
+                                                return (
+                                                    <span key={`cell-static-${cellIndex}`} className={`${styles.arGridCell} ${styles.arFixedCell}`}>
+                                                        {cell.text || cell.value || ''}
+                                                    </span>
+                                                );
+                                            }
+
+                                            const id = String(cell?.id || `cell_${rowIndex}_${cellIndex}`);
+                                            const cfg = getCellInputConfig(cell);
+                                            const isActiveCell = useDigitPad && activeArithmeticCellId === id;
                                             return (
-                                                <span key={`cell-static-${cellIndex}`} className={`${styles.arGridCell} ${styles.arFixedCell}`}>
-                                                    {cell.text || cell.value || ''}
-                                                </span>
-                                            );
-                                        }
+                                                <span key={id} className={styles.arGridCell}>
+                                                    <input
+                                                        ref={(el) => {
+                                                            if (el) arithmeticCellRefs.current[id] = el;
+                                                        }}
+                                                        type="text"
+                                                        className={`${styles.arCellInput} ${isActiveCell ? styles.arCellInputActive : ''}`}
+                                                        value={userAnswer?.[id] ?? ''}
+                                                        onChange={(e) => {
+                                                            if (useDigitPad) return;
+                                                            let next = e.target.value.toUpperCase();
+                                                            if (cfg.inputMode === 'numeric' || cfg.pattern?.includes('[0-9]')) {
+                                                                next = next.replace(/[^0-9-]/g, '');
+                                                            }
+                                                            next = next.slice(0, 8);
 
-                                        const id = String(cell?.id || `cell_${rowIndex}_${cellIndex}`);
-                                        const cfg = getCellInputConfig(cell);
-                                        const isActiveCell = useDigitPad && activeArithmeticCellId === id;
-                                        return (
-                                            <span key={id} className={styles.arGridCell}>
-                                                <input
-                                                    ref={(el) => {
-                                                        if (el) arithmeticCellRefs.current[id] = el;
-                                                    }}
-                                                    type="text"
-                                                    className={`${styles.arCellInput} ${isActiveCell ? styles.arCellInputActive : ''}`}
-                                                    value={userAnswer?.[id] ?? ''}
-                                                    onChange={(e) => {
-                                                        if (useDigitPad) return;
-                                                        let next = e.target.value.toUpperCase();
-                                                        if (cfg.inputMode === 'numeric' || cfg.pattern?.includes('[0-9]')) {
-                                                            next = next.replace(/[^0-9-]/g, '');
-                                                        }
-                                                        next = next.slice(0, 8);
+                                                            // If a two-digit sum is typed in one box, auto-carry leading digit(s) to the row above.
+                                                            if (next.length > 1 && cfg.maxLength === 1) {
+                                                                const updates = { ...(userAnswer || {}) };
+                                                                const lastDigit = next.slice(-1);
+                                                                updates[id] = lastDigit;
+                                                                applyCarryDigits({
+                                                                    currentRowIndex: rowIndex,
+                                                                    currentCellIndex: cellIndex,
+                                                                    typedValue: next,
+                                                                    updates,
+                                                                });
+                                                                onAnswer(updates);
 
-                                                        // If a two-digit sum is typed in one box, auto-carry leading digit(s) to the row above.
-                                                        if (next.length > 1 && cfg.maxLength === 1) {
-                                                            const updates = { ...(userAnswer || {}) };
-                                                            const lastDigit = next.slice(-1);
-                                                            updates[id] = lastDigit;
-                                                            applyCarryDigits({
-                                                                currentRowIndex: rowIndex,
-                                                                currentCellIndex: cellIndex,
-                                                                typedValue: next,
-                                                                updates,
-                                                            });
-                                                            onAnswer(updates);
+                                                                if (cellIndex > 0) {
+                                                                    const leftId = String(cells[cellIndex - 1]?.id || `cell_${rowIndex}_${cellIndex - 1}`);
+                                                                    arithmeticCellRefs.current[leftId]?.focus();
+                                                                }
+                                                                return;
+                                                            }
 
-                                                            if (cellIndex > 0) {
+                                                            // Support paste/multi-digit entry: fill current row from right to left.
+                                                            if (next.length > 1) {
+                                                                const chars = next.slice(0, cells.length).split('');
+                                                                const updates = { ...(userAnswer || {}) };
+                                                                let cursor = cellIndex;
+                                                                chars.forEach((char) => {
+                                                                    if (cursor < 0) return;
+                                                                    const targetId = String(cells[cursor]?.id || `cell_${rowIndex}_${cursor}`);
+                                                                    updates[targetId] = char;
+                                                                    cursor -= 1;
+                                                                });
+                                                                onAnswer(updates);
+                                                                const focusId = String(cells[Math.max(0, cellIndex - chars.length)]?.id || `cell_${rowIndex}_${Math.max(0, cellIndex - chars.length)}`);
+                                                                arithmeticCellRefs.current[focusId]?.focus();
+                                                                return;
+                                                            }
+
+                                                            next = next.slice(0, cfg.maxLength);
+                                                            handleInputChange(id, next);
+
+                                                            // Move cursor from ones -> tens -> hundreds (right to left).
+                                                            if (next && cellIndex > 0) {
                                                                 const leftId = String(cells[cellIndex - 1]?.id || `cell_${rowIndex}_${cellIndex - 1}`);
                                                                 arithmeticCellRefs.current[leftId]?.focus();
                                                             }
-                                                            return;
-                                                        }
-
-                                                        // Support paste/multi-digit entry: fill current row from right to left.
-                                                        if (next.length > 1) {
-                                                            const chars = next.slice(0, cells.length).split('');
-                                                            const updates = { ...(userAnswer || {}) };
-                                                            let cursor = cellIndex;
-                                                            chars.forEach((char) => {
-                                                                if (cursor < 0) return;
-                                                                const targetId = String(cells[cursor]?.id || `cell_${rowIndex}_${cursor}`);
-                                                                updates[targetId] = char;
-                                                                cursor -= 1;
-                                                            });
-                                                            onAnswer(updates);
-                                                            const focusId = String(cells[Math.max(0, cellIndex - chars.length)]?.id || `cell_${rowIndex}_${Math.max(0, cellIndex - chars.length)}`);
-                                                            arithmeticCellRefs.current[focusId]?.focus();
-                                                            return;
-                                                        }
-
-                                                        next = next.slice(0, cfg.maxLength);
-                                                        handleInputChange(id, next);
-
-                                                        // Move cursor from ones -> tens -> hundreds (right to left).
-                                                        if (next && cellIndex > 0) {
-                                                            const leftId = String(cells[cellIndex - 1]?.id || `cell_${rowIndex}_${cellIndex - 1}`);
-                                                            arithmeticCellRefs.current[leftId]?.focus();
-                                                        }
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        const currentVal = String(userAnswer?.[id] ?? '');
-                                                        if (e.key === 'Backspace' && !currentVal && cellIndex < cells.length - 1) {
-                                                            const rightId = String(cells[cellIndex + 1]?.id || `cell_${rowIndex}_${cellIndex + 1}`);
-                                                            arithmeticCellRefs.current[rightId]?.focus();
-                                                        }
-                                                    }}
-                                                    onFocus={(e) => e.target.select()}
-                                                    onClick={() => setActiveArithmeticCellId(id)}
-                                                    disabled={isAnswered || isRowLocked}
-                                                    readOnly={useDigitPad}
-                                                    inputMode={(showKeypad || useDigitPad) ? 'none' : cfg.inputMode}
-                                                    pattern={cfg.pattern}
-                                                    maxLength={cfg.maxLength}
-                                                />
-                                            </span>
-                                        );
-                                    })}
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            const currentVal = String(userAnswer?.[id] ?? '');
+                                                            if (e.key === 'Backspace' && !currentVal && cellIndex < cells.length - 1) {
+                                                                const rightId = String(cells[cellIndex + 1]?.id || `cell_${rowIndex}_${cellIndex + 1}`);
+                                                                arithmeticCellRefs.current[rightId]?.focus();
+                                                            }
+                                                        }}
+                                                        onFocus={(e) => e.target.select()}
+                                                        onClick={() => setActiveArithmeticCellId(id)}
+                                                        style={{ ...cell.style }}
+                                                        disabled={isAnswered || isRowLocked}
+                                                        readOnly={useDigitPad}
+                                                        inputMode={(showKeypad || useDigitPad) ? 'none' : cfg.inputMode}
+                                                        pattern={cfg.pattern}
+                                                        maxLength={cfg.maxLength}
+                                                        data-autofocus={cell.autoFocus || cell.autofocus}
+                                                    />
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -1549,9 +1660,160 @@ export default function FillInTheBlankRenderer({
             case 'v1v2Multiply':
                 return wrapPart(part, index, renderVerticalMultiply(part));
 
+            case 'blank':
+                return wrapPart(part, index, (
+                    <span className={styles.inlineBlankWrap}>
+                         {renderInput(part.id || `blank_${index}`, { placeholder: part.placeholder || '' })}
+                    </span>
+                ));
+
             case 'table':
+                if (part.content && typeof part.content === 'string' && part.content.includes('|')) {
+                    return wrapPart(part, index, (
+                        <div className={styles.markdownTableWrap}>
+                             {renderTextWithBlanks(part.content, `table_${index}`)}
+                        </div>
+                    ));
+                }
+                return wrapPart(part, index, renderSmartTable(part));
+
             case 'smartTable':
                 return wrapPart(part, index, renderSmartTable(part));
+
+            case 'labeledBaseTenGrid': {
+                const hasThousands = Number(part.thousands || 0) > 0 || part.showThousands;
+                const columns = hasThousands ? 4 : 3;
+                return wrapPart(part, index, (
+                    <div style={{ width: '100%', overflowX: 'auto', margin: '1.5rem 0', WebkitOverflowScrolling: 'touch' }}>
+                        <div style={{ 
+                            margin: '0 auto', 
+                            minWidth: hasThousands ? '600px' : '450px',
+                            maxWidth: hasThousands ? '1000px' : '800px',
+                            border: '2px solid #000', 
+                            background: '#fff', 
+                            fontFamily: 'system-ui, -apple-system, sans-serif' 
+                        }}>
+                            <div style={{ 
+                                borderBottom: '2px solid #000', 
+                                padding: '0.75rem', 
+                                textAlign: 'center', 
+                                fontSize: '1.4rem', 
+                                fontWeight: 800,
+                                color: '#000'
+                            }}>
+                                Blocks
+                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+                            {hasThousands && (
+                                <div style={{ 
+                                    borderRight: '2px solid #000', 
+                                    padding: '1.5rem 1rem', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    minHeight: '260px'
+                                }}>
+                                    <div><BaseTenBlocks thousands={part.thousands || 0} variant="green" /></div>
+                                    <div style={{ 
+                                        border: '2px solid #000', 
+                                        padding: '0.4rem 1.2rem', 
+                                        fontWeight: 800, 
+                                        fontSize: '1.2rem', 
+                                        color: '#000',
+                                        marginTop: '2rem'
+                                    }}>Thousands</div>
+                                </div>
+                            )}
+
+                            <div style={{ 
+                                borderRight: '2px solid #000', 
+                                padding: '1.5rem 1rem', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                minHeight: '260px'
+                            }}>
+                                <div><BaseTenBlocks hundreds={part.hundreds || 0} variant="green" /></div>
+                                <div style={{ 
+                                    border: '2px solid #000', 
+                                    padding: '0.4rem 1.2rem', 
+                                    fontWeight: 800, 
+                                    fontSize: '1.2rem', 
+                                    color: '#000',
+                                    marginTop: '2rem'
+                                }}>Hundreds</div>
+                            </div>
+                            
+                            <div style={{ 
+                                borderRight: '2px solid #000', 
+                                padding: '1.5rem 1rem', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                minHeight: '260px'
+                            }}>
+                                <div><BaseTenBlocks tens={part.tens || 0} variant="green" /></div>
+                                <div style={{ 
+                                    border: '2px solid #000', 
+                                    padding: '0.4rem 1.2rem', 
+                                    fontWeight: 800, 
+                                    fontSize: '1.2rem', 
+                                    color: '#000',
+                                    marginTop: '2rem'
+                                }}>Tens</div>
+                            </div>
+
+                            <div style={{ 
+                                padding: '1.5rem 1rem', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                minHeight: '260px'
+                            }}>
+                                <div><BaseTenBlocks ones={part.ones || 0} variant="green" /></div>
+                                <div style={{ 
+                                    border: '2px solid #000', 
+                                    padding: '0.4rem 1.2rem', 
+                                    fontWeight: 800, 
+                                    fontSize: '1.2rem', 
+                                    color: '#000',
+                                    marginTop: '2rem'
+                                }}>Ones</div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                ));
+            }
+
+            case 'base10Visual':
+            case 'baseTenBlocks':
+            case 'base_ten_blocks':
+                return wrapPart(part, index, (
+                    <BaseTenBlocks
+                        thousands={part.value ? Math.floor(Number(part.value) / 1000) : (part.thousands || 0)}
+                        hundreds={part.value ? Math.floor((Number(part.value) % 1000) / 100) : (part.hundreds || 0)}
+                        tens={part.value ? Math.floor((Number(part.value) % 100) / 10) : (part.tens || 0)}
+                        ones={part.value ? (Number(part.value) % 10) : (part.ones || 0)}
+                    />
+                ));
+
+            case 'numberLineRounding':
+                return wrapPart(part, index, (
+                    <NumberLineRounding
+                        min={Number(part.min || 0)}
+                        max={Number(part.max || 0)}
+                        mid={Number(part.mid || 0)}
+                        current={Number(part.current || 0)}
+                        distLow={Number(part.distLow || 0)}
+                        distHigh={Number(part.distHigh || 0)}
+                        distMid={Number(part.distMid || 0)}
+                    />
+                ));
 
             case 'shadeGrid':
             case 'fractionModel':
