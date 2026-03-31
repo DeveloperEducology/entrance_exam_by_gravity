@@ -81,8 +81,18 @@ function toPublicQuestion(question) {
 export async function GET(_req, { params }) {
   const startedAt = Date.now();
   const { microskillId: microskillKey } = await params;
-  serverLog('api.practice.get', 'request start', { microskillKey });
   const microskillId = await resolveMicroskillIdByKey(microskillKey);
+
+  if (!microskillId && microskillKey === 'place-value-auto-intro') {
+    const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
+    const generatedQuestion = generatePlaceValueQuestion();
+    
+    serverLog('api.practice.get', 'auto-generated question returned', { microskillKey });
+    return NextResponse.json({
+      source: 'auto-generator',
+      question: generatedQuestion,
+    });
+  }
 
   if (!microskillId) {
     serverLog('api.practice.get', 'microskill resolution failed', { microskillKey });
@@ -107,18 +117,21 @@ export async function GET(_req, { params }) {
       if (data && data.length > 0) break;
     }
 
-    const firstQuestion = Array.isArray(data) && data.length > 0 ? toPublicQuestion(mapDbQuestion(data[0])) : null;
+    const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
+    // Pick a random question from the results to provide variety
+    const randomIndex = data && data.length > 0 ? Math.floor(Math.random() * data.length) : 0;
+    const selectedQuestion = Array.isArray(data) && data.length > 0 ? toPublicQuestion(instantiateTemplate(mapDbQuestion(data[randomIndex]))) : null;
 
     serverLog('api.practice.get', 'request success', {
       microskillId,
-      hasQuestion: Boolean(firstQuestion),
-      questionCount: Array.isArray(data) ? data.length : 0,
+      hasQuestion: Boolean(selectedQuestion),
+      questionCount: data.length,
       durationMs: Date.now() - startedAt,
     });
 
     return NextResponse.json({
       source: 'mongodb',
-      question: firstQuestion,
+      question: selectedQuestion,
     });
   } catch (error) {
     serverError('api.practice.get', 'question fetch failed', error, { microskillId });

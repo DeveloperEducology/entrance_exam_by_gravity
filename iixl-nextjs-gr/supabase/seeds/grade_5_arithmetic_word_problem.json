@@ -1,0 +1,31 @@
+{
+  "template_id": "v1_grade5_arithmetic_word_problem",
+  "type": "fillInTheBlank",
+  "difficulty": "easy",
+  "logic_type": "grade_5_arithmetic_word_problem",
+  "parts": [
+    {
+      "type": "text",
+      "content": "{name} painted his house using **{num_1_fmt} {unit}** of {color_1} paint and **{num_2_fmt} {unit}** of {color_2} paint."
+    },
+    {
+      "type": "text",
+      "content": "How many {unit} of paint in all did {name} use?"
+    },
+    {
+      "type": "text",
+      "content": "Answer: [ans_value] {unit}"
+    }
+  ],
+  "solution": null,
+  "is_adaptive": true,
+  "adaptiveConfig": {
+    "logic_type": "grade_5_arithmetic_word_problem",
+    "scaffold": [
+      {
+        "type": "text",
+        "content": "Try lining up the numbers vertically by their place value, starting from the ones place."
+      }
+    ]
+  }
+}

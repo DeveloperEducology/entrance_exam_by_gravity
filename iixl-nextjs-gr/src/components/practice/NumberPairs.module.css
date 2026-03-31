@@ -1,0 +1,60 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    background: #fdfdfd;
+    border: 2px dashed #999;
+    border-radius: 12px;
+    margin: 1rem 0;
+}
+
+.label {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.pairsWrap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.pair {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.8rem;
+    background: #e7f3ff;
+    border: 2px solid #5C56D6;
+    border-radius: 50px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.lonelyDot {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.8rem;
+    background: #fff0f0;
+    border: 2px solid #FF4B4B;
+    border-radius: 50px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dot {
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.partnerEmpty {
+    font-size: 1.5rem;
+    color: #FF4B4B;
+    font-weight: 700;
+}
+
+.footer {
+    font-size: 1rem;
+    font-weight: 500;
+}

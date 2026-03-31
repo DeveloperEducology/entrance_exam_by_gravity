@@ -1,0 +1,23 @@
+[
+  {
+    "id": "base_10_count_1",
+    "template_id": "base_10_object_counting_fnd_v1",
+    "logic_type": "base_10_object_counting_v1",
+    "data_source": {
+      "range": [1, 9999]
+    },
+    "parts": [
+      { "type": "base_ten_blocks", "thousands": "{thousands_digit}", "hundreds": "{hundreds_digit}", "tens": "{tens_digit}", "ones": "{ones_digit}" },
+      { "type": "text", "content": "### How many blocks are there?", "isVertical": true },
+      { "type": "text", "content": "[ans]", "isVertical": true }
+    ],
+    "correctAnswerText": "{\"ans\": \"{num}\"}",
+    "scaffold": {
+      "id": "base_10_scaffold",
+      "trigger_on": ["incorrect_selection"],
+      "parts": [
+        { "type": "text", "content": "Tally the groups one by one. Thousands, then Hundreds, then Tens, then Ones.", "isVertical": true }
+      ]
+    }
+  }
+]

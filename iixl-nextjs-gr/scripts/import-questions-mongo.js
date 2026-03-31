@@ -32,15 +32,15 @@ function parseArgs(argv) {
 async function main() {
   loadEnvLocal();
   const { file, microskillId } = parseArgs(process.argv);
-  if (!file || !microskillId) {
-    throw new Error('Usage: node scripts/import-questions-mongo.js --file <seed.json> --microskillId <id>');
+  if (!file) {
+    throw new Error('Usage: node scripts/import-questions-mongo.js --file <seed.json> [--microskillId <id>]');
   }
   const uri = String(process.env.MONGODB_URI || '').trim();
   if (!uri) throw new Error('MONGODB_URI missing in .env.local');
 
   const abs = path.resolve(process.cwd(), file);
   const raw = JSON.parse(fs.readFileSync(abs, 'utf8'));
-  const rows = Array.isArray(raw) ? raw : [];
+  const rows = Array.isArray(raw) ? raw : [raw]; // Support single object too
   if (rows.length === 0) throw new Error(`No question rows found in ${abs}`);
 
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
@@ -48,26 +48,42 @@ async function main() {
   const coll = db.collection('questions');
 
   const nowIso = new Date().toISOString();
-  const docs = rows.map((q, i) => ({
-    ...q,
-    id: String(q.id || `${microskillId}-${i + 1}`),
-    microSkillId: microskillId,
-    micro_skill_id: microskillId,
-    microskill_id: microskillId,
-    created_at: q.created_at || nowIso,
-    updated_at: q.updated_at || nowIso,
-  }));
+  const docs = rows.map((q, i) => {
+    // If command line microskillId was provided, it overrides. Else, use the one in the object.
+    const targetSkillId = microskillId || q.micro_skill_id || q.microSkillId || q.microskill_id;
+    if (!targetSkillId) {
+      throw new Error(`Row ${i} missing micro_skill_id and no global --microskillId provided. Use --microskillId to apply to all.`);
+    }
+
+    const doc = {
+      ...q,
+      microSkillId: targetSkillId,
+      micro_skill_id: targetSkillId,
+      microskill_id: targetSkillId,
+      created_at: q.created_at || nowIso,
+      updated_at: q.updated_at || nowIso,
+    };
+    
+    // If the object already has a MongoDB _id (e.g. from an export), use it.
+    // Otherwise use id or generate a stable fallback.
+    if (q._id) {
+       doc._id = q._id;
+    } else if (q.id) {
+       doc.id = String(q.id);
+    } else {
+       doc.id = `${targetSkillId}-${i + 1}`;
+    }
+
+    return doc;
+  });
 
   const result = await coll.insertMany(docs, { ordered: false });
-  const total = await coll.countDocuments({ microSkillId: microskillId });
-
   console.log(
     JSON.stringify(
       {
         ok: true,
-        inserted: Object.keys(result.insertedIds || {}).length,
-        microskillId,
-        totalQuestionsForMicroskill: total,
+        inserted: result.insertedCount || Object.keys(result.insertedIds || {}).length,
+        file: path.basename(file)
       },
       null,
       2

@@ -180,5 +180,11 @@ export function mapDbQuestion(row) {
     isVertical: toBoolean(row.is_vertical ?? row.isVertical, false),
     showSubmitButton: toBoolean(row.show_submit_button ?? row.showSubmitButton, true),
     sortOrder: toNumber(row.sort_order ?? row.sortOrder ?? row.idx, 0),
+
+    // Template properties
+    logic_type: row.logic_type ?? row.logicType ?? null,
+    data_source: parseMaybeJson(row.data_source ?? row.dataSource, null),
+    template_id: row.template_id ?? row.templateId ?? null,
+    scaffold: parseMaybeJson(row.scaffold, null),
   };
 }

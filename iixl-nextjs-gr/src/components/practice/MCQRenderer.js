@@ -16,7 +16,7 @@ export default function MCQRenderer({
         if (isAnswered) return;
 
         if (question.isMultiSelect) {
-            const currentAnswers = userAnswer || [];
+            const currentAnswers = Array.isArray(userAnswer) ? userAnswer : [];
             const newAnswers = currentAnswers.includes(index)
                 ? currentAnswers.filter(i => i !== index)
                 : [...currentAnswers, index];
@@ -28,7 +28,7 @@ export default function MCQRenderer({
 
     const isSelected = (index) => {
         if (question.isMultiSelect) {
-            return (userAnswer || []).includes(index);
+            return Array.isArray(userAnswer) ? userAnswer.includes(index) : false;
         }
         return userAnswer === index;
     };
@@ -42,15 +42,16 @@ export default function MCQRenderer({
                 </div>
 
                 {/* Options */}
-                <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''}`}>
+                <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''} ${question.isGrid ? styles.gridMode : ''}`}>
                     {question.options.map((option, index) => (
                         (() => {
                             // Support for complex parts in options
-                            const isComplexParts = Array.isArray(option);
+                            const isComplexParts = Array.isArray(option) || (option && typeof option === 'object' && Array.isArray(option.parts));
+                            const optionParts = Array.isArray(option) ? option : (option?.parts || []);
                             const optionImageSrc = !isComplexParts ? getImageSrc(option) : '';
                             const optionText = typeof option === 'string' 
                                 ? option 
-                                : (!isComplexParts ? (option?.label || option?.text || '') : '');
+                                : (!isComplexParts ? (option?.label || option?.text || option?.content || '') : (option?.label || ''));
 
                             return (
                                 <div
@@ -74,7 +75,7 @@ export default function MCQRenderer({
                                     )}
                                     {isComplexParts ? (
                                         <div className={styles.optionParts}>
-                                            <QuestionParts parts={option} className={styles.partsInOption} />
+                                            <QuestionParts parts={optionParts} className={styles.partsInOption} />
                                         </div>
                                     ) : isInlineSvg(option) ? (
                                         <div
@@ -102,6 +103,7 @@ export default function MCQRenderer({
                                     )}
                                 </div>
                             );
+
                         })()
                     ))}
                 </div>

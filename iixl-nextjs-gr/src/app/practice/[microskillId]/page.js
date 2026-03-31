@@ -317,26 +317,55 @@ function renderMaybeInlineHtml(value, className = '') {
 }
 
 function getSelectedAnswerDisplay(question, answer) {
-  if (!question) return '';
+  if (!question || answer === null || answer === undefined) return '';
+  const type = String(question.type || '').trim().toLowerCase();
 
-  if (question.type === 'mcq' || question.type === 'imageChoice') {
+  const getOptionLabel = (option, index) => {
+    if (typeof option === 'object' && option !== null) {
+      const label = option.label ?? option.text ?? '';
+      if (label) return String(label);
+    }
+    if (typeof option === 'string') {
+      const trimmed = option.trim();
+      if (
+        !trimmed.toLowerCase().startsWith('<svg') &&
+        !/^https?:\/\//i.test(trimmed) &&
+        !trimmed.startsWith('/') &&
+        !trimmed.startsWith('data:image/')
+      ) {
+        return option;
+      }
+    }
+    return `Option ${index + 1}`;
+  };
+
+  if (type === 'mcq' || type === 'imagechoice') {
     if (question.isMultiSelect) {
-      const selected = Array.isArray(answer) ? answer : [];
-      if (selected.length === 0) return 'No option selected';
-      return selected
-        .map((idx) => getOptionLabel(question.options?.[idx], Number(idx)))
-        .join(', ');
+      const indices = Array.isArray(answer) ? answer.map(Number).filter(Number.isFinite) : [];
+      return indices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
     }
     const idx = Number(answer);
-    if (!Number.isFinite(idx)) return 'No option selected';
-    return getOptionLabel(question.options?.[idx], idx);
+    if (Number.isFinite(idx) && idx >= 0) {
+      return getOptionLabel(question.options?.[idx], idx);
+    }
+    return 'No option selected';
+  }
+
+  if (type === 'sorting') {
+    if (Array.isArray(answer)) {
+       return answer.map(id => {
+          const item = (question.items || []).find(it => String(it.id) === String(id));
+          return item?.content || id;
+       }).join(', ');
+    }
+    return 'No order set';
   }
 
   if (
-    question.type === 'fillInTheBlank' ||
-    question.type === 'gridArithmetic' ||
-    question.type === 'table' ||
-    question.type === 'smartTable'
+    type === 'fillintheblank' ||
+    type === 'gridarithmetic' ||
+    type === 'table' ||
+    type === 'smarttable'
   ) {
     if (!answer || typeof answer !== 'object') return 'No answer';
     const parts = Array.isArray(question.parts) ? question.parts : [];
@@ -358,7 +387,7 @@ function getSelectedAnswerDisplay(question, answer) {
     return entries.map(([k, v]) => `${v}`).join(', ');
   }
 
-  if (question.type === 'shadeGrid') {
+  if (type === 'shadegrid') {
     if (Array.isArray(answer)) return String(answer.length);
     if (answer && typeof answer === 'object') {
       if (Array.isArray(answer.selected)) return String(answer.selected.length);
@@ -878,6 +907,8 @@ export default function PracticePage() {
         hintUsed: false,
         attemptsOnQuestion: 1,
         seenQuestionIds,
+        adaptiveConfig: currentQuestion.adaptiveConfig,
+        correctAnswerText: currentQuestion.correctAnswerText,
       };
 
       console.log('Submit Body:', submitBody);
@@ -966,8 +997,9 @@ export default function PracticePage() {
           : withCurrent;
       });
 
-      // remove extra wait for correct answers; move immediately
+      // Show feedback briefly for correct answers, then move on
       if (correct) {
+        await delay(1200);
         applyNextQuestion(upcoming);
       }
     } catch (error) {
@@ -1193,58 +1225,102 @@ export default function PracticePage() {
             </div>
           )}
 
-          {isAnswered && isCorrect === false && (
-            <div className={`${styles.feedback} ${styles.incorrect} ${styles.incorrectDetailed}`}>
-              <h2 className={styles.incorrectTitle}>Sorry, incorrect...</h2>
-              <div className={styles.correctAnswerRow}>
-                <span className={styles.correctAnswerLabel}>The correct answer is:</span>
-                {renderMaybeInlineHtml(correctAnswerDisplay || 'See explanation below', styles.correctAnswerValue)}
+          {isAnswered && isCorrect === false && feedbackData?.intervention === 'SCAFFOLD' && (
+            <div className={`${styles.feedback} ${styles.scaffold} ${styles.incorrectDetailed}`}>
+              <div className={styles.scaffoldHeader}>
+                <span className={styles.scaffoldBadge}>Intervention</span>
+                <h2 className={styles.scaffoldTitle}>{feedbackData.message}</h2>
+              </div>
+              
+              <div className={styles.scaffoldBody}>
+                {feedbackData.scaffold?.steps?.map((step, idx) => (
+                  <div key={`step-${idx}`} className={styles.scaffoldStep}>
+                    <div className={styles.stepNumber}>{idx + 1}</div>
+                    <div className={styles.stepContent}>
+                      {renderMaybeInlineHtml(step)}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <h3 className={styles.explanationHeading}>Explanation</h3>
-              {!hasStructuredSolution && (
-                <div className={styles.reviewCard}>
-                  <h4 className={styles.reviewTitle}>Question</h4>
-                  <div className={styles.reviewQuestion}>
-                    {currentQuestion?.type === 'fillInTheBlank' || currentQuestion?.type === 'gridArithmetic' || currentQuestion?.type === 'shadeGrid' ? (
-                      <QuestionRenderer
-                        question={reviewQuestion}
-                        userAnswer={
-                          currentQuestion?.type === 'shadeGrid' ? shadeGridCorrectAnswer :
-                            (isFillInTheBlankType && correctFillInTheBlankAnswer) ? correctFillInTheBlankAnswer :
-                              userAnswer
-                        }
-                        onAnswer={() => { }}
-                        onSubmit={() => { }}
-                        isAnswered
-                        isCorrect={false}
-                      />
-                    ) : (
-                      <QuestionParts parts={currentQuestion?.parts || []} />
-                    )}
-                  </div>
+              <div className={styles.scaffoldAction}>
+                <button onClick={handleNext} disabled={isSubmitting} className={styles.nextButton}>
+                  {isSubmitting ? 'Loading...' : 'I understand, keep going'}
+                </button>
+              </div>
+            </div>
+          )}
 
-                  {isOptionType && Array.isArray(currentQuestion?.options) && currentQuestion.options.length > 0 ? (
-                    <div className={styles.reviewOptions}>
-                      {currentQuestion.options.map((option, index) => (
-                        <div
-                          key={`review-opt-${index}`}
-                          className={`${styles.reviewOption} ${selectedIndexSet.has(index) ? styles.reviewSelected : ''} ${correctIndexSet.has(index) ? styles.reviewCorrect : ''}`}
-                        >
-                          {renderMaybeInlineHtml(getOptionLabel(option, index), styles.reviewOptionLabel)}
-                          {selectedIndexSet.has(index) && <span className={styles.reviewTag}>Your choice</span>}
-                          {correctIndexSet.has(index) && <span className={styles.reviewTagCorrect}>Correct</span>}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className={styles.reviewAnswerLine}>
-                      <strong>You answered:</strong> {renderMaybeInlineHtml(selectedAnswerDisplay || 'No answer')}
-                    </p>
-                  )}
+          {isAnswered && isCorrect === false && feedbackData?.intervention !== 'SCAFFOLD' && (
+            <div className={`${styles.feedback} ${styles.incorrect} ${styles.incorrectDetailed}`}>
+              <h2 className={styles.incorrectTitle}>Not quite...</h2>
+
+              {feedbackData?.optionFeedback && (
+                <div className={styles.optionFeedbackAlert}>
+                  <div className={styles.optionFeedbackContent}>
+                    <span className={styles.optionFeedbackIcon}>💡</span>
+                    {renderMaybeInlineHtml(feedbackData.optionFeedback)}
+                  </div>
                 </div>
               )}
 
+              {/* Step 1: Side-by-side comparison */}
+              <div className={styles.comparisonGroup}>
+                <div className={`${styles.comparisonItem} ${styles.user}`}>
+                  <span className={styles.comparisonLabel}>Your choice</span>
+                  <div className={styles.comparisonValue}>
+                    {renderMaybeInlineHtml(selectedAnswerDisplay || 'No choice')}
+                  </div>
+                </div>
+                <div className={`${styles.comparisonItem} ${styles.correct}`}>
+                  <span className={styles.comparisonLabel}>Correct Answer</span>
+                  <div className={styles.comparisonValue}>
+                    {renderMaybeInlineHtml(correctAnswerDisplay || '—')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Question Review */}
+              <div className={styles.reviewCard}>
+                <h4 className={styles.reviewTitle}>Question</h4>
+                <div className={styles.reviewQuestion}>
+                  {currentQuestion?.type === 'fillInTheBlank' || currentQuestion?.type === 'gridArithmetic' || currentQuestion?.type === 'shadeGrid' ? (
+                    <QuestionRenderer
+                      question={reviewQuestion}
+                      userAnswer={
+                        currentQuestion?.type === 'shadeGrid' ? shadeGridCorrectAnswer :
+                          (isFillInTheBlankType && correctFillInTheBlankAnswer) ? correctFillInTheBlankAnswer :
+                            userAnswer
+                      }
+                      onAnswer={() => { }}
+                      onSubmit={() => { }}
+                      isAnswered
+                      isCorrect={false}
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <QuestionParts parts={currentQuestion?.parts || []} />
+                      
+                      {isOptionType && Array.isArray(currentQuestion?.options) && (
+                        <div className={styles.reviewOptions} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                          {currentQuestion.options.map((option, index) => (
+                            <div
+                              key={`review-opt-${index}`}
+                              className={`${styles.reviewOption} ${selectedIndexSet.has(index) ? styles.reviewSelected : ''} ${correctIndexSet.has(index) ? styles.reviewCorrect : ''}`}
+                              style={{ display: 'flex', justifyContent: 'center', textAlign: 'center', padding: '0.75rem' }}
+                            >
+                              {renderMaybeInlineHtml(getOptionLabel(option, index), styles.reviewOptionLabel)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Step 3: Explanation */}
+              <h3 className={styles.explanationHeading}>Explanation</h3>
               {hasStructuredSolution ? (
                 <div className={styles.solutionSections}>
                   {solutionSections.map((section, idx) => (
@@ -1259,8 +1335,8 @@ export default function PracticePage() {
                       const visibleParts = isDuplicateFirstText ? section.parts.slice(1) : section.parts;
                       return (
                         <div key={`solution-section-${idx}`} className={styles.explanationSection}>
-                          <div className={`${styles.explanationRibbon} ${section.label === 'review' ? styles.ribbonReview : styles.ribbonSolve}`}>
-                            {section.label === 'review' ? 'review' : 'solve'}
+                          <div className={`${styles.explanationRibbon} ${section.label === 'review' || section.label === 'key idea' ? styles.ribbonReview : styles.ribbonSolve}`}>
+                            {section.label === 'review' ? 'review' : section.label === 'key idea' ? 'key idea' : 'solve'}
                           </div>
                           <div className={styles.explanationSectionBody}>
                             {section.title ? <h4 className={styles.explanationSectionTitle}>{section.title}</h4> : null}
@@ -1276,7 +1352,7 @@ export default function PracticePage() {
                   <QuestionParts parts={solutionParts} />
                 </div>
               ) : (
-                <p className={styles.solution}>{renderMaybeInlineHtml(feedbackData?.solution || '')}</p>
+                <div className={styles.solution}>{renderMaybeInlineHtml(feedbackData?.solution || '')}</div>
               )}
 
               <button onClick={handleNext} disabled={isSubmitting} className={styles.nextButton}>
@@ -1423,6 +1499,34 @@ export default function PracticePage() {
                         })()}
                         isCorrect={true}
                       />
+                    </div>
+                    <div className={styles.exampleSolutionBox}>
+                      <h4 className={styles.exampleSolutionHeading}>Explanation</h4>
+                      {(() => {
+                        const solParts = parseSolutionParts(exampleQuestion.solution);
+                        const solSections = normalizeSolutionSections(solParts);
+                        if (solSections.length > 0) {
+                          return (
+                            <div className={styles.solutionSections}>
+                              {solSections.map((section, idx) => (
+                                <div key={`ex-sol-section-${idx}`} className={styles.explanationSection}>
+                                  <div className={`${styles.explanationRibbon} ${section.label === 'review' ? styles.ribbonReview : styles.ribbonSolve}`}>
+                                    {section.label === 'review' ? 'review' : 'solve'}
+                                  </div>
+                                  <div className={styles.explanationSectionBody}>
+                                    {section.title ? <h4 className={styles.explanationSectionTitle}>{section.title}</h4> : null}
+                                    <QuestionParts parts={section.parts} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        } else if (solParts) {
+                          return <QuestionParts parts={solParts} />;
+                        } else {
+                          return <div className={styles.solution}>{renderMaybeInlineHtml(exampleQuestion.solution)}</div>;
+                        }
+                      })()}
                     </div>
                   </div>
                 </div>

@@ -59,13 +59,15 @@ export async function GET(_req, { params }) {
       return NextResponse.json({ error: 'No example available for this skill.' }, { status: 404 });
     }
 
+    const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
     const mapped = mapDbQuestion(questionData);
+    const instantiated = instantiateTemplate(mapped);
     
     // We explicitly include the solution here for the "Learn from Example" feature
     return NextResponse.json({
       question: {
-        ...mapped,
-        solution: mapped.solution || 'No explanation available yet.'
+        ...instantiated,
+        solution: instantiated.solution || 'No explanation available yet.'
       }
     });
 

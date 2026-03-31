@@ -32,7 +32,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'studentId and microSkillId are required.' }, { status: 400 });
   }
 
-  const microskillId = await resolveMicroskillIdByKey(microskillKey);
+  let microskillId = await resolveMicroskillIdByKey(microskillKey);
+  if (!microskillId && microskillKey === 'place-value-auto-intro') {
+    microskillId = 'place-value-auto-intro';
+  }
+
   if (!microskillId) {
     serverLog('api.adaptive.session.start', 'microskill resolution failed', { microskillKey });
     return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });

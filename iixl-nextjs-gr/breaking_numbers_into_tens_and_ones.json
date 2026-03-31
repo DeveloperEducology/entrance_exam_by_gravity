@@ -1,0 +1,90 @@
+{
+  "type": "fillInTheBlank",
+  "template_id": "breaking_numbers_into_tens_and_ones_v1",
+  "logic_type": "breaking_numbers_into_tens_and_ones_v1",
+  "data_source": {
+    "range": [
+      11,
+      99
+    ],
+    "exclude_zeros": true
+  },
+  "scaffold": null,
+  "difficulty": "class 1",
+  "micro_skill_id": "4474f12b-b39c-49d2-9351-3c687507d3b3",
+  "question_text": "",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Type the missing numbers.",
+      "hasAudio": true
+    },
+    {
+      "type": "sequence",
+      "children": [
+        {
+          "type": "text",
+          "content": "**{num}** = "
+        },
+        {
+          "type": "input",
+          "id": "ans_tens",
+          "width": 60
+        },
+        {
+          "type": "text",
+          "content": " tens +"
+        },
+        {
+          "type": "input",
+          "id": "ans_ones",
+          "width": 60
+        },
+        {
+          "type": "text",
+          "content": " ones"
+        }
+      ]
+    }
+  ],
+  "options": [],
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "drag_groups": [],
+  "drag_items": [],
+  "solution": [
+    {
+      "type": "text",
+      "content": "### Solution Strategy",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Remember the place values:",
+      "isVertical": true
+    },
+    {
+      "type": "smartTable",
+      "headers": [
+        "tens",
+        "ones"
+      ],
+      "rows": [
+        [
+          "**{tens_digit}**",
+          "**{ones_digit}**"
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "content": "### **{num} = {tens_digit} tens + {ones_digit} ones**",
+      "isVertical": true
+    }
+  ],
+  "marks": 1,
+  "is_multi_select": false,
+  "is_vertical": true,
+  "show_submit_button": true,
+  "adaptive_config": null
+}

@@ -11,6 +11,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -19,11 +20,25 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
 } from '@dnd-kit/sortable';
+import { 
+  restrictToWindowEdges,
+  snapCenterToCursor
+} from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import styles from './SortingRenderer.module.css';
 import QuestionParts from './QuestionParts';
 import { isImageUrl, isInlineSvg } from './contentUtils';
 import SafeImage from './SafeImage';
+
+const dropAnimationConfig = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0.4',
+      },
+    },
+  }),
+};
 
 function SortingTile({ index, isSelected, children, dragging = false }) {
   return (
@@ -43,8 +58,10 @@ function SortableItem({ itemId, index, isAnswered, isSelected, onTap, children }
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition || 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+    transform: CSS.Translate.toString(transform),
+    transition: transition || 'transform 250ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+    zIndex: isDragging ? 999 : 1,
+    opacity: isDragging ? 0 : 1,
   };
 
   return (
@@ -93,13 +110,13 @@ export default function SortingRenderer({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 6,
+        distance: 3,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 120,
-        tolerance: 8,
+        delay: 150,
+        tolerance: 6,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -144,21 +161,30 @@ export default function SortingRenderer({
     return <span>{content}</span>;
   };
 
-  const handleDragEnd = (event) => {
-    setActiveId(null);
+  const handleDragOver = (event) => {
     if (isAnswered) return;
-
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const oldIndex = items.indexOf(String(active.id));
     const newIndex = items.indexOf(String(over.id));
-    if (oldIndex < 0 || newIndex < 0) return;
 
-    const reordered = arrayMove(items, oldIndex, newIndex);
-    setItems(reordered);
-    onAnswer(reordered);
+    if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(items, oldIndex, newIndex);
+      setItems(reordered);
+    }
+  };
+
+  const handleDragEnd = (event) => {
+    setActiveId(null);
+    onAnswer(items);
     setSelectedItemId(null);
+  };
+
+  const handleDragStart = (event) => {
+    setActiveId(String(event.active.id));
+    setSelectedItemId(null);
+    if (window.navigator.vibrate) window.navigator.vibrate(20);
   };
 
   const handleItemTap = (itemId) => {
@@ -201,15 +227,14 @@ export default function SortingRenderer({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          modifiers={[restrictToWindowEdges]}
           measuring={{
             droppable: {
               strategy: MeasuringStrategy.Always,
             },
           }}
-          onDragStart={({ active }) => {
-            setActiveId(String(active.id));
-            setSelectedItemId(null);
-          }}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragCancel={() => setActiveId(null)}
           onDragEnd={handleDragEnd}
         >
@@ -226,10 +251,10 @@ export default function SortingRenderer({
                 >
                   {renderItemContent(itemId)}
                 </SortableItem>
-              ))}
+               ))}
             </div>
           </SortableContext>
-          <DragOverlay dropAnimation={null}>
+          <DragOverlay dropAnimation={dropAnimationConfig} modifiers={[snapCenterToCursor]}>
             {activeId ? (
               <div className={styles.dragOverlay}>
                 <SortingTile index={activeItemIndex >= 0 ? activeItemIndex : 0} isSelected={false} dragging>

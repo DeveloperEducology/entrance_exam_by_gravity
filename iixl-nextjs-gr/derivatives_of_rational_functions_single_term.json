@@ -1,0 +1,165 @@
+{
+  "type": "fillInTheBlank",
+  "template_id": "derivatives_of_rational_functions_single_term_v1",
+  "logic_type": "derivatives_of_rational_functions_single_term_v1",
+  "data_source": {
+    "num_a_range": [2, 9],
+    "num_b_range": [1, 9],
+    "power_n_range": [2, 5]
+  },
+  "scaffold": null,
+  "difficulty": "class 11-12",
+  "micro_skill_id": "cal-deriv-rational-001",
+  "question_text": "",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Find the derivative of $f(x)$.",
+      "hasAudio": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f(x) = {f_x}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "sequence",
+      "children": [
+        {
+          "type": "text",
+          "content": "f'(x) = "
+        },
+        {
+          "type": "mathLatex",
+          "content": "\\frac{[n]}{[d]}",
+          "isDisplayMode": false,
+          "blankWidth": 80
+        }
+      ]
+    }
+  ],
+  "options": [],
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "drag_groups": [],
+  "drag_items": [],
+  "solution": [
+    {
+      "type": "text",
+      "content": "### 1. Simplify the Function",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Break the fraction into two separate terms by dividing each part of the numerator by $x^{power_n}$:",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f(x) = {step1_f}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "text",
+      "content": "Now, simplify each term:",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "• The first term simplifies to ${num_a} (since $x^{power_n}/x^{power_n} = 1$).",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "• The second term can be rewritten using a **negative exponent**: $\\frac{{num_b}}{x^{power_n}} = {num_b}x^{-{power_n}}$.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "So, the simplified function is:",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f(x) = {simplified_final}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "text",
+      "content": "--------------------------------------------------------",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "### 2. Apply the Power Rule",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Now we differentiate each term individually.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "• The derivative of a constant (${num_a}$) is 0.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "• The derivative of $x^{-{power_n}}$: Bring the exponent down to the front and subtract 1 from the power.",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "({num_b}x^{-{power_n}})' = {coeff}x^{-{power_n}-1} = {coeff}x^{-{new_power}}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "text",
+      "content": "--------------------------------------------------------",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "### 3. Final Result",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Putting the parts back together:",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f'(x) = 0 + {coeff}x^{-{new_power}}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "text",
+      "content": "To express the answer with a positive exponent (standard mathematical form):",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f'(x) = {final_ans}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "text",
+      "content": "**Final Answer:**",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f'(x) = {final_ans}",
+      "isDisplayMode": true
+    }
+  ],
+  "marks": 1,
+  "is_multi_select": false,
+  "is_vertical": true,
+  "show_submit_button": true,
+  "adaptive_config": {
+    "useScaffold": true
+  }
+}

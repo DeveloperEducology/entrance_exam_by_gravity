@@ -1,0 +1,88 @@
+{
+  "type": "mcq",
+  "template_id": "which_model_matches_number_v1",
+  "logic_type": "which_model_matches_number_v1",
+  "data_source": {
+    "range": [
+      11,
+      99
+    ],
+    "exclude_zeros": true
+  },
+  "scaffold": null,
+  "difficulty": "class 1",
+  "micro_skill_id": "0181c3b5-8e39-455c-a939-1b15dbde23f8",
+  "question_text": "",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Which place-value model shows **{target_num}**?",
+      "hasAudio": true
+    }
+  ],
+  "options": [
+    {
+      "parts": [
+        {
+          "type": "baseTenBlocks",
+          "tens": "{target_tens}",
+          "ones": "{target_ones}",
+          "variant": "{target_color}"
+        }
+      ],
+      "is_correct": true
+    },
+    {
+      "parts": [
+        {
+          "type": "baseTenBlocks",
+          "tens": "{distractor_tens}",
+          "ones": "{distractor_ones}",
+          "variant": "{distractor_color}"
+        }
+      ],
+      "is_correct": false
+    }
+  ],
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "drag_groups": [],
+  "drag_items": [],
+  "solution": [
+    {
+      "type": "text",
+      "content": "### Solution Strategy",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "To find **{target_num}**, break it into tens and ones:",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "- **{target_tens}** tens (rods)\n- **{target_ones}** ones (units)",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Check the models:",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "The **{distractor_color}** model has {distractor_tens} rods and {distractor_ones} units. That shows {distractor_num}.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "The **{target_color}** model has **{target_tens}** rods and **{target_ones}** units. That shows **{target_num}**.",
+      "isVertical": true
+    }
+  ],
+  "marks": 1,
+  "is_multi_select": false,
+  "is_vertical": false,
+  "show_submit_button": true,
+  "adaptive_config": null
+}

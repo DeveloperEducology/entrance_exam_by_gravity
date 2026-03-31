@@ -21,7 +21,7 @@ import {
   validateAnswer,
 } from '@/lib/adaptive/server';
 
-function buildBasicFeedback(question) {
+function buildBasicFeedback(question, selectedAnswer = null) {
   const getOptionLabel = (option, index) => {
     if (typeof option === 'object' && option !== null) {
       const label = option.label ?? option.text ?? '';
@@ -41,12 +41,26 @@ function buildBasicFeedback(question) {
     return `Option ${index + 1}`;
   };
 
+  const type = String(question?.type || '').trim().toLowerCase();
+  
+  // Extract per-option feedback for MCQ if applicable
+  let optionFeedback = null;
+  if ((type === 'mcq' || type === 'imagechoice') && selectedAnswer !== null) {
+    const idx = Number(selectedAnswer);
+    if (Number.isFinite(idx) && idx >= 0 && Array.isArray(question.options)) {
+        const option = question.options[idx];
+        if (typeof option === 'object' && option !== null) {
+            optionFeedback = option.feedback || option.feedbackText || null;
+        }
+    }
+  }
+
   return {
     solution: question?.solution || "Review the corrected answers shown in the question card above to understand the solution.",
+    optionFeedback, // Added specific feedback for the wrong choice
     correctAnswerText: question?.correctAnswerText ?? '',
     correctAnswerDisplay: (() => {
       if (!question) return '';
-      const type = String(question.type || '').trim().toLowerCase();
       if (type === 'mcq' || type === 'imagechoice') {
         if (question.isMultiSelect) {
           const indices = Array.isArray(question.correctAnswerIndices)
@@ -59,6 +73,17 @@ function buildBasicFeedback(question) {
           return getOptionLabel(question.options?.[idx], idx);
         }
       }
+      if (type === 'sorting') {
+          try {
+              const ids = JSON.parse(String(question.correctAnswerText || '[]'));
+              if (Array.isArray(ids)) {
+                 return ids.map(id => {
+                    const item = (question.items || []).find(it => String(it.id) === String(id));
+                    return item?.content || id;
+                 }).join(', ');
+              }
+          } catch { }
+      }
       if (
         type === 'fillintheblank' ||
         type === 'gridarithmetic' ||
@@ -67,25 +92,36 @@ function buildBasicFeedback(question) {
       ) {
         try {
           const rawText = question.correctAnswerText;
-          const parsed = (typeof rawText === 'object' && rawText !== null)
-            ? rawText
-            : JSON.parse(String(rawText ?? '{}'));
+          if (rawText === null || rawText === undefined || rawText === '') return '';
+          
+          let parsed;
+          if (typeof rawText === 'object') {
+            parsed = rawText;
+          } else {
+             try {
+                parsed = JSON.parse(String(rawText));
+             } catch {
+                parsed = null;
+             }
+          }
 
           if (parsed && typeof parsed === 'object') {
             const arithmeticPart = (question.parts || []).find((part) => part?.type === 'arithmeticLayout');
+            
+            // If it is an arithmetic cell Layout, join the cells properly
             const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
             const answerRow = rows.find((row) => String(row?.kind || '').toLowerCase() === 'answer');
             const cells = Array.isArray(answerRow?.cells) ? answerRow.cells : [];
-
             if (cells.length > 0) {
               const prefix = String(answerRow?.prefix || '');
               const joined = cells.map((cell, idx) => String(parsed[cell?.id ?? `cell_${idx}`] ?? '')).join('');
               return `${prefix}${joined}`.trim();
             }
 
-            if (Object.keys(parsed).length === 0) return String(question.correctAnswerText ?? '');
+            if (Object.keys(parsed).length === 0) return String(rawText);
             return Object.values(parsed).join(', ');
           }
+          return String(rawText);
         } catch { }
       }
       return String(question?.correctAnswerText ?? '');
@@ -134,7 +170,23 @@ async function findIdempotentReplay(db, { sessionId, studentId, microskillId, qu
   return extractIdempotencyResponse(matched?.correct_payload);
 }
 
+function getPlaceValueMisconception(question, userAnswer) {
+  const vars = question.adaptiveConfig?.variables;
+  if (!vars) return null;
+
+  const answers = typeof userAnswer === 'object' && userAnswer !== null ? Object.values(userAnswer) : [String(userAnswer || '')];
+  const placeName = String(vars.place_name || '').trim().toLowerCase();
+
+  for (const val of answers) {
+    if (String(val).trim().toLowerCase() === placeName && placeName !== '') {
+      return 'place_name_error';
+    }
+  }
+  return null;
+}
+
 export async function POST(req) {
+
   let payload;
   try {
     payload = await req.json();
@@ -173,7 +225,11 @@ export async function POST(req) {
     );
   }
 
-  const microskillId = await resolveMicroskillIdByKey(microskillKey);
+  let microskillId = await resolveMicroskillIdByKey(microskillKey);
+  if (!microskillId && microskillKey === 'place-value-auto-intro') {
+    microskillId = 'place-value-auto-intro';
+  }
+
   if (!microskillId) {
     return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });
   }
@@ -205,7 +261,38 @@ export async function POST(req) {
       getRecoveryContextFromAttempts(db, { sessionId }),
     ]);
 
-    const currentQuestion = questions.find((q) => String(q.id) === questionId);
+    let currentQuestion = null;
+    if (questionId && (String(questionId).startsWith('generated_pv_') || String(questionId).startsWith('inst_'))) {
+      
+      // Default fake payload for validation
+      currentQuestion = {
+        id: questionId,
+        type: 'fillInTheBlank',
+        adaptiveConfig: payload.adaptiveConfig || {},
+        correctAnswerText: payload.adaptiveConfig?.correctAnswerText || payload.correctAnswerText || null,
+      };
+
+      // NEW: Securely reconstruct full object (including Hidden Solutions) from DB templates!
+      const instParts = String(questionId).split('_');
+      if (instParts.length >= 4 && instParts[0] === 'inst') {
+         // The inst ID format is inst_{templateId}_{timestamp}_{random}
+         // templateId might contain underscores, so we join the parts between.
+         const templateId = instParts.slice(1, -2).join('_');
+         const dbTemplate = questions.find(q => String(q.id) === templateId || String(q.template_id) === templateId || String(q.adaptiveConfig?.template_id) === templateId);
+         
+         if (dbTemplate && payload.adaptiveConfig?.variables) {
+            const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
+            const reconstructed = instantiateTemplate(dbTemplate, payload.adaptiveConfig.variables);
+            reconstructed.id = questionId; // ensure ID matches the submitted ID perfectly
+            currentQuestion = reconstructed;
+         }
+      }
+      
+    } else {
+      const isMongoId = mongoose.Types.ObjectId.isValid(questionId);
+      const query = isMongoId ? { _id: new mongoose.Types.ObjectId(questionId) } : { id: questionId };
+      currentQuestion = await db.collection('questions').findOne(query);
+    }
     if (!currentQuestion) {
       return NextResponse.json({ error: 'Question not found for this microskill.' }, { status: 404 });
     }
@@ -219,7 +306,7 @@ export async function POST(req) {
     const misconceptionCodeForWrongAnswer = !isCorrect
       ? (detectedMisconceptionCode || `incorrect_${String(currentQuestion?.type || 'unknown').toLowerCase()}`)
       : null;
-    const feedback = buildBasicFeedback(currentQuestion);
+    const feedback = buildBasicFeedback(currentQuestion, answer);
     const mastery = computeMasteryUpdate({
       prevState: prevSkill,
       isCorrect,
@@ -304,7 +391,10 @@ export async function POST(req) {
       completed_at: effectivePhase === 'done' ? new Date().toISOString() : null,
     });
 
-    const nextResult = chooseNextQuestion({
+    const misconception = !isCorrect ? getPlaceValueMisconception(currentQuestion, answer) : null;
+    const triggerScaffold = misconception === 'place_name_error' && currentQuestion.adaptiveConfig?.scaffold;
+
+    let nextResult = chooseNextQuestion({
       questions,
       targetDifficulty: sessionRow?.active_difficulty ?? mastery.difficultyBand,
       recentQuestionIds: sessionRow?.recent_question_ids || sessionUpdate.recentQuestionIds,
@@ -318,12 +408,43 @@ export async function POST(req) {
         : null,
     });
 
+    if (triggerScaffold) {
+      nextResult.reason = 'intervention_scaffold';
+    }
+
+    if (!nextResult.question || microskillId === 'place-value-auto-intro') {
+      if (microskillId === 'place-value-auto-intro') {
+        const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
+        nextResult = {
+          question: generatePlaceValueQuestion(),
+          reason: triggerScaffold ? 'intervention_scaffold' : 'auto_generated'
+        };
+      }
+    }
+
+    if (nextResult.question) {
+      const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
+      nextResult.question = instantiateTemplate(nextResult.question);
+    }
+
     // We already calculated smartScoreBreakdown above to determine the band
 
     const responsePayload = {
       result: {
         isCorrect,
-        feedback,
+        feedback: triggerScaffold ? {
+          ...feedback,
+          intervention: 'SCAFFOLD',
+          message: 'You identified the place correctly! Now let\'s find its value.',
+          scaffold: {
+            ...currentQuestion.adaptiveConfig.scaffold,
+            // Pre-hydrate steps for the frontend if variables are available
+            steps: (currentQuestion.adaptiveConfig.scaffold.steps || []).map(step => {
+              const { hydrateTemplate } = require('@/components/practice/contentUtils');
+              return hydrateTemplate(step, currentQuestion.adaptiveConfig.variables);
+            })
+          }
+        } : feedback,
       },
       masteryUpdate: {
         prevScore: mastery.prevScore,

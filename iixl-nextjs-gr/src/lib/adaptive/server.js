@@ -278,7 +278,13 @@ export function validateAnswer(question, answer) {
         ? rawText
         : parseMaybeJson(rawText, null);
 
-      if (!parsed || typeof parsed !== 'object') return false;
+      if (!parsed || typeof parsed !== 'object') {
+        // Fallback for plain string/number answers in fillInTheBlank
+        if (!answer) return false;
+        const answerVal = (typeof answer === 'object') ? Object.values(answer)[0] : answer;
+        return String(answerVal ?? '').trim().toLowerCase() === String(rawText ?? '').trim().toLowerCase();
+      }
+      
       return Object.keys(parsed).every((key) => (
         String(answer?.[key] ?? '').trim().toLowerCase() === String(parsed[key] ?? '').trim().toLowerCase()
       ));
@@ -462,6 +468,14 @@ export function detectMisconceptionCode({ question, answer, isCorrect }) {
       const diff = actualNumeric - expectedNumeric;
       if (Math.abs(diff) === 1) return 'off_by_one';
       if (Math.abs(diff) === 10) return 'place_value_shift';
+      
+      // Check for adding digits instead of place values (e.g. 23 -> 5)
+      if (expectedNumeric >= 10 && expectedNumeric <= 99) {
+        const tens = Math.floor(expectedNumeric / 10);
+        const ones = expectedNumeric % 10;
+        if (actualNumeric === (tens + ones)) return 'sum_of_digits_error';
+      }
+
       if (diff > 0) return 'overestimate';
       if (diff < 0) return 'underestimate';
     }
@@ -535,10 +549,13 @@ export function chooseNextQuestion({
   }
 
   // 2. If target band is exhausted in candidates, check if we can repeat a question of the SAME difficulty
-  const sameDifficultyRepeats = questions.filter((q) => 
-    normalizeDifficulty(q.difficulty) === normalizedTarget && 
-    String(q.id) !== String(excludeQuestionId || '')
-  );
+  const sameDifficultyRepeats = questions.filter((q) => {
+    if (normalizeDifficulty(q.difficulty) !== normalizedTarget) return false;
+    // Allow immediate repeats if it's a dynamic template generator, because it outputs a unique variation every time.
+    const isDynamicGenerator = Boolean(q.adaptiveConfig?.logic_type);
+    if (isDynamicGenerator) return true;
+    return String(q.id) !== String(excludeQuestionId || '');
+  });
   if (sameDifficultyRepeats.length > 0) {
     const randomIndex = Math.floor(Math.random() * sameDifficultyRepeats.length);
     return {
@@ -672,19 +689,35 @@ export function computeSessionUpdate({
   const priorPhase = String(prevSession?.phase ?? 'warmup');
   const currentSmartScore = Number(prevSession?.smart_score ?? 0);
   
-  // Enforce strict difficulty bands requested by user:
-  // 40: Easy, 70: Medium, 100: Hard
   let phase = priorPhase;
-  let difficulty = 'easy';
+  let difficulty = String(prevSession?.active_difficulty || prevSession?.difficulty || 'easy').toLowerCase();
   
-  if (currentSmartScore >= 70) {
-    difficulty = 'hard';
+  // Strict Streak-Based Difficulty Implementation:
+  // 5 correct in a row escalates to the next difficulty
+  // 1 wrong falls back to previous difficulty
+  if (isCorrect) {
+    if (currentStreak > 0 && currentStreak % 5 === 0) {
+      if (difficulty === 'easy') {
+        difficulty = 'medium';
+      } else if (difficulty === 'medium') {
+        difficulty = 'hard';
+      }
+    }
+  } else {
+    // Drop one difficulty level immediately on an incorrect answer
+    if (difficulty === 'hard') {
+      difficulty = 'medium';
+    } else if (difficulty === 'medium') {
+      difficulty = 'easy';
+    }
+  }
+
+  // Maintain phase integrity
+  if (difficulty === 'hard') {
     phase = priorPhase === 'recovery' ? 'recovery' : 'challenge';
-  } else if (currentSmartScore >= 40) {
-    difficulty = 'medium';
+  } else if (difficulty === 'medium') {
     phase = priorPhase === 'warmup' ? 'core' : priorPhase;
   } else {
-    difficulty = 'easy';
     phase = askedCount < 3 ? 'warmup' : 'core';
   }
 

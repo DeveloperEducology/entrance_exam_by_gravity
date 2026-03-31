@@ -1,0 +1,112 @@
+{
+  "type": "fillInTheBlank",
+  "template_id": "derivatives_of_square_root_compositions_v1",
+  "logic_type": "derivatives_of_square_root_compositions_v1",
+  "data_source": {
+    "range": [
+      1,
+      9
+    ]
+  },
+  "scaffold": null,
+  "difficulty": "class 11-12",
+  "micro_skill_id": "cal-deriv-001",
+  "question_text": "",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Find the derivative of $f(x)$.",
+      "hasAudio": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f(x) = {combined_f}",
+      "isDisplayMode": true
+    },
+    {
+      "type": "sequence",
+      "children": [
+        {
+          "type": "text",
+          "content": "f'(x) = "
+        },
+        {
+          "type": "mathLatex",
+          "content": "\\frac{[n]}{2\\sqrt{[d]}}",
+          "isDisplayMode": false,
+          "blankWidth": 60
+        }
+      ]
+    }
+  ],
+  "options": [],
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "drag_groups": [],
+  "drag_items": [],
+  "solution": [
+    {
+      "type": "text",
+      "content": "### Solution Strategy",
+      "isVertical": true
+    },
+    {
+      "type": "markdownBox",
+      "title": "Key Idea: The Chain Rule",
+      "content": "The chain rule says that if $u(x)$ and $v(x)$ are differentiable, then their composition $u(v(x))$ can be differentiated by the following formula:\n\n$$[u(v(x))]' = u'(v(x))v'(x)$$",
+      "theme": "idea"
+    },
+    {
+      "type": "text",
+      "content": "**1. Identify the Layers:**",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "The outer function is $u(x) = \\sqrt{x}$ and the inner function is $v(x) = {inner_f}$.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "**2. Outside Derivative:**",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Find $u'(v(x))$, which is $\\frac{1}{2\\sqrt{v(x)}}$.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "**3. Inside Derivative:**",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Find $v'(x)$, which is ${deriv_inner}$.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "**4. Combine:**",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Multiply them together to get the final result:",
+      "isVertical": true
+    },
+    {
+      "type": "mathLatex",
+      "content": "f'(x) = {final_ans}",
+      "isDisplayMode": true
+    }
+  ],
+  "marks": 1,
+  "is_multi_select": false,
+  "is_vertical": true,
+  "show_submit_button": true,
+  "adaptive_config": {
+    "useScaffold": true
+  }
+}

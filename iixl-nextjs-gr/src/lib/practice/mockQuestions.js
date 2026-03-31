@@ -143,4 +143,79 @@ export const MOCK_QUESTIONS = [
     },
     sortOrder: 10,
   },
+  {
+    id: 'q11_g3',
+    logic_type: 'rounding_mcq_v2',
+    data_source: { range: [101, 999], round_to: 100 },
+    difficulty: 'medium',
+    parts: [{ type: 'text', content: 'Round **{num}** to the nearest **hundred**.' }],
+    options: [
+      { content: '{correct_ans}', feedback: 'Correct! You looked at the tens digit ({right_digit}).' },
+      { content: '{stay_error_ans}', feedback: 'Check the tens digit ({right_digit}). Should we stay at {lower_multiple}?' },
+      { content: '{up_error_ans}', feedback: 'Is the tens digit ({right_digit}) enough to go up to {higher_multiple}?' }
+    ],
+    solution: [{ "type": "text", "content": "To round to the nearest {target_place}, look at the {right_place} digit: **{right_digit}**. Since it is {right_digit}, the car goes **{hill_direction}**." }],
+    sortOrder: 11
+  },
+  {
+    id: 'q12_g4',
+    logic_type: 'rounding_mcq_v2',
+    data_source: { range: [1001, 9999], round_to: 1000 },
+    difficulty: 'hard',
+    parts: [{ type: 'text', content: 'Round **{num}** to the nearest **thousand**.' }],
+    options: [
+      { content: '{correct_ans}', feedback: 'Correct! You checked the hundreds digit ({right_digit}).' },
+      { content: '{stay_error_ans}', feedback: 'Look at the hundreds digit ({right_digit}). Should we stay at {lower_multiple}?' }
+    ],
+    solution: [{ "type": "text", "content": "To round to the nearest {target_place}, look at the {right_place} digit: **{right_digit}**. Since it is {right_digit}, the car goes **{hill_direction}**." }],
+    sortOrder: 12
+  },
+  {
+    id: 'q13_g5',
+    logic_type: 'rounding_mcq_v2',
+    data_source: { range: [10001, 99999], round_to: 10000 },
+    difficulty: 'hard',
+    parts: [{ type: 'text', content: 'Round **{num}** to the nearest **ten thousand**.' }],
+    options: [
+      { content: '{correct_ans}', feedback: 'Great! You identified the thousands digit ({right_digit}) correctly.' },
+      { content: '{stay_error_ans}', feedback: 'The thousands digit is {right_digit}. Does that mean we stay at {lower_multiple}?' }
+    ],
+    solution: [{ "type": "text", "content": "To round to the nearest {target_place}, look at the {right_place} digit: **{right_digit}**. Since it is {right_digit}, the car goes **{hill_direction}**." }],
+    sortOrder: 13
+  },
+  {
+    id: 'q14_g3',
+    type: 'mcq',
+    logic_type: 'number_word_to_digit_v1',
+    difficulty: 'easy',
+    parts: [
+      { "type": "text", "content": "How do you write this number using digits?" },
+      { "type": "text", "content": "### **{number_in_words}**" }
+    ],
+    options: [
+      { "content": "{num}", "feedback": "Great job! You identified each place value correctly." },
+      { "content": "{teen_error}", "feedback": "Listen closely to the word. Did you hear 'twenty' or 'fourteen'?" },
+      { "content": "{swap_error}", "feedback": "Check the tens and ones places again. Which digit is in the tens place?" },
+      { "content": "{hundred_error}", "feedback": "Look at the first word: '**{hundred_word}**'. That tells us the hundreds digit." }
+    ],
+    solution: [
+      { "type": "text", "content": "### 📊 Place Value Chart" },
+      { "type": "text", "content": "| hundreds | tens | ones |\n| :---: | :---: | :---: |\n| **{digit_3}** | **{digit_2}** | **{digit_1}** |" },
+      { "type": "text", "content": "\nYou write **{number_in_words}** as **{num}**." }
+    ],
+    sortOrder: 14
+  },
+  {
+    id: 'q15_count',
+    logic_type: 'interactive_object_counting_v1',
+    data_source: { range: [1, 20] },
+    difficulty: 'easy',
+    sortOrder: 15
+  },
+  {
+    id: 'q16_even_odd',
+    logic_type: 'even_odd_multi_v1',
+    difficulty: 'medium',
+    sortOrder: 16
+  }
 ];

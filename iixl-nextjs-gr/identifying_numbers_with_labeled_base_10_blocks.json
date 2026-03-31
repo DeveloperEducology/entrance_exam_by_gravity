@@ -1,0 +1,86 @@
+{
+  "type": "fillInTheBlank",
+  "template_id": "identifying_numbers_with_labeled_base_10_blocks_v1",
+  "logic_type": "identifying_numbers_with_labeled_base_10_blocks_v1",
+  "data_source": {
+    "range": [
+      100,
+      999
+    ],
+    "exclude_zeros": false
+  },
+  "scaffold": null,
+  "difficulty": "class 2",
+  "micro_skill_id": "4474f12b-b39c-49d2-9351-3c687507d3b3",
+  "question_text": "",
+  "parts": [
+    {
+      "type": "labeledBaseTenGrid",
+      "hundreds": "{h_digit}",
+      "tens": "{t_digit}",
+      "ones": "{o_digit}"
+    },
+    {
+      "type": "text",
+      "content": "What number is shown?",
+      "hasAudio": true
+    },
+    {
+      "type": "input",
+      "id": "ans_total",
+      "placeholder": "Enter number"
+    }
+  ],
+  "options": [],
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "drag_groups": [],
+  "drag_items": [],
+  "solution": [
+    {
+      "type": "text",
+      "content": "### Solution Strategy",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "To find the number, look at each group in the Blocks chart:",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "- **Thousands:** There are **{th_digit}** thousands blocks. Value = **{th_val}**.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "- **Hundreds:** There is **{h_digit}** hundred block. Value = **{h_val}**.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "- **Tens:** There are **{t_digit}** tens rods. Value = **{t_val}**.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "- **Ones:** There are **{o_digit}** ones cubes. Value = **{o_digit}**.",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "Add them together:",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "### **{h_val} + {t_val} + {o_digit} = {num}**",
+      "isVertical": true
+    }
+  ],
+  "marks": 1,
+  "is_multi_select": false,
+  "is_vertical": true,
+  "show_submit_button": true,
+  "adaptive_config": null
+}

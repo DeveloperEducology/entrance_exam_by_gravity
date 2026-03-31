@@ -8,6 +8,11 @@ import SafeImage from './SafeImage';
 import { latexWithPlaceholderBoxes, renderLatexToHtml } from './latexUtils';
 import FractionModelVisual from './FractionModelVisual';
 import ArithmeticBlock from './ArithmeticBlock';
+import BaseTenBlocks from './BaseTenBlocks';
+import NumberLineRounding from './NumberLineRounding';
+import CountingVisual from './CountingVisual';
+import NumberPairs from './NumberPairs';
+import NumberLineJumps from './NumberLineJumps';
 
 /**
  * @typedef {Object} QuestionPart
@@ -25,7 +30,7 @@ function renderInlineMarkdown(value) {
     if (!normalized) return null;
 
     const renderTextWithBoxes = (text, keyPrefix = '') => {
-        const tokens = text.split(/(\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\])/g).filter(Boolean);
+        const tokens = text.split(/(\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)/g).filter(Boolean);
         return tokens.map((token, idx) => {
             if (token.startsWith('[') && token.endsWith(']')) {
                 const content = token.slice(1, -1).trim();
@@ -35,9 +40,13 @@ function renderInlineMarkdown(value) {
                     </span>
                 );
             }
-            if ((token.startsWith('\\(') && token.endsWith('\\)')) || (token.startsWith('\\[') && token.endsWith('\\]'))) {
-                const isDisplay = token.startsWith('\\[');
-                const latexContent = token.slice(2, -2).trim();
+            const isStandardLatex = (token.startsWith('\\(') && token.endsWith('\\)')) || (token.startsWith('\\[') && token.endsWith('\\]'));
+            const isShorthandLatex = (token.startsWith('$') && token.endsWith('$'));
+            
+            if (isStandardLatex || isShorthandLatex) {
+                const isDisplay = token.startsWith('\\[') || token.startsWith('$$');
+                const sliceN = (token.startsWith('$$')) ? 2 : (token.startsWith('$') ? 1 : 2);
+                const latexContent = token.slice(sliceN, -sliceN).trim();
 
                 // If LaTeX contains placeholders [id], render it with boxes
                 if (latexContent.includes('[') && latexContent.includes(']')) {
@@ -614,6 +623,21 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'longMultiply':
                 return renderLongMultiply(part, index, styles);
 
+            case 'base10Visual':
+            case 'baseTenBlocks':
+            case 'base_ten_blocks':
+                return (
+                    <BaseTenBlocks
+                        key={index}
+                        thousands={part.value ? Math.floor(Number(part.value) / 1000) : Number(part.thousands || 0)}
+                        hundreds={part.value ? Math.floor((Number(part.value) % 1000) / 100) : Number(part.hundreds || 0)}
+                        tens={part.value ? Math.floor((Number(part.value) % 100) / 10) : Number(part.tens || 0)}
+                        ones={part.value ? (Number(part.value) % 10) : Number(part.ones || 0)}
+                        variant={part.variant || part.color || 'green'}
+                    />
+                );
+
+
             case 'verticalMultiply':
             case 'v1v2Multiply':
                 return renderVerticalMultiply(part, index, styles);
@@ -621,6 +645,54 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'table':
             case 'smartTable':
                 return renderSmartTable(part, index, styles);
+
+            case 'numberLineRounding':
+                return (
+                    <NumberLineRounding
+                        key={index}
+                        min={Number(part.min || 0)}
+                        max={Number(part.max || 0)}
+                        mid={Number(part.mid || 0)}
+                        current={Number(part.current || 0)}
+                        distLow={Number(part.distLow || 0)}
+                        distHigh={Number(part.distHigh || 0)}
+                        distMid={Number(part.distMid || 0)}
+                    />
+                );
+
+            case 'countingVisual':
+            case 'counting_visual':
+                return (
+                    <CountingVisual
+                        key={index}
+                        num={Number(part.num || 1)}
+                        objectType={part.object_type || part.objectType || 'ladybug'}
+                        imageUrl={part.imageUrl || part.image_url}
+                        arrangement={part.arrangement || 'grid'}
+                        showNumbers={Boolean(part.showNumbers || part.show_numbers)}
+                        highlightLast={Boolean(part.highlightLast || part.highlight_last)}
+                    />
+                );
+
+            case 'numberPairs':
+            case 'number_pairs':
+                return (
+                    <NumberPairs
+                        key={index}
+                        num={Number(part.num || 0)}
+                    />
+                );
+
+            case 'numberLineJumps':
+            case 'number_line_jumps':
+                return (
+                    <NumberLineJumps
+                        key={index}
+                        start={Number(part.start || 0)}
+                        target={Number(part.target || 0)}
+                        interval={Number(part.interval || 1)}
+                    />
+                );
 
             default:
                 return null;

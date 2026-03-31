@@ -29,7 +29,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'sessionId, studentId and microSkillId are required.' }, { status: 400 });
   }
 
-  const microskillId = await resolveMicroskillIdByKey(microskillKey);
+  let microskillId = await resolveMicroskillIdByKey(microskillKey);
+  if (!microskillId && microskillKey === 'place-value-auto-intro') {
+    microskillId = 'place-value-auto-intro';
+  }
+
   if (!microskillId) {
     return NextResponse.json({ error: 'Microskill not found.' }, { status: 404 });
   }
@@ -46,20 +50,13 @@ export async function POST(req) {
       fetchQuestionsByMicroskill(db, microskillId),
     ]);
 
-    const currentSmartScore = Number(sessionState?.smart_score ?? 0);
-    let targetDifficulty = 'easy';
-    
-    if (currentSmartScore >= 70) {
-      targetDifficulty = 'hard';
-    } else if (currentSmartScore >= 40) {
-      targetDifficulty = 'medium';
-    } else {
-      targetDifficulty = 'easy';
-    }
+    // targetDifficulty is now updated autonomously by the Streak Engine in submit-and-next 
+    // so we just passively read the active state!
+    const targetDifficulty = sessionState?.active_difficulty || 'easy';
 
     const recoveryContext = await getRecoveryContextFromAttempts(db, { sessionId });
 
-    const result = chooseNextQuestion({
+    let result = chooseNextQuestion({
       questions,
       targetDifficulty,
       recentQuestionIds: sessionState?.recent_question_ids || [],
@@ -73,7 +70,20 @@ export async function POST(req) {
         : null,
     });
 
+    if (!result.question || microskillId === 'place-value-auto-intro') {
+      if (microskillId === 'place-value-auto-intro') {
+        const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
+        result = {
+          question: generatePlaceValueQuestion(),
+          reason: 'auto_generated'
+        };
+      }
+    }
+
     if (result.question && sessionState?.id) {
+      const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
+      result.question = instantiateTemplate(result.question);
+
       const updatedRecent = appendCycleRecentQuestionIds({
         prevRecentQuestionIds: sessionState?.recent_question_ids || [],
         newQuestionId: result.question.id,

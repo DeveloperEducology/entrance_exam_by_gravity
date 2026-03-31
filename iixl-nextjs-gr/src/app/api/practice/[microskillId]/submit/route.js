@@ -138,14 +138,29 @@ function validateAnswer(question, answer) {
   }
 }
 
-function buildFeedback(question, isCorrect) {
+function buildFeedback(question, isCorrect, selectedAnswer = null) {
+  const type = String(question?.type || '').trim().toLowerCase();
+  
+  // Extract per-option feedback for MCQ if applicable
+  let optionFeedback = null;
+  if (!isCorrect && (type === 'mcq' || type === 'imagechoice') && selectedAnswer !== null) {
+    const idx = Number(selectedAnswer);
+    if (Number.isFinite(idx) && idx >= 0 && Array.isArray(question.options)) {
+        const option = question.options[idx];
+        if (typeof option === 'object' && option !== null) {
+            optionFeedback = option.feedback || option.feedbackText || null;
+        }
+    }
+  }
+
   const feedback = {
     solution: question?.solution || (isCorrect ? '' : "Review the corrected answers shown in the question card above to understand the solution."),
+    optionFeedback,
     correctAnswerDisplay: String(question?.correctAnswerText ?? ''),
     correctOptionIndices: []
   };
   if (!question) return feedback;
-  const type = String(question.type || '').trim().toLowerCase();
+  // type is already declared above
   if (type === 'mcq' || type === 'imagechoice') {
     if (question.isMultiSelect) {
       feedback.correctOptionIndices = (question.correctAnswerIndices || []).map(Number).filter(Number.isFinite);
@@ -244,7 +259,7 @@ export async function POST(req, { params }) {
     if (!currentQuestion) return NextResponse.json({ error: 'Question not found.' }, { status: 404 });
 
     const isCorrect = validateAnswer(currentQuestion, answer);
-    const feedback = buildFeedback(currentQuestion, isCorrect);
+    const feedback = buildFeedback(currentQuestion, isCorrect, answer);
 
     await insertLog(db, { studentId, microskillId, questionId, isCorrect, answer, responseMs });
 

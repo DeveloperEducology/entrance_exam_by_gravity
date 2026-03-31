@@ -37,3 +37,27 @@ export function sanitizeInlineHtml(value) {
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
     .replace(/\s(href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\2/gi, ' $1="#"');
 }
+
+export function hydrateTemplate(text, variables) {
+  if (!text || !variables) return text;
+  if (typeof text !== 'string') return text;
+  
+  return text.replace(/{([^{}]+)}/g, (match, key) => {
+    const parts = key.split('.');
+    let value = variables;
+    for (const part of parts) {
+      if (value === null || value === undefined) break;
+      value = value[part];
+    }
+    
+    if (value === undefined || value === null) return match;
+    
+    // Auto-format numbers with commas if they are large
+    if (typeof value === 'number') {
+      return value.toLocaleString();
+    }
+    
+    return String(value);
+  });
+}
+

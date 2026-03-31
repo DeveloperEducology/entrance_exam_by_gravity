@@ -1,0 +1,89 @@
+.container {
+    width: 100%;
+    margin-bottom: 2rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 2rem 1.5rem 1rem;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+.svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.mainLine {
+    stroke: #334155;
+    stroke-width: 6;
+    stroke-linecap: round;
+}
+
+.majorTick {
+    stroke: #0f172a;
+    stroke-width: 8;
+}
+
+.minorTick {
+    stroke: #cbd5e1;
+    stroke-width: 4;
+}
+
+.tickLabel {
+    fill: #334155;
+    font-size: 20px;
+    font-weight: 800;
+    text-anchor: middle;
+    font-family: inherit;
+}
+
+.currentNumLabel {
+    fill: #0f172a;
+    font-size: 24px;
+    font-weight: 900;
+    text-anchor: middle;
+    filter: drop-shadow(0 2px 2px rgba(255,255,255,1));
+}
+
+.arcPath {
+    fill: none;
+    stroke: #ef4444;
+    stroke-width: 5;
+}
+
+.arcPathDashed {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 4;
+    stroke-dasharray: 10 8;
+}
+
+.distanceText {
+    fill: #dc2626;
+    font-size: 24px;
+    font-weight: 950;
+    text-anchor: middle;
+}
+
+.distanceTextQuestion {
+    fill: #334155;
+    font-size: 32px;
+    font-weight: 950;
+    text-anchor: middle;
+}
+
+.emojiIcon {
+    font-size: 40px;
+}
+
+.rabbitIcon {
+    font-size: 56px;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.2));
+    animation: bunnyHop 1.5s infinite ease-in-out;
+}
+
+@keyframes bunnyHop {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}

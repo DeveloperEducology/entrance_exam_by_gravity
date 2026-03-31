@@ -1,0 +1,122 @@
+.container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    margin: 5px 0;
+    justify-content: flex-start;
+    padding: 5px 0;
+    max-width: 100%;
+}
+
+.group {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px; /* Increased slightly for labels */
+}
+
+.svgWrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.label {
+    position: absolute;
+    top: -20px;
+    background: rgba(0, 191, 165, 0.95);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: fadeIn 0.15s ease-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.svgBlock {
+    height: auto;
+    display: block;
+    width: 100%;
+    transition: filter 0.3s ease, transform 0.2s ease;
+    cursor: pointer;
+}
+
+.svgBlock:hover {
+    transform: scale(1.02);
+}
+
+.glow {
+    filter: drop-shadow(0 0 8px rgba(0, 191, 165, 0.8)) drop-shadow(0 0 12px rgba(66, 235, 212, 0.6));
+    animation: glowPulse 1s ease-in-out;
+    z-index: 10;
+}
+
+@keyframes glowPulse {
+    0% { filter: drop-shadow(0 0 2px rgba(0, 191, 165, 0.4)); }
+    50% { filter: drop-shadow(0 0 15px rgba(0, 191, 165, 0.9)) drop-shadow(0 0 20px rgba(66, 235, 212, 0.7)); }
+    100% { filter: drop-shadow(0 0 2px rgba(0, 191, 165, 0.4)); }
+}
+
+/* Thousands: Grid arrangement to fit within tight containers */
+.thousandsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-flow: row;
+    gap: 6px;
+    justify-items: center;
+    align-items: center;
+    width: max-content;
+}
+.thousandsGrid .svgBlock { 
+    width: 48px; /* Scaled seamlessly so 3 easily fit vertically stacked */
+}
+
+/* Hundreds: Grid arrangement to fit within tight containers */
+.hundredsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-flow: row;
+    gap: 4px;
+    justify-items: center;
+    align-items: center;
+    width: max-content;
+}
+.hundredsGrid .svgBlock {
+    width: 45px; /* Scaled seamlessly so 3 easily fit */
+}
+
+/* Tens: Narrow rods */
+.tens .svgBlock { 
+    width: 16px; /* Increased from 12px */
+}
+
+/* Ones: Stacked units */
+.onesStack {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 3px;
+}
+.onesStack .svgBlock {
+    width: 16px; /* Increased from 12px */
+}
+
+@media (max-width: 768px) {
+    .container {
+        gap: 8px;
+    }
+    
+    .thousands .svgBlock { width: 55px; }
+    .hundredsGrid .svgBlock { width: 35px; }
+    .tens .svgBlock { width: 10px; }
+    .onesStack .svgBlock { width: 10px; }
+}

@@ -3,16 +3,21 @@
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 0.75rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    min-width: 0;
+    word-break: break-word; /* Force break */
+    white-space: normal;
 }
 
 .partWrapper {
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
-    flex-wrap: nowrap;
-    white-space: nowrap;
+    flex-wrap: wrap;       /* Changed to wrap */
+    white-space: normal;   /* Changed to normal */
+    word-break: break-word; /* Ensure text wraps */
+    min-width: 0;
+    max-width: 100%;
 }
 
 .inlinePart {
@@ -22,11 +27,13 @@
 
 .verticalPart {
     width: 100%;
-    display: flex;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .text {
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     line-height: 1.6;
     color: var(--text-primary);
 }
@@ -262,7 +269,7 @@
 
 @media (max-width: 768px) {
     .text {
-        font-size: 0.96rem;
+        font-size: 1.05rem;
     }
 
     .image,
@@ -408,10 +415,11 @@
 
 .markdownTableWrap {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
-    margin: 1rem 0;
-    display: flex;
-    justify-content: center;
+    margin: 1rem auto;
+    display: block;
+    -webkit-overflow-scrolling: touch;
 }
 
 .markdownTableWrap table {
