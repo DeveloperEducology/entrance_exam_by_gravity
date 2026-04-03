@@ -3,89 +3,119 @@
     flex-direction: column;
     align-items: flex-end;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    min-width: 110px;
-    margin: 0.5rem 0;
+    margin: 1.5rem 0;
+    --cell-w: 38px;
+    --cell-h: 56px;
+    min-width: 100px;
 }
 
-.vertMultCarryRow {
+.vertMultGridRow {
+    display: grid;
+    grid-template-columns: var(--cell-w) repeat(var(--cols), var(--cell-w));
+    align-items: center;
+}
+
+.vertMultCell {
+    width: var(--cell-w);
+    height: var(--cell-h);
     display: flex;
-    justify-content: flex-end;
-    font-size: 1rem;
-    font-weight: 800;
-    color: #16a34a; /* Green for carries */
-    min-height: 1.25rem;
-    padding-bottom: 0.1rem;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.25rem;
+    font-weight: 700;
 }
 
-.vertMultCarryCell {
-    width: 2.25rem; /* Match tracking/width of main digits roughly */
-    text-align: center;
-    letter-spacing: normal;
+.vertMultOpPlaceholder {
+    width: var(--cell-w);
 }
 
 .vertMultRow {
-    display: flex;
-    justify-content: flex-end;
-    font-size: 2.25rem;
+    display: grid;
+    grid-template-columns: var(--cell-w) repeat(var(--cols, 1), var(--cell-w));
+    align-items: center;
+    font-size: 2rem;
     font-weight: 700;
-    line-height: 1;
 }
 
 .vertMultSpacingNormal {
-    letter-spacing: 0.4em;
-    padding-right: 0.4em;
+    letter-spacing: 0;
 }
 
 .vertMultSpacingWide {
-    letter-spacing: 0.55em;
-    padding-right: 0.55em;
+    letter-spacing: 0;
+}
+
+.vertMultCarryRow {
+    display: grid;
+    grid-template-columns: var(--cell-w) repeat(var(--cols, 1), var(--cell-w));
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0.15rem;
+    color: #16a34a;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.vertMultOperatorSpacer {
+    width: var(--cell-w);
+    height: 1px;
+}
+
+.vertMultCarryCell {
+    width: var(--cell-w);
+    text-align: center;
 }
 
 .vertMultMiddleRow {
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--cell-w) repeat(var(--cols, 1), var(--cell-w));
     align-items: center;
-    justify-content: space-between;
     width: 100%;
     border-bottom: 3px solid #0f172a;
     padding-bottom: 0.25rem;
-    margin-bottom: 0.75rem;
-    gap: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 .vertMultOperator {
-    font-size: 1.75rem;
+    width: var(--cell-w);
+    text-align: center;
+    font-size: 1.8rem;
     font-weight: 800;
     color: #1e293b;
 }
 
-.vertMultDigitHighlight {
-    color: #4f57ff;
-    font-weight: 800;
+.vertMultDigitCell {
+    width: var(--cell-w);
+    height: var(--cell-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1e293b;
+}
+
+.vertMultDigitPlaceholder {
+    visibility: hidden;
 }
 
 .vertMultBottomRow {
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: var(--cell-w) repeat(var(--cols, 1), var(--cell-w));
+    align-items: start;
     width: 100%;
-    min-height: 48px;
-}
-
-.vertMultQuestionMark {
-    font-size: 2.5rem;
-    padding-right: 1.25rem;
-    font-weight: 700;
-    color: #94a3b8;
 }
 
 .vertMultInputGroup {
-    display: flex;
+    display: grid;
+    grid-column: 2 / span var(--answer-cols, 1);
+    grid-template-columns: repeat(var(--answer-cols, 1), var(--cell-w));
     align-items: center;
-    justify-content: flex-end;
 }
 
 .vertMultInput {
-    width: 44px;
-    height: 52px;
+    width: var(--cell-w);
+    height: var(--cell-h);
     border: 2px solid #3b82f6;
     border-right-style: dashed;
     text-align: center;
@@ -95,6 +125,7 @@
     color: #1e293b;
     transition: all 0.1s ease;
     padding: 0;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .vertMultInput:last-child {
@@ -105,22 +136,36 @@
     outline: none;
     background: #eff6ff;
     border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    z-index: 10;
 }
 
-.vertMultInput:disabled {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-    color: #64748b;
-    cursor: not-allowed;
+.vertMultResultWrapper {
+    display: flex;
+}
+
+.vertMultDigitHighlight {
+    color: #4f57ff;
+    font-weight: 800;
+}
+
+.vertMultQuestionMark {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #94a3b8;
+    height: var(--cell-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--cell-w) * var(--answer-cols, 1));
 }
 
 @media (max-width: 768px) {
-    .vertMultRow { font-size: 1.6rem; }
-    .vertMultOperator { font-size: 1.25rem; }
+    .vertMultContainer {
+        --cell-w: 32px;
+        --cell-h: 46px;
+    }
+    .vertMultCell { font-size: 1.6rem; }
+    .vertMultRow { font-size: 1.5rem; }
+    .vertMultOperator { font-size: 1.35rem; }
+    .vertMultInput { font-size: 1.4rem; }
     .vertMultQuestionMark { font-size: 1.8rem; }
-    .vertMultInput { width: 34px; height: 42px; font-size: 1.4rem; }
-    .vertMultContainer { min-width: 80px; }
-    .vertMultCarryCell { width: 1.6rem; }
 }

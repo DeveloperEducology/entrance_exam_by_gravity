@@ -69,10 +69,13 @@ function toPublicQuestion(question) {
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
     adaptiveConfig: question.adaptiveConfig ?? null,
+    correctAnswerText: question.correctAnswerText ?? '',
+    solution: question.solution ?? '',
     measureTarget: getMeasureTarget(question),
     wordLength: fourPics.wordLength,
     letterBank: fourPics.letterBank,
     isMultiSelect: Boolean(question.isMultiSelect),
+    isGrid: Boolean(question.isGrid),
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
   };

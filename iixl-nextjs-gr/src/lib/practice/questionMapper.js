@@ -177,6 +177,7 @@ export function mapDbQuestion(row) {
     complexity: toNumber(row.complexity, 0),
     adaptiveConfig: parseMaybeJson(row.adaptive_config ?? row.adaptiveConfig, null),
     isMultiSelect: toBoolean(row.is_multi_select ?? row.isMultiSelect, false),
+    isGrid: toBoolean(row.is_grid ?? row.isGrid, false),
     isVertical: toBoolean(row.is_vertical ?? row.isVertical, false),
     showSubmitButton: toBoolean(row.show_submit_button ?? row.showSubmitButton, true),
     sortOrder: toNumber(row.sort_order ?? row.sortOrder ?? row.idx, 0),

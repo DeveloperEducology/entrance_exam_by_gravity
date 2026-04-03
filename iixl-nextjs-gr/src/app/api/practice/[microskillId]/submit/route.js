@@ -14,6 +14,7 @@ function toPublicQuestion(question) {
   return {
     id: question.id,
     microSkillId: question.microSkillId ?? null,
+    questionText: question.questionText ?? '',
     type: question.type,
     difficulty: question.difficulty ?? 'easy',
     complexity: Number(question.complexity ?? 0),
@@ -23,10 +24,13 @@ function toPublicQuestion(question) {
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
     adaptiveConfig: question.adaptiveConfig ?? null,
+    correctAnswerText: question.correctAnswerText ?? '',
+    solution: question.solution ?? '',
     measureTarget: getMeasureTarget(question),
     wordLength: fourPics.wordLength,
     letterBank: fourPics.letterBank,
     isMultiSelect: Boolean(question.isMultiSelect),
+    isGrid: Boolean(question.isGrid),
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
   };
@@ -39,6 +43,14 @@ function parseMaybeJson(value, fallback = null) {
   } catch {
     return fallback;
   }
+}
+
+function normalizeMathSentence(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/×/g, 'x')
+    .replace(/\s+/g, '')
+    .trim();
 }
 
 function parseNumber(value) {
@@ -95,6 +107,27 @@ function getOptionLabel(option, index) {
   return `Option ${index + 1}`;
 }
 
+function formatDragDropAnswerDisplay(question, placementMap) {
+  if (!placementMap || typeof placementMap !== 'object' || Array.isArray(placementMap)) return '';
+  const dragItems = Array.isArray(question?.dragItems) ? question.dragItems : [];
+  const dropGroups = Array.isArray(question?.dropGroups) ? question.dropGroups : [];
+  const groupLabelById = Object.fromEntries(
+    dropGroups.map((group) => [String(group.id), String(group.label || group.id)])
+  );
+
+  const grouped = dropGroups.map((group) => {
+    const labels = Object.entries(placementMap)
+      .filter(([, groupId]) => String(groupId) === String(group.id))
+      .map(([itemId]) => {
+        const item = dragItems.find((entry) => String(entry.id) === String(itemId));
+        return item?.content || itemId;
+      });
+    return labels.length > 0 ? `${groupLabelById[String(group.id)]}: ${labels.join(', ')}` : null;
+  }).filter(Boolean);
+
+  return grouped.join(' | ');
+}
+
 function validateAnswer(question, answer) {
   if (!question) return false;
 
@@ -110,17 +143,37 @@ function validateAnswer(question, answer) {
       }
       return Number(answer) === Number(question.correctAnswerIndex);
     case 'textinput':
-      return String(answer ?? '').trim().toLowerCase() === String(question.correctAnswerText ?? '').trim().toLowerCase();
+      return normalizeMathSentence(answer) === normalizeMathSentence(question.correctAnswerText);
     case 'fillintheblank':
     case 'gridarithmetic':
     case 'table':
     case 'smarttable': {
       const correctAnswers = parseMaybeJson(question.correctAnswerText, {});
       if (!correctAnswers || typeof correctAnswers !== 'object') return false;
-      return Object.keys(correctAnswers).every((key) => String(answer?.[key] ?? '').trim().toLowerCase() === String(correctAnswers[key]).trim().toLowerCase());
+      return Object.keys(correctAnswers).every((key) => {
+        const actual = String(answer?.[key] ?? '').trim().toLowerCase();
+        const expected = correctAnswers[key];
+        if (Array.isArray(expected)) {
+          return expected.map((value) => String(value).trim().toLowerCase()).includes(actual);
+        }
+        return actual === String(expected).trim().toLowerCase();
+      });
     }
     case 'draganddrop':
-      return (question.dragItems || []).filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '').every((item) => String(answer?.[item.id] ?? '') === String(item.targetGroupId));
+      {
+        const parsed = parseMaybeJson(question.correctAnswerText, null);
+        const expectedMap = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? parsed
+          : Object.fromEntries(
+              (question.dragItems || [])
+                .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '')
+                .map((item) => [String(item.id), String(item.targetGroupId)])
+            );
+
+        const expectedKeys = Object.keys(expectedMap);
+        if (expectedKeys.length === 0) return false;
+        return expectedKeys.every((key) => String(answer?.[key] ?? '') === String(expectedMap[key]));
+      }
     case 'sorting':
       const expectedOrder = parseMaybeJson(question.correctAnswerText, null);
       if (Array.isArray(expectedOrder) && expectedOrder.length > 0) return JSON.stringify((answer || []).map(String)) === JSON.stringify(expectedOrder.map(String));
@@ -179,11 +232,21 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
 
       if (cells.length > 0) {
         const prefix = String(answerRow?.prefix || '');
-        const joined = cells.map((cell, idx) => String(parsed[cell?.id ?? `cell_${idx}`] ?? '')).join('');
+        const joined = cells.map((cell, idx) => {
+          const value = parsed[cell?.id ?? `cell_${idx}`];
+          return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
+        }).join('');
         feedback.correctAnswerDisplay = `${prefix}${joined}`.trim();
       } else {
-        feedback.correctAnswerDisplay = Object.values(parsed).join(', ');
+        feedback.correctAnswerDisplay = Object.values(parsed)
+          .map((value) => Array.isArray(value) ? String(value[0] ?? '') : String(value ?? ''))
+          .join(', ');
       }
+    }
+  } else if (type === 'draganddrop') {
+    const parsed = parseMaybeJson(question.correctAnswerText, null);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      feedback.correctAnswerDisplay = formatDragDropAnswerDisplay(question, parsed) || feedback.correctAnswerDisplay;
     }
   }
   return feedback;
@@ -243,7 +306,7 @@ export async function POST(req, { params }) {
   let payload;
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 }); }
 
-  const { studentId = null, questionId, answer = null, responseMs = 0, seenQuestionIds = [] } = payload ?? {};
+  const { studentId = null, questionId, answer = null, responseMs = 0, seenQuestionIds = [], questionSnapshot = null } = payload ?? {};
   if (!questionId) {
     serverLog('api.practice.submit', 'validation failed: questionId missing');
     return NextResponse.json({ error: 'questionId is required.' }, { status: 400 });
@@ -255,7 +318,14 @@ export async function POST(req, { params }) {
 
     const rawQuestions = await fetchQuestionsByMicroskill(db, microskillId);
     const mappedQuestions = rawQuestions.map(mapDbQuestion);
-    const currentQuestion = mappedQuestions.find((q) => String(q.id) === String(questionId));
+    const snapshotQuestion =
+      questionSnapshot &&
+      typeof questionSnapshot === 'object' &&
+      String(questionSnapshot.id || '') === String(questionId)
+        ? questionSnapshot
+        : null;
+
+    const currentQuestion = snapshotQuestion || mappedQuestions.find((q) => String(q.id) === String(questionId));
     if (!currentQuestion) return NextResponse.json({ error: 'Question not found.' }, { status: 404 });
 
     const isCorrect = validateAnswer(currentQuestion, answer);

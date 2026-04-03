@@ -13,6 +13,7 @@ import NumberLineRounding from './NumberLineRounding';
 import CountingVisual from './CountingVisual';
 import NumberPairs from './NumberPairs';
 import NumberLineJumps from './NumberLineJumps';
+import DotsGroupingVisual from './DotsGroupingVisual';
 
 /**
  * @typedef {Object} QuestionPart
@@ -274,6 +275,44 @@ function renderPictureEquation(part, index, styles) {
             <div className={styles.pictureTerm}>
                 <div className={styles.pictureEmoji} />
                 <div className={styles.pictureBoxStatic}>{totalCount || '?'}</div>
+            </div>
+        </div>
+    );
+}
+
+function renderBoxMethodMultiply(part, index, styles) {
+    const layout = part?.layout || {};
+    const topParts = Array.isArray(layout.top_parts) ? layout.top_parts : [];
+    const leftParts = Array.isArray(layout.left_parts) ? layout.left_parts : [];
+    const cells = Array.isArray(layout.cells) ? layout.cells : [];
+
+    return (
+        <div key={index} className={styles.boxMethodWrap}>
+            <div className={styles.boxMethodBoard}>
+                <div className={styles.boxMethodTopLabel}>{topParts.join(' + ')}</div>
+                <div className={styles.boxMethodBody}>
+                    <div className={styles.boxMethodLeftLabel}>
+                        {leftParts.map((item, idx) => (
+                            <span key={`left-${idx}`}>{idx > 0 ? `+ ${item}` : item}</span>
+                        ))}
+                    </div>
+                    <div className={styles.boxMethodGridArea}>
+                        <div className={styles.boxMethodGrid}>
+                            {cells.map((cell, cellIdx) => (
+                                <div key={`cell-${cellIdx}`} className={styles.boxMethodCell}>{cell}</div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.boxMethodSums}>
+                        <div className={styles.boxMethodStaticInput} />
+                        <div className={styles.boxMethodStaticPlusRow}>
+                            <span className={styles.boxMethodPlus}>+</span>
+                            <div className={styles.boxMethodStaticInput} />
+                        </div>
+                        <div className={styles.boxMethodDivider} />
+                        <div className={styles.boxMethodStaticInput} />
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -566,6 +605,15 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                     />
                 );
 
+            case 'html':
+                return (
+                    <div
+                        key={index}
+                        className={styles.textRow}
+                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
+                    />
+                );
+
             case 'sequence':
                 const isCommaSeparated = Boolean(part?.isCommaSeparated || part?.is_comma_separated);
                 const children = Array.isArray(part.children) ? part.children : [];
@@ -642,6 +690,9 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'v1v2Multiply':
                 return renderVerticalMultiply(part, index, styles);
 
+            case 'boxMethodMultiply':
+                return renderBoxMethodMultiply(part, index, styles);
+
             case 'table':
             case 'smartTable':
                 return renderSmartTable(part, index, styles);
@@ -691,6 +742,14 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                         start={Number(part.start || 0)}
                         target={Number(part.target || 0)}
                         interval={Number(part.interval || 1)}
+                    />
+                );
+            case 'dotsGrouping':
+            case 'dots_grouping':
+                return (
+                    <DotsGroupingVisual
+                        key={index}
+                        part={part}
                     />
                 );
 

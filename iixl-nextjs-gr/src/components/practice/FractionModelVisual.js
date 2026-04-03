@@ -55,7 +55,7 @@ function resolveGrid(config) {
             cols = denominator;
         }
     } else if (!rows || !cols) {
-        if (denominator === 100) {
+        if (denominator === 100 || gridMode === 'hundredgrid') {
             rows = 10;
             cols = 10;
         } else {
@@ -88,7 +88,7 @@ function resolveGrid(config) {
 }
 
 export default function FractionModelVisual({ part }) {
-    const config = part?.modelConfig || {};
+    const config = part?.modelConfig || part || {};
     const {
         rows,
         cols,
@@ -105,57 +105,86 @@ export default function FractionModelVisual({ part }) {
     } = resolveGrid(config);
 
     const cellIds = Array.from({ length: totalCells }, (_, i) => String(i));
-    const selected = new Set(Array.from({ length: target }, (_, i) => String(i)));
+    
+    // Support specific shaded indices or fall back to first 'target' cells
+    const shadedList = Array.isArray(config.shaded) 
+        ? config.shaded.map(String) 
+        : Array.from({ length: target }, (_, i) => String(i));
+    const selected = new Set(shadedList);
+    
+    const labels = Array.isArray(config.labels) ? config.labels : [];
 
     return (
         <div className={styles.container}>
-            {isPieModel ? (
-                <svg
-                    className={styles.pieSvg}
-                    viewBox="0 0 240 240"
-                    role="img"
-                    aria-label={`Fraction circle showing ${target} out of ${totalCells} parts shaded`}
-                >
-                    {Array.from({ length: totalCells }, (_, index) => {
-                        const start = (-Math.PI / 2) + ((Math.PI * 2 * index) / totalCells);
-                        const end = (-Math.PI / 2) + ((Math.PI * 2 * (index + 1)) / totalCells);
-                        const id = String(index);
-                        return (
-                            <path
-                                key={id}
-                                d={describeSectorPath(120, 120, 108, start, end)}
-                                fill={selected.has(id) ? fillColor : baseColor}
-                                stroke={lineColor}
-                                strokeWidth="2"
+            <div className={styles.visualWrapper}>
+                {/* Render Labels */}
+                {labels.map((lbl, i) => {
+                    const isRowLabel = lbl.col === -1;
+                    const isColLabel = lbl.row === -1;
+                    return (
+                        <div 
+                            key={`label-${i}`}
+                            className={`${styles.label} ${isRowLabel ? styles.rowLabel : styles.colLabel}`}
+                            style={{
+                                '--row': lbl.row,
+                                '--col': lbl.col,
+                                '--rows': rows,
+                                '--cols': cols
+                            }}
+                        >
+                            {lbl.text}
+                        </div>
+                    );
+                })}
+
+                {isPieModel ? (
+                    <svg
+                        className={styles.pieSvg}
+                        viewBox="0 0 240 240"
+                        role="img"
+                        aria-label={`Fraction circle showing ${selected.size} out of ${totalCells} parts shaded`}
+                    >
+                        {Array.from({ length: totalCells }, (_, index) => {
+                            const start = (-Math.PI / 2) + ((Math.PI * 2 * index) / totalCells);
+                            const end = (-Math.PI / 2) + ((Math.PI * 2 * (index + 1)) / totalCells);
+                            const id = String(index);
+                            return (
+                                <path
+                                    key={id}
+                                    d={describeSectorPath(120, 120, 108, start, end)}
+                                    fill={selected.has(id) ? fillColor : baseColor}
+                                    stroke={lineColor}
+                                    strokeWidth="2"
+                                />
+                            );
+                        })}
+                        <circle cx="120" cy="120" r="108" fill="none" stroke={lineColor} strokeWidth="3" />
+                    </svg>
+                ) : (
+                    <div
+                        className={`${styles.grid} ${isBarModel ? styles.barGrid : ''} ${isBarModel && orientation === 'horizontal' ? styles.barHorizontal : ''} ${config.gridFlow === 'column' ? styles.columnFlow : ''}`}
+                        style={{
+                            '--rows': rows,
+                            '--cols': cols,
+                            '--grid-line-color': lineColor,
+                            '--grid-base-color': baseColor,
+                            '--grid-fill-color': fillColor,
+                            '--cell-gap': `${gap}px`,
+                            '--cell-inset': `${Math.max(1, gap + 1)}px`,
+                        }}
+                        role="img"
+                        aria-label={`Fraction model showing ${selected.size} out of ${totalCells} parts shaded`}
+                    >
+                        {cellIds.map((cellId) => (
+                            <div
+                                key={cellId}
+                                className={`${styles.cell} ${shape === 'circle' ? styles.cellCircle : ''} ${selected.has(cellId) ? styles.shaded : ''}`}
+                                aria-hidden="true"
                             />
-                        );
-                    })}
-                    <circle cx="120" cy="120" r="108" fill="none" stroke={lineColor} strokeWidth="3" />
-                </svg>
-            ) : (
-                <div
-                    className={`${styles.grid} ${isBarModel ? styles.barGrid : ''} ${isBarModel && orientation === 'horizontal' ? styles.barHorizontal : ''}`}
-                    style={{
-                        '--rows': rows,
-                        '--cols': cols,
-                        '--grid-line-color': lineColor,
-                        '--grid-base-color': baseColor,
-                        '--grid-fill-color': fillColor,
-                        '--cell-gap': `${gap}px`,
-                        '--cell-inset': `${Math.max(1, gap + 1)}px`,
-                    }}
-                    role="img"
-                    aria-label={`Fraction model showing ${target} out of ${totalCells} parts shaded`}
-                >
-                    {cellIds.map((cellId) => (
-                        <div
-                            key={cellId}
-                            className={`${styles.cell} ${shape === 'circle' ? styles.cellCircle : ''} ${selected.has(cellId) ? styles.shaded : ''}`}
-                            aria-hidden="true"
-                        />
-                    ))}
-                </div>
-            )}
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

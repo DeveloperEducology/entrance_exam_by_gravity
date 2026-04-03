@@ -853,6 +853,1704 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
 
+  if (logic === 'multiplication_fixed_factor_v1' || logic === 'multiplication_zero_property_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [1, 20];
+    const fixedFactor = Number(dataSource.fixed_factor ?? 0);
+    const layoutType = dataSource.layout_type || inst.adaptiveConfig?.layout_type || "vertical";
+    const topOrBottom = Math.random() < 0.5;
+
+    let num2;
+    if (overrideVariables) {
+      num2 = overrideVariables.num2;
+    } else {
+      num2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+    }
+
+    const v1 = topOrBottom ? fixedFactor : num2;
+    const v2 = topOrBottom ? num2 : fixedFactor;
+    const result = fixedFactor * num2;
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      num1: fixedFactor,
+      num2: num2,
+      v1: v1,
+      v2: v2,
+      result: result,
+      fixed_factor: fixedFactor
+    };
+
+    const v1Str = String(v1);
+    const v2Str = String(v2);
+    const resStr = String(result);
+    const resDigits = resStr.split('');
+    const maxDigits = Math.max(v1Str.length, v2Str.length, resDigits.length);
+    const resPadding = Math.max(0, maxDigits - resDigits.length);
+
+    const getFixedCells = (val, padCols) => {
+      const str = String(val).padStart(padCols, ' ');
+      return str.split('').map(char => ({
+        kind: 'fixed',
+        value: char === ' ' ? '\u00A0' : char
+      }));
+    };
+
+    if (layoutType === "table") {
+      const answerCells = [];
+      const correctPayload = {};
+      
+      for (let i = 0; i < maxDigits; i++) {
+        const digitPos = maxDigits - 1 - i; 
+        const cellId = `ans_${digitPos}`;
+        const charIdx = i - resPadding;
+        
+        answerCells.push({ 
+          id: cellId, 
+          type: "digit"
+        });
+        correctPayload[cellId] = charIdx >= 0 ? resDigits[charIdx] : "";
+
+        if (digitPos === 3 && maxDigits > 3) {
+          answerCells.push({ kind: "fixed", value: "," });
+        }
+      }
+
+      inst.parts = [
+        { type: "text", content: "Multiply." },
+        {
+          type: "arithmeticLayout",
+          isVertical: true,
+          layout: {
+            mode: "placeValue",
+            inputMode: "digitPad",
+            rows: [
+              { kind: "answer", prefix: "\u00A0", cells: getFixedCells(v1, maxDigits) },
+              { kind: "answer", prefix: "×", cells: getFixedCells(v2, maxDigits) },
+              { kind: "divider" },
+              { kind: "answer", prefix: "\u00A0", cells: answerCells }
+            ]
+          }
+        }
+      ];
+      inst.correctAnswerText = JSON.stringify(correctPayload);
+    } else {
+      inst.parts = [
+        { type: "text", content: "Multiply." },
+        {
+          type: "verticalMultiply",
+          id: "ans",
+          layout: {
+            v1: v1Str,
+            v2: v2Str,
+            operator: "×",
+            ans: resStr
+          }
+        }
+      ];
+      inst.correctAnswerText = JSON.stringify({ ans: resStr });
+    }
+
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+
+    let rule = "";
+    let explanation = "";
+
+    if (fixedFactor === 0) {
+      rule = "The Zero Property of Multiplication says that the product of any number and 0 is always 0.";
+      explanation = `This means that 0 times any number (like ${num2}) is 0.`;
+    } else if (fixedFactor === 1) {
+      rule = "The Identity Property of Multiplication (Property of 1) says that the product of any number and 1 is the number itself.";
+      explanation = `This means that 1 times any number (like ${num2}) is ${num2}.`;
+    } else if (fixedFactor === 2) {
+      rule = "Multiplying a number by 2 is the same as doubling it.";
+      explanation = `This means that ${num2} + ${num2} = ${result}.`;
+    } else if (fixedFactor === 3) {
+      rule = "Multiplying a number by 3 means adding the number three times.";
+      explanation = `This means that ${num2} + ${num2} + ${num2} = ${result}.`;
+    } else {
+      rule = `Multiplying by ${fixedFactor} means adding the number ${fixedFactor} times.`;
+      explanation = `The product of ${num2} and ${fixedFactor} is ${result}.`;
+    }
+
+    const solutionCells = [];
+    for (let i = 0; i < maxDigits; i++) {
+      const digitPos = maxDigits - 1 - i;
+      const charIdx = i - resPadding;
+      solutionCells.push({ 
+        kind: "fixed", 
+        value: charIdx >= 0 ? resDigits[charIdx] : ""
+      });
+      if (digitPos === 3 && maxDigits > 3) {
+        solutionCells.push({ kind: "fixed", value: "," });
+      }
+    }
+
+    inst.solution = [
+      { type: "text", content: rule },
+      { type: "text", content: explanation },
+      {
+        type: (layoutType === "table") ? "arithmeticLayout" : "verticalMultiply",
+        isVertical: true,
+        layout: (layoutType === "table") ? {
+            mode: "placeValue",
+            rows: [
+              { kind: "answer", prefix: "\u00A0", cells: getFixedCells(v1, maxDigits) },
+              { kind: "answer", prefix: "×", cells: getFixedCells(v2, maxDigits) },
+              { kind: "divider" },
+              { kind: "answer", prefix: "\u00A0", cells: solutionCells }
+            ]
+        } : {
+          v1: v1Str,
+          v2: v2Str,
+          operator: "×",
+          ans: resStr
+        }
+      }
+    ];
+  }
+
+  if (logic === 'multiplication_patterns_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const f1Range = dataSource.f1_range || [2, 9];
+    const f2Range = dataSource.f2_range || [2, 9];
+    
+    let f1, f2;
+    if (overrideVariables) {
+      f1 = overrideVariables.f1;
+      f2 = overrideVariables.f2;
+    } else {
+      f1 = Math.floor(Math.random() * (f1Range[1] - f1Range[0] + 1)) + f1Range[0];
+      f2 = Math.floor(Math.random() * (f2Range[1] - f2Range[0] + 1)) + f2Range[0];
+    }
+    const baseResult = f1 * f2;
+    
+    inst.adaptiveConfig.variables = { f1, f2, base: baseResult };
+    
+    const steps = [1, 10, 100, 1000, 10000, 100000, 1000000];
+    const correctPayload = {};
+    const parts = [{ type: 'text', content: 'Complete the pattern:' }];
+    
+    steps.forEach((multiplier, i) => {
+      const f2Expanded = f2 * multiplier;
+      const f2Str = f2Expanded.toLocaleString();
+      const ans = baseResult * multiplier;
+      const ansStr = String(ans);
+      const cellId = `ans_${i}`;
+      
+      parts.push({ 
+        type: 'text', 
+        content: `${f1} × ${f2Str} =` 
+      });
+      parts.push({ 
+        type: 'digit_blank', 
+        id: cellId,
+        size: "small",
+        placeholder: ""
+      });
+      
+      correctPayload[cellId] = ansStr;
+    });
+    
+    inst.isVertical = false;
+    inst.parts = parts;
+    inst.correctAnswerText = JSON.stringify(correctPayload);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+
+    // Solution
+    const sol = [
+      { type: 'text', content: 'Step 1: Multiply the basic facts.' },
+      { type: 'text', content: `**${f1} × ${f2}** ones = **${baseResult}** ones` },
+      { type: 'text', content: `**${f1} × ${f2} = ${baseResult}**` },
+      { type: 'text', content: 'Step 2: Use place value to complete the pattern.' }
+    ];
+    
+    const placeNames = ["ones", "tens", "hundreds", "thousands", "ten thousands", "hundred thousands", "millions"];
+    steps.slice(1).forEach((multiplier, i) => {
+      sol.push({ 
+        type: 'text', 
+        content: `**${f1} × ${f2} ${placeNames[i+1]}** = **${baseResult} ${placeNames[i+1]}** (${(baseResult * multiplier).toLocaleString()})`
+      });
+    });
+    
+    sol.push({ 
+      type: 'text', 
+      content: `***Tip:** Notice how the number of zeros in the product matches the number of zeros in the factor!*` 
+    });
+    
+    inst.solution = sol;
+  }
+
+  if (logic === 'multiplication_array_model_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const rowRange = dataSource.row_range || [2, 5];
+    const colRange = dataSource.col_range || [2, 5];
+    
+    let rows, cols;
+    if (overrideVariables) {
+      rows = overrideVariables.rows;
+      cols = overrideVariables.cols;
+    } else {
+      rows = Math.floor(Math.random() * (rowRange[1] - rowRange[0] + 1)) + rowRange[0];
+      cols = Math.floor(Math.random() * (colRange[1] - colRange[0] + 1)) + colRange[0];
+    }
+    const product = rows * cols;
+    
+    const gridRows = 10;
+    const gridCols = 10;
+    const correctIndices = [];
+    
+    // Use integer indices (row * width + col)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        correctIndices.push(String(r * gridCols + c));
+      }
+    }
+
+    inst.type = "shadeGrid";
+    const correctAnswerVal = product; // For numeric comparison fallback if needed
+    
+    inst.adaptiveConfig = {
+      ...inst.adaptiveConfig,
+      logic_type: logic,
+      variables: { rows, cols, product },
+      gridRows,
+      gridCols,
+      lineColor: "#16a34a",
+      targetShaded: product,
+      correctAnswerText: `${product} squares`,
+      enforceShape: "rectangle"
+    };
+
+    inst.parts = [
+      { type: "text", content: `Make a rectangular array of squares to model **${rows} × ${cols} = ${product}**.` }
+    ];
+    
+    // Simplest form for the server and UI logic
+    inst.correctAnswerText = String(product); 
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    
+    // Remove complex value to avoid JSON bubble in UI
+    delete inst.correctAnswerValue;
+    delete inst.adaptiveConfig.correctAnswerValue;
+
+    // Solution
+    const solutionLabels = [];
+    for (let r = 1; r <= rows; r++) {
+      solutionLabels.push({ row: r - 1, col: -1, text: String(r) });
+    }
+    for (let c = 1; c <= cols; c++) {
+      solutionLabels.push({ row: -1, col: c - 1, text: String(c) });
+    }
+
+    // Solution Visual configuration
+    const solutionShaded = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        solutionShaded.push(String(r * gridCols + c));
+      }
+    }
+
+    inst.solution = [
+      { type: "text", content: "Arrays are made up of rows. All the rows have the same length." },
+      { type: "text", content: `An array that models **${rows} × ${cols} = ${product}** has **${rows} rows** with **${cols} squares** in each row.` },
+      {
+        type: "shadeGrid",
+        gridRows,
+        gridCols,
+        shaded: solutionShaded,
+        labels: solutionLabels,
+        lineColor: "#16a34a",
+        fillColor: "#6ee7b7"
+      },
+      { type: "text", content: `There are **${product} squares** in the array.` }
+    ];
+  }
+
+  if (logic === 'match_multiplication_fact_to_area_model_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const baseRange = dataSource.target_base_range || [1, 10];
+    const layoutChoices = Array.isArray(dataSource.shuffle_layout) && dataSource.shuffle_layout.length > 0
+      ? dataSource.shuffle_layout
+      : ['grid_2x2', 'column'];
+
+    let targetBase;
+    let selectedLayout;
+    let dynamicColor;
+
+    if (overrideVariables) {
+      targetBase = overrideVariables.target_base;
+      selectedLayout = overrideVariables.selected_layout;
+      dynamicColor = overrideVariables.dynamic_color;
+    } else {
+      targetBase = Math.floor(Math.random() * (baseRange[1] - baseRange[0] + 1)) + baseRange[0];
+      selectedLayout = layoutChoices[Math.floor(Math.random() * layoutChoices.length)];
+      const palette = ['#FF7B7B', '#60A5FA', '#34D399', '#F59E0B', '#A78BFA', '#FB7185'];
+      dynamicColor = palette[Math.floor(Math.random() * palette.length)];
+    }
+
+    const targetProduct = targetBase * targetBase;
+    const letters = ['A', 'B', 'C', 'D'];
+
+    const sameDims = (a, b) => a.rows === b.rows && a.cols === b.cols;
+    const renderAreaModelSvg = (rows, cols, fillColor) => {
+      const cell = Math.max(10, Math.min(24, Math.floor(132 / Math.max(rows, cols))));
+      const gridWidth = cols * cell;
+      const gridHeight = rows * cell;
+      const width = Math.max(164, gridWidth + 32);
+      const height = Math.max(132, gridHeight + 38);
+      const x = Math.round((width - gridWidth) / 2);
+      const y = 18;
+
+      let cellsSvg = '';
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          cellsSvg += `<rect x="${x + (c * cell)}" y="${y + (r * cell)}" width="${cell}" height="${cell}" fill="${fillColor}" stroke="#ffffff" stroke-width="1.5" />`;
+        }
+      }
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+          <rect x="${x}" y="${y}" width="${gridWidth}" height="${gridHeight}" fill="none" stroke="#334155" stroke-width="2" />
+          ${cellsSvg}
+        </svg>
+      `;
+    };
+
+    const findRectangleWithSameArea = () => {
+      for (let factor = 1; factor <= Math.floor(Math.sqrt(targetProduct)); factor += 1) {
+        if (targetProduct % factor !== 0) continue;
+        const other = targetProduct / factor;
+        if (factor !== other && !(factor === targetBase && other === targetBase)) {
+          return { rows: factor, cols: other };
+        }
+      }
+      return { rows: 1, cols: targetProduct };
+    };
+
+    const rectangleModel = findRectangleWithSameArea();
+    const offByOneBase = targetBase <= 1 ? 2 : (Math.random() < 0.5 ? targetBase + 1 : targetBase - 1);
+    const offByOneModel = {
+      rows: Math.max(1, offByOneBase),
+      cols: Math.max(1, offByOneBase)
+    };
+
+    const swapCandidates = [
+      { rows: targetBase, cols: targetBase + 1 },
+      { rows: targetBase + 1, cols: targetBase },
+      { rows: targetBase, cols: Math.max(1, targetBase - 1) },
+      { rows: Math.max(1, targetBase - 1), cols: targetBase },
+      { rows: targetBase, cols: targetBase + 2 },
+      { rows: targetBase + 2, cols: targetBase }
+    ];
+    const swapModel = swapCandidates.find((candidate) => (
+      candidate.rows !== candidate.cols &&
+      !sameDims(candidate, { rows: targetBase, cols: targetBase }) &&
+      !sameDims(candidate, rectangleModel) &&
+      !sameDims(candidate, offByOneModel)
+    )) || { rows: targetBase, cols: targetBase + 1 };
+
+    const optionSet = [
+      {
+        kind: 'correct',
+        rows: targetBase,
+        cols: targetBase,
+        markup: renderAreaModelSvg(targetBase, targetBase, dynamicColor)
+      },
+      {
+        kind: 'rectangle',
+        rows: rectangleModel.rows,
+        cols: rectangleModel.cols,
+        markup: renderAreaModelSvg(rectangleModel.rows, rectangleModel.cols, dynamicColor)
+      },
+      {
+        kind: 'off_by_one',
+        rows: offByOneModel.rows,
+        cols: offByOneModel.cols,
+        markup: renderAreaModelSvg(offByOneModel.rows, offByOneModel.cols, dynamicColor)
+      },
+      {
+        kind: 'swap',
+        rows: swapModel.rows,
+        cols: swapModel.cols,
+        markup: renderAreaModelSvg(swapModel.rows, swapModel.cols, dynamicColor)
+      }
+    ];
+
+    for (let i = optionSet.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [optionSet[i], optionSet[j]] = [optionSet[j], optionSet[i]];
+    }
+
+    const correctIndex = optionSet.findIndex((option) => option.kind === 'correct');
+    const correctLetter = letters[correctIndex] || 'A';
+
+    inst.type = 'mcq';
+    inst.isGrid = selectedLayout === 'grid_2x2';
+    inst.isVertical = selectedLayout === 'column';
+    inst.showSubmitButton = false;
+    inst.adaptiveConfig = {
+      ...inst.adaptiveConfig,
+      variables: {
+        ...(inst.adaptiveConfig?.variables || {}),
+        target_base: targetBase,
+        target_product: targetProduct,
+        dynamic_color: dynamicColor,
+        selected_layout: selectedLayout,
+        correct_letter: correctLetter,
+      }
+    };
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: `Which model shows **${targetBase} × ${targetBase}**?`,
+        isVertical: true
+      }
+    ];
+
+    inst.options = optionSet.map((option) => option.markup);
+    inst.correctAnswerIndex = correctIndex;
+    inst.correctAnswerText = '';
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: `To match **${targetBase} × ${targetBase}**, we need a square that is **${targetBase}** units wide and **${targetBase}** units high.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Look for the width: the first number in **${targetBase} × ${targetBase}** is the width. Count the top edge of each grid.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Look for the height: the second number is the height. Count the side edge of each grid.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Find the perfect match: the model for **${targetBase} × ${targetBase}** has both dimensions matching. The total area is **${targetProduct}**.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `The correct model is **Option ${correctLetter}**.`,
+        isVertical: true
+      }
+    ];
+  }
+
+  if (logic === 'multiplication_multi_strategy_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const aRange = dataSource.factor_a_range || [1, 100];
+    const bRange = dataSource.factor_b_range || [1, 10];
+    const strategies = Array.isArray(dataSource.strategies) && dataSource.strategies.length > 0
+      ? dataSource.strategies
+      : ['area_model', 'equal_groups', 'zero_property'];
+
+    let factorA, factorB;
+    if (overrideVariables) {
+      factorA = Number(overrideVariables.factor_a);
+      factorB = Number(overrideVariables.factor_b);
+    } else {
+      factorA = Math.floor(Math.random() * (aRange[1] - aRange[0] + 1)) + aRange[0];
+      factorB = Math.floor(Math.random() * (bRange[1] - bRange[0] + 1)) + bRange[0];
+    }
+
+    const product = factorA * factorB;
+    const availableStrategies = strategies.filter(Boolean);
+    let selectedStrategy = availableStrategies[0] || 'area_model';
+
+    if (factorA === 0 || factorB === 0) {
+      selectedStrategy = 'zero_property';
+    } else if (availableStrategies.includes('equal_groups') && factorB <= 5 && product <= 60) {
+      selectedStrategy = 'equal_groups';
+    } else if (availableStrategies.includes('area_model') && factorA <= 12 && factorB <= 12) {
+      selectedStrategy = 'area_model';
+    } else {
+      selectedStrategy = availableStrategies[Math.floor(Math.random() * availableStrategies.length)] || 'area_model';
+    }
+
+    const renderAreaModelSvg = () => {
+      const rows = Math.min(factorB, 10);
+      const cols = Math.min(factorA, 10);
+      const cell = 26;
+      const x = 18;
+      const y = 18;
+      const width = x * 2 + cols * cell;
+      const height = y * 2 + rows * cell + 28;
+      let cells = '';
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          cells += `<rect x="${x + c * cell}" y="${y + r * cell}" width="${cell}" height="${cell}" fill="#A2C367" stroke="#ffffff" stroke-width="1.5" />`;
+        }
+      }
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;max-width:360px;">
+          <rect x="${x}" y="${y}" width="${cols * cell}" height="${rows * cell}" fill="none" stroke="#334155" stroke-width="2" />
+          ${cells}
+        </svg>
+      `;
+    };
+
+    const renderEqualGroupsSvg = () => {
+      const groups = Math.min(factorB, 5);
+      const perGroup = Math.min(factorA, 6);
+      const cell = 18;
+      const gapX = 18;
+      const x = 18;
+      const y = 18;
+      const groupWidth = perGroup * cell + 18;
+      const height = 96;
+      const width = x * 2 + groups * groupWidth + (groups - 1) * gapX;
+      let groupsSvg = '';
+      for (let g = 0; g < groups; g += 1) {
+        const groupX = x + g * (groupWidth + gapX);
+        groupsSvg += `<rect x="${groupX}" y="${y}" width="${groupWidth}" height="58" fill="#ffffff" stroke="#334155" stroke-width="2" />`;
+        for (let i = 0; i < perGroup; i += 1) {
+          groupsSvg += `<circle cx="${groupX + 16 + i * cell}" cy="${y + 29}" r="6.5" fill="#A2C367" />`;
+        }
+      }
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;max-width:420px;">
+          ${groupsSvg}
+        </svg>
+      `;
+    };
+
+    const renderZeroPropertySvg = () => `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 92" style="width:100%;height:auto;max-width:320px;">
+        <text x="20" y="38" font-size="28" font-weight="700" fill="#111827">${factorA}</text>
+        <text x="78" y="38" font-size="26" font-weight="700" fill="#64748b">×</text>
+        <text x="120" y="38" font-size="28" font-weight="700" fill="#111827">${factorB}</text>
+        <text x="178" y="38" font-size="26" font-weight="700" fill="#64748b">=</text>
+        <text x="220" y="38" font-size="28" font-weight="700" fill="#111827">0</text>
+        <text x="20" y="74" font-size="15" fill="#475569">Any number multiplied by 0 equals 0.</text>
+      </svg>
+    `;
+
+    const strategySvg = selectedStrategy === 'equal_groups'
+      ? renderEqualGroupsSvg()
+      : selectedStrategy === 'zero_property'
+        ? renderZeroPropertySvg()
+        : renderAreaModelSvg();
+
+    let step1Text = '';
+    if (selectedStrategy === 'zero_property') {
+      step1Text = `Use the zero property of multiplication. Since one factor is **0**, the product is **0**.`;
+    } else if (selectedStrategy === 'equal_groups') {
+      step1Text = `Think of **${factorB} groups** with **${factorA}** in each group. Add equal groups or multiply to find the total.`;
+    } else {
+      step1Text = `Use an area model. Multiply the side lengths **${factorA}** and **${factorB}** to find the total number of squares.`;
+    }
+
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      factor_a: factorA,
+      factor_b: factorB,
+      product,
+      selected_strategy: selectedStrategy,
+      strategy_svg: strategySvg,
+      step_1_text: step1Text
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+    inst.showSubmitButton = true;
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: 'Multiply:',
+        hasAudio: true,
+        isVertical: true
+      },
+      {
+        type: 'pair',
+        isVertical: false,
+        parts: [
+          { type: 'text', content: `${factorA} × ${factorB} = ` },
+          {
+            type: 'digit_blank',
+            id: 'ans_1',
+            size: Math.max(1, String(product).length),
+            answerType: 'number'
+          }
+        ]
+      }
+    ];
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: 'Solution Strategy',
+        isVertical: true
+      },
+      {
+        type: 'svg',
+        content: strategySvg,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: step1Text,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `**${factorA} × ${factorB} = ${product}**`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ ans_1: String(product) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'vertical_multiplication_single_digit_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const multiplicandRange = dataSource.multiplicand_range || [10, 99];
+    const multiplierRange = dataSource.multiplier_range || [2, 9];
+    const carryMode = String(
+      dataSource.carry_mode ||
+      (dataSource.allow_carry === true ? 'with_carry' : dataSource.allow_carry === false ? 'without_carry' : 'mixed')
+    ).toLowerCase();
+    const inputFromLeftToRight = dataSource.input_from_left_to_right !== undefined
+      ? Boolean(dataSource.input_from_left_to_right)
+      : true;
+
+    let multiplicand;
+    let multiplier;
+
+    if (overrideVariables) {
+      multiplicand = Number(overrideVariables.multiplicand);
+      multiplier = Number(overrideVariables.multiplier);
+    } else {
+      const candidates = [];
+      for (let n = multiplicandRange[0]; n <= multiplicandRange[1]; n += 1) {
+        const digits = String(n).split('').map(Number);
+        if (digits.length < 2 || digits.length > 3) continue;
+
+        for (let m = multiplierRange[0]; m <= multiplierRange[1]; m += 1) {
+          let carry = 0;
+          let hasCarry = false;
+          for (let idx = digits.length - 1; idx >= 0; idx -= 1) {
+            const total = digits[idx] * m + carry;
+            carry = Math.floor(total / 10);
+            if (carry > 0) hasCarry = true;
+          }
+
+          const matchesCarryMode = (
+            carryMode === 'with_carry' ? hasCarry :
+            carryMode === 'without_carry' ? !hasCarry :
+            true
+          );
+
+          if (matchesCarryMode) {
+            candidates.push({ multiplicand: n, multiplier: m });
+          }
+        }
+      }
+
+      const picked = candidates.length > 0
+        ? candidates[Math.floor(Math.random() * candidates.length)]
+        : { multiplicand: 13, multiplier: 3 };
+
+      multiplicand = picked.multiplicand;
+      multiplier = picked.multiplier;
+    }
+
+    const product = multiplicand * multiplier;
+    const digits = String(multiplicand).split('');
+    const placeNames = digits.length === 3 ? ['hundreds', 'tens', 'ones'] : ['tens', 'ones'];
+    const highlightColor = '#4f46e5';
+    const defaultColor = '#111827';
+
+    const steps = [];
+    let carry = 0;
+    for (let idx = digits.length - 1; idx >= 0; idx -= 1) {
+      const digit = Number(digits[idx]);
+      const incomingCarry = carry;
+      const multiplied = digit * multiplier;
+      const total = multiplied + incomingCarry;
+      const writeDigit = total % 10;
+      const nextCarry = Math.floor(total / 10);
+
+      steps.unshift({
+        idx,
+        placeName: placeNames[idx],
+        digit,
+        incomingCarry,
+        multiplied,
+        total,
+        writeDigit,
+        nextCarry
+      });
+
+      carry = nextCarry;
+    }
+
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      multiplicand,
+      multiplier,
+      product,
+      carry_mode: carryMode,
+      input_from_left_to_right: inputFromLeftToRight,
+      hundreds_digit: digits.length === 3 ? Number(digits[0]) : '',
+      tens_digit: Number(digits[digits.length - 2]),
+      ones_digit: Number(digits[digits.length - 1]),
+      hundreds_product: steps.find((step) => step.placeName === 'hundreds')?.writeDigit ?? '',
+      tens_product: steps.find((step) => step.placeName === 'tens')?.writeDigit ?? '',
+      ones_product: steps.find((step) => step.placeName === 'ones')?.writeDigit ?? ''
+    };
+
+    const padCells = (values, targetLength) => {
+      const items = [...values];
+      while (items.length < targetLength) items.unshift('');
+      return items;
+    };
+
+    const columnCount = Math.max(digits.length + 1, String(product).length);
+    const topRow = padCells(digits, columnCount);
+    const multiplierRow = padCells([String(multiplier)], columnCount);
+
+    const renderCells = (values, highlightedIndex = -1, emptyColor = 'transparent') => values
+      .map((value, idx) => {
+        const display = value === '' ? '&nbsp;' : value;
+        const color = value === '' ? emptyColor : (idx === highlightedIndex ? highlightColor : defaultColor);
+        return `<span style="display:inline-block;width:22px;text-align:center;color:${color};">${display}</span>`;
+      })
+      .join('');
+
+    const renderCarryCells = (values, highlightedIndex = -1) => values
+      .map((value, idx) => {
+        const display = value === '' ? '&nbsp;' : value;
+        const color = value === '' ? 'transparent' : (idx === highlightedIndex ? highlightColor : '#16a34a');
+        return `<span style="display:inline-block;width:22px;text-align:center;color:${color};min-height:20px;">${display}</span>`;
+      })
+      .join('');
+
+    const buildCarryRow = (step) => {
+      const row = Array.from({ length: columnCount }).fill('');
+      for (const previousStep of steps) {
+        if (previousStep.idx > step.idx && previousStep.nextCarry > 0) {
+          const targetIndex = columnCount - digits.length + previousStep.idx - 1;
+          if (targetIndex >= 0) row[targetIndex] = String(previousStep.nextCarry);
+        }
+      }
+      return row;
+    };
+
+    const buildResultRow = (step) => {
+      const resultDigits = Array.from({ length: columnCount }).fill('');
+      let carryIntoFront = '';
+      for (const currentStep of steps) {
+        if (currentStep.idx >= step.idx) {
+          const resultIndex = columnCount - digits.length + currentStep.idx;
+          resultDigits[resultIndex] = String(currentStep.writeDigit);
+        }
+      }
+      if (step.idx === 0 && step.nextCarry > 0) {
+        carryIntoFront = String(step.nextCarry);
+      }
+      if (carryIntoFront) {
+        const firstFilled = resultDigits.findIndex((value) => value !== '');
+        const frontIndex = Math.max(0, firstFilled - 1);
+        resultDigits[frontIndex] = carryIntoFront;
+      }
+      return resultDigits;
+    };
+
+    const renderStepHtml = (step) => {
+      const highlightedTopIndex = columnCount - digits.length + step.idx;
+      const highlightedCarryIndex = step.incomingCarry > 0 ? highlightedTopIndex - 1 : -1;
+      const carryRow = buildCarryRow(step);
+      const resultRow = buildResultRow(step);
+      const highlightedResultIndex = resultRow.findIndex((value, idx) => idx >= highlightedTopIndex - (step.nextCarry > 0 ? 1 : 0) && value !== '');
+
+      return `
+        <div style="font-family: Arial, Verdana, sans-serif; line-height: 1.7; color: ${defaultColor};">
+          <div style="display:inline-flex; flex-direction:column; align-items:flex-end; font-size:24px; font-weight:600;">
+            <div style="letter-spacing:0.08em; min-height:22px;">
+              ${renderCarryCells(carryRow, highlightedCarryIndex)}
+            </div>
+            <div style="letter-spacing:0.14em;">
+              ${renderCells(topRow, highlightedTopIndex)}
+            </div>
+            <div style="letter-spacing:0.14em;">
+              <span style="display:inline-block;width:22px;text-align:center;color:${defaultColor};">×</span>
+              ${renderCells(multiplierRow, columnCount - 1)}
+            </div>
+            <div style="width:100%; border-top:2px solid ${defaultColor}; margin:4px 0 3px;"></div>
+            <div style="letter-spacing:0.14em; min-height:32px;">
+              ${renderCells(resultRow, highlightedResultIndex)}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+    inst.showSubmitButton = true;
+    inst.parts = [
+      {
+        type: 'text',
+        content: question.questionText || question.question_text || 'Multiply.',
+        isVertical: true
+      },
+      {
+        type: 'verticalMultiply',
+        id: 'ans',
+        isVertical: true,
+        layout: {
+          v1: String(multiplicand),
+          v2: String(multiplier),
+          operator: '×',
+          ans: String(product),
+          inputFromLeftToRight
+        }
+      }
+    ];
+
+    const solution = [];
+    for (let stepIndex = steps.length - 1; stepIndex >= 0; stepIndex -= 1) {
+      const step = steps[stepIndex];
+      const carrySentence = step.incomingCarry > 0
+        ? ` Add the carried ${step.incomingCarry} to get ${step.total}.`
+        : '';
+      const writeSentence = step.nextCarry > 0
+        ? ` Write ${step.writeDigit} and carry ${step.nextCarry}.`
+        : ` Write ${step.writeDigit}.`;
+
+      solution.push({
+        type: 'text',
+        content: `Multiply the ${step.placeName}.`,
+        isVertical: true
+      });
+      solution.push({
+        type: 'text',
+        content: `${multiplier} × ${step.digit} = ${step.multiplied}.${carrySentence}${writeSentence}`,
+        isVertical: true
+      });
+      solution.push({
+        type: 'html',
+        content: renderStepHtml(step),
+        isVertical: true
+      });
+    }
+
+    solution.push({
+      type: 'text',
+      content: `The product is ${product}.`,
+      isVertical: true
+    });
+
+    inst.solution = solution;
+
+    inst.correctAnswerText = JSON.stringify({ ans: String(product) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'multiplication_number_line_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const nRange = dataSource.n_range || [2, 6];
+    const sRange = dataSource.s_range || [2, 8];
+
+    let n, s;
+    if (overrideVariables) {
+      n = overrideVariables.n;
+      s = overrideVariables.s;
+    } else {
+      n = Math.floor(Math.random() * (nRange[1] - nRange[0] + 1)) + nRange[0];
+      s = Math.floor(Math.random() * (sRange[1] - sRange[0] + 1)) + sRange[0];
+    }
+
+    const p = n * s;
+    const maxVal = Math.max(p + (s * 2), s * 6);
+    const landedValues = Array.from({ length: n + 1 }, (_, idx) => idx * s);
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      n,
+      s,
+      p
+    };
+
+    const generateSvg = ({ highlightN = n, showJumpNumbers = false, showOnlyLandedLabels = true } = {}) => {
+      const width = 820;
+      const height = 200;
+      const margin = 48;
+      const xStart = margin;
+      const xEnd = width - margin;
+      const yLine = 112;
+      const pixelsPerUnit = (xEnd - xStart) / maxVal;
+
+      const getArrowHead = (x, y, color) => `
+        <polygon points="${x},${y} ${x - 10},${y - 6} ${x - 2},${y - 14}" fill="${color}" />
+      `;
+
+      let jumpsSvg = '';
+      for (let i = 0; i < n; i++) {
+        const x1 = xStart + (i * s) * pixelsPerUnit;
+        const x2 = xStart + ((i + 1) * s) * pixelsPerUnit;
+        const xm = (x1 + x2) / 2;
+        const h = 40;
+
+        const path = `M ${x1} ${yLine} Q ${xm} ${yLine - h} ${x2} ${yLine}`;
+        const isHighlighted = i < highlightN;
+        const color = isHighlighted ? '#1787ff' : '#b7c5d9';
+        const strokeWidth = isHighlighted ? 3.5 : 2.5;
+
+        jumpsSvg += `
+          <path d="${path}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" />
+          ${getArrowHead(x2, yLine, color)}
+        `;
+
+        if (showJumpNumbers && i < highlightN) {
+          jumpsSvg += `
+            <circle cx="${xm}" cy="${yLine - h - 10}" r="16" fill="white" stroke="#3b82f6" stroke-width="2" />
+            <text x="${xm}" y="${yLine - h - 4}" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="700">${i + 1}</text>
+          `;
+        }
+      }
+
+      let ticksSvg = '';
+      for (let i = 0; i <= maxVal; i++) {
+        const x = xStart + i * pixelsPerUnit;
+        const isLanded = landedValues.includes(i);
+        const isEndpoint = i === p;
+        const tickHeight = isLanded ? 16 : 9;
+        const shouldShowLabel = showOnlyLandedLabels ? isLanded : (isLanded || i % 5 === 0 || i === maxVal);
+
+        ticksSvg += `<line x1="${x}" y1="${yLine - tickHeight}" x2="${x}" y2="${yLine + tickHeight}" stroke="#6b7280" stroke-width="2" />`;
+        if (shouldShowLabel) {
+          const labelWidth = Math.max(26, String(i).length * 12 + 8);
+          const decoration = isEndpoint
+            ? `<rect x="${x - (labelWidth / 2)}" y="${yLine + 24}" width="${labelWidth}" height="28" fill="white" stroke="#3b82f6" stroke-width="2" />`
+            : '';
+          ticksSvg += `
+            ${decoration}
+            <text x="${x}" y="${yLine + 44}" text-anchor="middle" fill="#374151" font-size="13" font-weight="${isEndpoint ? '700' : '500'}">${i}</text>
+          `;
+        }
+      }
+
+      return `
+        <svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" class="number-line-svg" style="width: 100%; height: auto; max-width: 980px;">
+          <line x1="${xStart - 20}" y1="${yLine}" x2="${xEnd + 20}" y2="${yLine}" stroke="#7b818c" stroke-width="3" />
+          <polygon points="${xStart - 26},${yLine} ${xStart - 14},${yLine - 8} ${xStart - 14},${yLine + 8}" fill="#7b818c" />
+          <polygon points="${xEnd + 26},${yLine} ${xEnd + 14},${yLine - 8} ${xEnd + 14},${yLine + 8}" fill="#7b818c" />
+          ${ticksSvg}
+          ${jumpsSvg}
+        </svg>
+      `;
+    };
+
+    inst.parts = [
+      { type: 'text', content: 'Complete the multiplication number sentence that describes the model.', isVertical: true },
+      { type: 'svg', content: generateSvg({ highlightN: n, showJumpNumbers: false, showOnlyLandedLabels: true }), isVertical: true },
+      {
+        type: 'pair',
+        isVertical: false,
+        parts: [
+          { type: 'text', content: `${n} × ` },
+          { type: 'digit_blank', id: 'ans', size: Math.max(1, String(s).length), answerType: 'number' },
+          { type: 'text', content: ` = ${p}` }
+        ]
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ ans: String(s) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+
+    inst.solution = [
+      { type: 'text', content: 'To understand the model, look at the arrows.', isVertical: true },
+      { type: 'text', content: `The first arrow starts at 0. It ends at **${s}**. So, the length of each section on the number line is **${s}**.`, isVertical: true },
+      { type: 'svg', content: generateSvg({ highlightN: 1, showJumpNumbers: false, showOnlyLandedLabels: true }), isVertical: true },
+      { type: 'text', content: `Count by **${s}s**. Since there are **${n}** arrows, count forward **${n}** times.`, isVertical: true },
+      { type: 'svg', content: generateSvg({ highlightN: n, showJumpNumbers: true, showOnlyLandedLabels: true }), isVertical: true },
+      { type: 'text', content: `The last arrow ends at **${p}**. So, the multiplication number sentence that describes the model is **${n} × ${s} = ${p}**.`, isVertical: true },
+      {
+        type: 'html',
+        isVertical: true,
+        content: `
+          <div style="display:flex;flex-direction:column;align-items:center;margin-top:20px;">
+            <div style="font-size:48px;font-weight:800;color:#1e293b;display:flex;align-items:baseline;gap:20px;">
+              <div>${n}</div>
+              <div style="font-size:32px;color:#94a3b8;">×</div>
+              <div>${s}</div>
+              <div style="font-size:32px;color:#94a3b8;">=</div>
+              <div>${p}</div>
+            </div>
+            <div style="display:flex;gap:40px;margin-top:10px;">
+              <div style="text-align:center;width:80px;">
+                <div style="font-size:24px;">↑</div>
+                <div style="font-size:12px;color:#64748b;">Number of jumps</div>
+              </div>
+              <div style="text-align:center;width:80px;">
+                <div style="font-size:24px;">↑</div>
+                <div style="font-size:12px;color:#64748b;">Length of each jump</div>
+              </div>
+              <div style="text-align:center;width:80px;">
+                <div style="font-size:24px;">↑</div>
+                <div style="font-size:12px;color:#64748b;">End of the last jump</div>
+              </div>
+            </div>
+          </div>
+        `
+      }
+    ];
+  }
+
+  if (logic === 'box_method_multiplication_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const aRange = dataSource.factor_a_range || [11, 99];
+    const bRange = dataSource.factor_b_range || [11, 99];
+    const showCommas = dataSource.show_commas !== false;
+
+    let factorA;
+    let factorB;
+
+    if (overrideVariables) {
+      factorA = Number(overrideVariables.factor_a);
+      factorB = Number(overrideVariables.factor_b);
+    } else {
+      factorA = Math.floor(Math.random() * (aRange[1] - aRange[0] + 1)) + aRange[0];
+      factorB = Math.floor(Math.random() * (bRange[1] - bRange[0] + 1)) + bRange[0];
+    }
+
+    const aTensVal = Math.floor(factorA / 10) * 10;
+    const aOnesVal = factorA % 10;
+    const bTensVal = Math.floor(factorB / 10) * 10;
+    const bOnesVal = factorB % 10;
+
+    const formatNumber = (value) => showCommas ? Number(value).toLocaleString('en-IN') : String(value);
+    const maskProduct = (value) => {
+      const formatted = formatNumber(value);
+      return formatted.replace(/\d/g, '?');
+    };
+
+    const cell00 = bTensVal * aTensVal;
+    const cell01 = bTensVal * aOnesVal;
+    const cell10 = bOnesVal * aTensVal;
+    const cell11 = bOnesVal * aOnesVal;
+    const rowSumTop = cell00 + cell01;
+    const rowSumBottom = cell10 + cell11;
+    const product = factorA * factorB;
+
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      factor_a: factorA,
+      factor_b: factorB,
+      a_tens_val: aTensVal,
+      a_ones_val: aOnesVal,
+      b_tens_val: bTensVal,
+      b_ones_val: bOnesVal,
+      cell_00: formatNumber(cell00),
+      cell_01: formatNumber(cell01),
+      cell_10: formatNumber(cell10),
+      cell_11: formatNumber(cell11),
+      row_sum_top: formatNumber(rowSumTop),
+      row_sum_bottom: formatNumber(rowSumBottom),
+      product: formatNumber(product),
+      product_masked: maskProduct(product)
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+    inst.showSubmitButton = true;
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: `Use the box method to find ${factorA} × ${factorB}.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `<em>Calculate the sums on the right. Add these sums to find ${factorA} × ${factorB}.</em>`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `${factorA} × ${factorB} = ${maskProduct(product)}`,
+        isVertical: true
+      },
+      {
+        type: 'boxMethodMultiply',
+        isVertical: true,
+        layout: {
+          top_parts: [String(aTensVal), String(aOnesVal)],
+          left_parts: [String(bTensVal), String(bOnesVal)],
+          cells: [
+            formatNumber(cell00),
+            formatNumber(cell01),
+            formatNumber(cell10),
+            formatNumber(cell11)
+          ],
+          sum_inputs: [
+            { id: 'row_sum_top', size: 'large', active: true },
+            { id: 'row_sum_bottom', size: 'large' }
+          ],
+          final_input: { id: 'ans', size: 'large' },
+          row_sums: [formatNumber(rowSumTop), formatNumber(rowSumBottom)],
+          final_product: formatNumber(product),
+          show_commas: showCommas,
+          show_place_guides: true
+        }
+      }
+    ];
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: 'Break each factor into tens and ones.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `${factorA} = ${aTensVal} + ${aOnesVal} and ${factorB} = ${bTensVal} + ${bOnesVal}.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Find each box product: ${bTensVal} × ${aTensVal} = ${formatNumber(cell00)}, ${bTensVal} × ${aOnesVal} = ${formatNumber(cell01)}, ${bOnesVal} × ${aTensVal} = ${formatNumber(cell10)}, and ${bOnesVal} × ${aOnesVal} = ${formatNumber(cell11)}.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Add across the rows: ${formatNumber(cell00)} + ${formatNumber(cell01)} = ${formatNumber(rowSumTop)} and ${formatNumber(cell10)} + ${formatNumber(cell11)} = ${formatNumber(rowSumBottom)}.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Finally, ${formatNumber(rowSumTop)} + ${formatNumber(rowSumBottom)} = ${formatNumber(product)}.`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({
+      row_sum_top: formatNumber(rowSumTop),
+      row_sum_bottom: formatNumber(rowSumBottom),
+      ans: formatNumber(product)
+    });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'missing_factor_groups_of_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const groupRange = dataSource.group_count_range || [2, 5];
+    const perGroupRange = dataSource.per_group_range || [1, 5];
+
+    let groupCount, perGroup;
+    if (overrideVariables) {
+      groupCount = overrideVariables.group_count;
+      perGroup = overrideVariables.per_group;
+    } else {
+      groupCount = Math.floor(Math.random() * (groupRange[1] - groupRange[0] + 1)) + groupRange[0];
+      perGroup = Math.floor(Math.random() * (perGroupRange[1] - perGroupRange[0] + 1)) + perGroupRange[0];
+    }
+
+    const totalVal = groupCount * perGroup;
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      group_count: groupCount,
+      per_group: perGroup,
+      total_val: totalVal
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: question.questionText || question.question_text || 'Fill in the missing number.',
+        isVertical: true
+      },
+      {
+        type: 'pair',
+        isVertical: false,
+        parts: [
+          { type: 'text', content: `${groupCount} groups of ` },
+          { type: 'digit_blank', id: 'ans', size: Math.max(1, String(perGroup).length), answerType: 'number' },
+          { type: 'text', content: ` equal ${totalVal}.` }
+        ]
+      }
+    ];
+
+    const multiplicationFacts = [];
+    for (let i = 1; i <= perGroup; i += 1) {
+      multiplicationFacts.push(`${groupCount} × ${i} = ${groupCount * i}`);
+    }
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: 'You can use multiplication to find the missing number.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: 'This multiplication number sentence describes the problem:',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `**${groupCount} × ? = ${totalVal}**`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `(${groupCount} groups) × (number in each group) = (${totalVal} total)`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `To find the number in each group, list multiplication facts for **${groupCount}** until you reach **${totalVal}**:`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: multiplicationFacts.map((fact) => `- ${fact}`).join('\n'),
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `${groupCount} groups of **${perGroup}** equal **${totalVal}**.`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ ans: String(perGroup) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'missing_number_of_groups_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const groupRange = dataSource.group_count_range || [2, 5];
+    const perGroupRange = dataSource.per_group_range || [2, 5];
+
+    let groupCount, perGroup;
+    if (overrideVariables) {
+      groupCount = overrideVariables.group_count;
+      perGroup = overrideVariables.per_group;
+    } else {
+      groupCount = Math.floor(Math.random() * (groupRange[1] - groupRange[0] + 1)) + groupRange[0];
+      perGroup = Math.floor(Math.random() * (perGroupRange[1] - perGroupRange[0] + 1)) + perGroupRange[0];
+    }
+
+    const totalVal = groupCount * perGroup;
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      group_count: groupCount,
+      per_group: perGroup,
+      total_val: totalVal
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: question.questionText || question.question_text || 'Fill in the missing number.',
+        isVertical: true
+      },
+      {
+        type: 'pair',
+        isVertical: false,
+        parts: [
+          { type: 'digit_blank', id: 'ans', size: Math.max(1, String(groupCount).length), answerType: 'number' },
+          { type: 'text', content: ` groups of ${perGroup} equal ${totalVal}.` }
+        ]
+      }
+    ];
+
+    const skipCounts = [];
+    for (let i = 1; i <= groupCount; i += 1) {
+      const verb = i === 1 ? 'is' : 'are';
+      skipCounts.push(`${i} group${i === 1 ? '' : 's'} of ${perGroup} ${verb} ${i * perGroup}`);
+    }
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: 'You can use multiplication to find the missing number.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: 'This multiplication number sentence describes the problem:',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `**? × ${perGroup} = ${totalVal}**`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `(Number of groups) × (number in each group) = (${totalVal} total)`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `To find the number of groups, skip count by **${perGroup}** until you reach **${totalVal}**:`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: skipCounts.map((line) => `- ${line}`).join('\n'),
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Since it takes **${groupCount}** groups of **${perGroup}** to make **${totalVal}**, the missing number is **${groupCount}**.`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ ans: String(groupCount) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'multiplication_sentence_from_factors_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const targetRange = dataSource.product_target_range || [12, 48];
+    const itemCount = Math.max(4, Number(dataSource.item_count || 4));
+
+    let boxNumbers, productTarget, factor1, factor2;
+
+    if (overrideVariables) {
+      boxNumbers = Array.isArray(overrideVariables.box_numbers) ? overrideVariables.box_numbers : [];
+      productTarget = overrideVariables.product_target;
+      factor1 = overrideVariables.factor_1;
+      factor2 = overrideVariables.factor_2;
+    } else {
+      const possiblePairs = [];
+      for (let a = 2; a <= 12; a += 1) {
+        for (let b = a; b <= 12; b += 1) {
+          const p = a * b;
+          if (p >= targetRange[0] && p <= targetRange[1]) {
+            possiblePairs.push({ a, b, p });
+          }
+        }
+      }
+      const picked = possiblePairs[Math.floor(Math.random() * possiblePairs.length)];
+      factor1 = picked.a;
+      factor2 = picked.b;
+      productTarget = picked.p;
+
+      const pool = new Set([factor1, factor2]);
+      let attempts = 0;
+      while (pool.size < itemCount && attempts < 100) {
+        const candidate = Math.floor(Math.random() * 11) + 2;
+        if (candidate !== factor1 && candidate !== factor2) pool.add(candidate);
+        attempts += 1;
+      }
+      boxNumbers = Array.from(pool);
+      for (let i = boxNumbers.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [boxNumbers[i], boxNumbers[j]] = [boxNumbers[j], boxNumbers[i]];
+      }
+    }
+
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      box_numbers: boxNumbers,
+      product_target: productTarget,
+      factor_1: factor1,
+      factor_2: factor2
+    };
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: 'Choose two numbers from the box to complete the multiplication number sentence.',
+        isVertical: true
+      },
+      {
+        type: 'box_display',
+        content: boxNumbers,
+        isVertical: true
+      },
+      {
+        type: 'pair',
+        isVertical: false,
+        parts: [
+          { type: 'input', id: 'ans_1', size: 'small', answerType: 'number', maxLength: String(factor1).length },
+          { type: 'text', content: ' × ' },
+          { type: 'input', id: 'ans_2', size: 'small', answerType: 'number', maxLength: String(factor2).length },
+          { type: 'text', content: ` = ${productTarget}` }
+        ]
+      }
+    ];
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: `Look for numbers in the box that are factors of **${productTarget}**.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Pick a number: **${factor1}** is in the box. Is it a factor?`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Test it: What number can you multiply by **${factor1}** to get **${productTarget}**?`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `**${factor1} × ${factor2} = ${productTarget}**`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Check the box: Is **${factor2}** also in the box? Yes!`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `The multiplication number sentence is **${factor1} × ${factor2} = ${productTarget}**.`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({
+      ans_1: [String(factor1), String(factor2)],
+      ans_2: [String(factor2), String(factor1)]
+    });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'multiplication_true_false_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const aRange = dataSource.factor_a_range || [2, 9];
+    const bRange = dataSource.factor_b_range || [2, 9];
+    const falseProbability = Number.isFinite(Number(dataSource.make_false_probability))
+      ? Number(dataSource.make_false_probability)
+      : 0.5;
+    const offsetRange = dataSource.false_offset_range || [1, 9];
+
+    let factorA, factorB, shownResult, actualResult, isTrueSentence;
+    if (overrideVariables) {
+      factorA = Number(overrideVariables.factor_a);
+      factorB = Number(overrideVariables.factor_b);
+      actualResult = Number(overrideVariables.actual_result);
+      shownResult = Number(overrideVariables.shown_result);
+      isTrueSentence = String(overrideVariables.is_true_sentence) === 'true';
+    } else {
+      factorA = Math.floor(Math.random() * (aRange[1] - aRange[0] + 1)) + aRange[0];
+      factorB = Math.floor(Math.random() * (bRange[1] - bRange[0] + 1)) + bRange[0];
+      actualResult = factorA * factorB;
+      isTrueSentence = Math.random() >= falseProbability;
+
+      if (isTrueSentence) {
+        shownResult = actualResult;
+      } else {
+        const minOffset = Math.max(1, Number(offsetRange[0] || 1));
+        const maxOffset = Math.max(minOffset, Number(offsetRange[1] || minOffset));
+        let offset = Math.floor(Math.random() * (maxOffset - minOffset + 1)) + minOffset;
+        if (Math.random() > 0.5) offset *= -1;
+        if (actualResult + offset <= 0) offset = Math.abs(offset);
+        if (offset === 0) offset = 1;
+        shownResult = actualResult + offset;
+      }
+    }
+
+    const templateVars = {
+      factor_a: factorA,
+      factor_b: factorB,
+      actual_result: actualResult,
+      shown_result: shownResult,
+      correct_label: isTrueSentence ? 'true' : 'false',
+      correct_index: isTrueSentence ? 0 : 1,
+      is_true_sentence: String(isTrueSentence),
+      solution_sentence: isTrueSentence
+        ? `The number sentence is **true** because both sides are equal.`
+        : `The number sentence is **false** because its two sides are not equal.`,
+      multiplication_check: `${factorA} × ${factorB} = ${actualResult}${isTrueSentence ? '' : `, not ${shownResult}`}.`
+    };
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      ...templateVars
+    };
+
+    inst.type = 'mcq';
+    inst.parts = hydrateNode(question.parts && question.parts.length > 0 ? question.parts : [
+      {
+        type: 'text',
+        content: '{factor_a} × {factor_b} = {shown_result}',
+        isVertical: true
+      }
+    ], templateVars);
+
+    const hydratedOptions = hydrateNode(question.options && question.options.length > 0 ? question.options : [
+      { label: 'true', value: 'true' },
+      { label: 'false', value: 'false' }
+    ], templateVars);
+    inst.options = hydratedOptions;
+    inst.correctAnswerIndex = templateVars.correct_index;
+    inst.correctAnswerText = templateVars.correct_label;
+    inst.solution = hydrateNode(question.solution && question.solution.length > 0 ? question.solution : [
+      {
+        type: 'text',
+        content: 'A number sentence is true if its two sides are equal.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: '{solution_sentence}',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: '{multiplication_check}',
+        isVertical: true
+      }
+    ], templateVars);
+  }
+
+  if (logic === 'multiplication_equation_true_false_v2') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const leftARange = dataSource.factor_a_range || [2, 9];
+    const leftBRange = dataSource.factor_b_range || [2, 9];
+    const rightARange = dataSource.factor_c_range || [2, 9];
+    const rightBRange = dataSource.factor_d_range || [2, 9];
+    const makeTrueProbability = Number.isFinite(Number(dataSource.make_true_probability))
+      ? Number(dataSource.make_true_probability)
+      : 0.5;
+    const allowCommutativeTrue = dataSource.allow_commutative_true !== false;
+
+    let leftA, leftB, rightA, rightB, leftProduct, rightProduct, isTrueSentence;
+
+    if (overrideVariables) {
+      leftA = Number(overrideVariables.left_a);
+      leftB = Number(overrideVariables.left_b);
+      rightA = Number(overrideVariables.right_a);
+      rightB = Number(overrideVariables.right_b);
+      leftProduct = Number(overrideVariables.left_product);
+      rightProduct = Number(overrideVariables.right_product);
+      isTrueSentence = String(overrideVariables.is_true_sentence) === 'true';
+    } else {
+      leftA = Math.floor(Math.random() * (leftARange[1] - leftARange[0] + 1)) + leftARange[0];
+      leftB = Math.floor(Math.random() * (leftBRange[1] - leftBRange[0] + 1)) + leftBRange[0];
+      leftProduct = leftA * leftB;
+      isTrueSentence = Math.random() < makeTrueProbability;
+
+      if (isTrueSentence) {
+        const equalChoices = [];
+        for (let a = rightARange[0]; a <= rightARange[1]; a += 1) {
+          for (let b = rightBRange[0]; b <= rightBRange[1]; b += 1) {
+            if ((a * b) !== leftProduct) continue;
+            if (!allowCommutativeTrue && a === leftA && b === leftB) continue;
+            equalChoices.push([a, b]);
+          }
+        }
+
+        if (equalChoices.length > 0) {
+          [rightA, rightB] = equalChoices[Math.floor(Math.random() * equalChoices.length)];
+        } else {
+          rightA = leftA;
+          rightB = leftB;
+        }
+      } else {
+        let attempts = 0;
+        do {
+          rightA = Math.floor(Math.random() * (rightARange[1] - rightARange[0] + 1)) + rightARange[0];
+          rightB = Math.floor(Math.random() * (rightBRange[1] - rightBRange[0] + 1)) + rightBRange[0];
+          attempts += 1;
+        } while ((rightA * rightB) === leftProduct && attempts < 100);
+      }
+
+      rightProduct = rightA * rightB;
+      isTrueSentence = leftProduct === rightProduct;
+    }
+
+    const templateVars = {
+      left_a: leftA,
+      left_b: leftB,
+      right_a: rightA,
+      right_b: rightB,
+      left_product: leftProduct,
+      right_product: rightProduct,
+      correct_label: isTrueSentence ? 'true' : 'false',
+      correct_index: isTrueSentence ? 0 : 1,
+      is_true_sentence: String(isTrueSentence),
+      solution_sentence: isTrueSentence
+        ? 'The number sentence is **true** because its two sides are equal.'
+        : 'The number sentence is **false** because its two sides are not equal.',
+      comparison_sentence: isTrueSentence
+        ? `${leftA} × ${leftB} equals ${rightA} × ${rightB}.`
+        : `${leftA} × ${leftB} does not equal ${rightA} × ${rightB}.`
+    };
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      ...templateVars
+    };
+
+    inst.type = 'mcq';
+    inst.parts = hydrateNode(question.parts && question.parts.length > 0 ? question.parts : [
+      {
+        type: 'text',
+        content: '{left_a} × {left_b} = {right_a} × {right_b}',
+        isVertical: true
+      }
+    ], templateVars);
+
+    inst.options = hydrateNode(question.options && question.options.length > 0 ? question.options : [
+      { label: 'true', value: 'true' },
+      { label: 'false', value: 'false' }
+    ], templateVars);
+    inst.correctAnswerIndex = templateVars.correct_index;
+    inst.correctAnswerText = templateVars.correct_label;
+    inst.solution = hydrateNode(question.solution && question.solution.length > 0 ? question.solution : [
+      {
+        type: 'text',
+        content: 'A number sentence is true if its two sides are equal.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: '{solution_sentence}',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: 'On the left side, {left_a} × {left_b} = **{left_product}**.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: 'On the right side, {right_a} × {right_b} = **{right_product}**.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: '{comparison_sentence}',
+        isVertical: true
+      }
+    ], templateVars);
+  }
+
   if (logic === 'arithmetic_template_v1') {
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
     const vars = inst.adaptiveConfig?.variables || {};
@@ -1839,6 +3537,299 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
 
+  if (logic === 'shading_grids_v1') {
+    const config = inst.adaptiveConfig || {};
+    let rows, cols, target;
+    
+    if (overrideVariables) {
+      rows = overrideVariables.rows || overrideVariables.gridRows || 3;
+      cols = overrideVariables.cols || overrideVariables.gridCols || 3;
+      target = overrideVariables.target || overrideVariables.targetShaded || 1;
+    } else {
+      if (config.gridMode === 'hundredGrid') {
+        rows = 10;
+        cols = 10;
+      } else {
+        rows = config.gridRows || config.rows || Math.floor(Math.random() * 3) + 2; // 2 to 4
+        cols = config.gridCols || config.cols || Math.floor(Math.random() * 4) + 2; // 2 to 5
+      }
+      
+      const total = rows * cols;
+      // Randomize target if not explicitly fixed in config
+    }
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      rows, 
+      cols, 
+      target, 
+      total: rows * cols,
+      target_shaded: target
+    };
+    inst.adaptiveConfig.variables = customVars;
+    inst.adaptiveConfig.gridRows = rows;
+    inst.adaptiveConfig.gridCols = cols;
+    inst.adaptiveConfig.targetShaded = target;
+    inst.type = 'shadeGrid';
+    inst.show_submit_button = true;
+
+    const rawParts = question.parts && question.parts.length > 0 ? question.parts : [
+      { type: "text", content: "Shade **{target}** out of **{total}** equal parts.", isVertical: true }
+    ];
+    inst.parts = hydrateNode(rawParts, customVars);
+
+    const rawSolution = question.solution && (Array.isArray(question.solution) ? question.solution.length > 0 : true) ? question.solution : [
+      { type: "text", content: `### Shading Strategy`, isVertical: true },
+      { type: "text", content: `To solve this, look for the target number of parts to shade: **{target}**.`, isVertical: true },
+      { type: "text", content: `Click on exactly **{target}** squares in the grid. When you click a square, it will change color to show it's shaded.`, isVertical: true },
+      { type: "text", content: `Once you have shaded **{target}** parts, click the **Submit** button to check your answer.`, isVertical: true }
+    ];
+    inst.solution = hydrateNode(rawSolution, customVars);
+
+    inst.correctAnswerText = String(target); 
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  const PRIMARY_COLORS = ['#0EA5E9', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
+
+  if (logic === 'decimal_grid_model_v1') {
+    let shadedCount;
+    if (overrideVariables) {
+      shadedCount = overrideVariables.shaded_count;
+    } else {
+      const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 99] };
+      shadedCount = Math.floor(Math.random() * (dataSource.range[1] - dataSource.range[0] + 1)) + dataSource.range[0];
+    }
+    
+    // Pick a random primary color
+    const color = PRIMARY_COLORS[Math.floor(Math.random() * PRIMARY_COLORS.length)];
+
+    const tDigit = Math.floor(shadedCount / 10);
+    const hDigit = shadedCount % 10;
+    const decimalVal = (shadedCount / 100).toFixed(2);
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      shaded_count: shadedCount,
+      decimal_val: decimalVal,
+      tenths_digit: tDigit,
+      hundredths_digit: hDigit,
+      fill_color: color
+    };
+    inst.adaptiveConfig.variables = customVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+
+    const rawParts = [
+      {
+        type: "fractionModel",
+        modelConfig: {
+          gridMode: "hundredGrid",
+          targetShaded: shadedCount,
+          gridFlow: "column",
+          fillColor: color,
+          lineColor: "#1F2937", // Darker lines for high contrast
+          cellGap: 1.5
+        }
+      },
+      { type: "text", content: "**What decimal number does the model represent?**", isVertical: true },
+      { type: "text", content: "The large square represents 1 whole.", isVertical: true },
+      { type: "text", content: "[[ans]]", isVertical: true }
+    ];
+    inst.parts = hydrateNode(rawParts, customVars);
+
+    const rawSolution = [
+      { type: "text", content: `### Count and Place Strategy`, isVertical: true },
+      { type: "text", content: `In the model, **{shaded_count}** of the 100 small squares are shaded.`, isVertical: true },
+      { type: "text", content: `This represents **{shaded_count} hundredths**.`, isVertical: true },
+      { type: "text", content: `You can use a place value chart to write {shaded_count} hundredths as a decimal:`, isVertical: true },
+      {
+        type: "text",
+        content: `| ones | . | tenths | hundredths |
+|:---:|:---:|:---:|:---:|
+| 0 | . | **{tenths_digit}** | **{hundredths_digit}** |`,
+        isVertical: true
+      },
+      { type: "text", content: `So, the model represents the decimal number **{decimal_val}**.`, isVertical: true }
+    ];
+    inst.solution = hydrateNode(rawSolution, customVars);
+
+    inst.correctAnswerText = JSON.stringify({ ans: decimalVal });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+
+  if (logic === 'shade_fraction_bar_v1') {
+    let den, num, ori, color;
+    
+    if (overrideVariables) {
+      den = overrideVariables.denominator;
+      num = overrideVariables.numerator;
+      ori = overrideVariables.orientation;
+      color = overrideVariables.fill_color || PRIMARY_COLORS[0];
+    } else {
+      const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { denominators: [2, 3, 4, 5, 8, 10] };
+      const dens = dataSource.denominators || [2, 3, 4, 5, 8, 10];
+      den = dens[Math.floor(Math.random() * dens.length)];
+      num = Math.floor(Math.random() * (den - 1)) + 1; // Random numerator < denominator
+      ori = (Math.random() > 0.5) ? 'horizontal' : 'vertical';
+      color = PRIMARY_COLORS[Math.floor(Math.random() * PRIMARY_COLORS.length)];
+    }
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      numerator: num,
+      denominator: den,
+      orientation: ori,
+      fill_color: color
+    };
+    inst.adaptiveConfig.variables = customVars;
+    
+    inst.type = 'shadeGrid';
+    inst.show_submit_button = true;
+
+    inst.adaptiveConfig.gridMode = "fractionbar";
+    inst.adaptiveConfig.denominator = den;
+    inst.adaptiveConfig.numerator = num;
+    inst.adaptiveConfig.orientation = ori;
+    inst.adaptiveConfig.targetShaded = num;
+    inst.adaptiveConfig.fillColor = color;
+    inst.adaptiveConfig.lineColor = "#334155";
+    inst.adaptiveConfig.cellGap = 2;
+
+    const rawParts = [
+      { type: "text", content: "Show **{numerator}/{denominator}** by shading the model.", isVertical: true },
+      { type: "text", content: "Click and drag to shade parts.", isVertical: true }
+    ];
+    inst.parts = hydrateNode(rawParts, customVars);
+
+    const rawSolution = [
+      { type: "text", content: `### Shading {numerator}/{denominator}`, isVertical: true },
+      { type: "text", content: `The model is divided into **{denominator}** equal sections.`, isVertical: true },
+      { type: "text", content: `To represent the fraction **{numerator}/{denominator}**, you must shade **{numerator}** of those sections.`, isVertical: true },
+      { type: "text", content: `Click on exactly **{numerator}** ${den === 1? 'section' : 'sections'} to fill ${num === 1? 'it' : 'them'} with color.`, isVertical: true }
+    ];
+    inst.solution = hydrateNode(rawSolution, customVars);
+
+    inst.correctAnswerText = String(num);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'shade_decimal_grid_v1') {
+    let shadedCount;
+    if (overrideVariables) {
+      shadedCount = overrideVariables.shaded_count;
+    } else {
+      const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 99] };
+      shadedCount = Math.floor(Math.random() * (dataSource.range[1] - dataSource.range[0] + 1)) + dataSource.range[0];
+    }
+
+    const tDigit = Math.floor(shadedCount / 10);
+    const hDigit = shadedCount % 10;
+    const decimalVal = (shadedCount / 100).toFixed(2);
+    const color = PRIMARY_COLORS[Math.floor(Math.random() * PRIMARY_COLORS.length)];
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      shaded_count: shadedCount,
+      decimal_val: decimalVal,
+      tenths_digit: tDigit,
+      hundredths_digit: hDigit,
+      fill_color: color
+    };
+    inst.adaptiveConfig.variables = customVars;
+    inst.type = 'shadeGrid';
+    inst.show_submit_button = true;
+
+    inst.adaptiveConfig.gridMode = "hundredGrid";
+    inst.adaptiveConfig.targetShaded = shadedCount;
+    inst.adaptiveConfig.fillColor = color;
+    inst.adaptiveConfig.lineColor = "#1F2937"; // High contrast lines
+    inst.adaptiveConfig.cellGap = 1.5;
+
+    const rawParts = [
+      { type: "text", content: `Shade **{decimal_val}** of the whole square.`, isVertical: true },
+      { type: "text", content: `(The large square represents 1 whole)`, isVertical: true }
+    ];
+    inst.parts = hydrateNode(rawParts, customVars);
+
+    const rawSolution = [
+      { type: "text", content: `### Shading {decimal_val} cells`, isVertical: true },
+      { type: "text", content: `The decimal **{decimal_val}** represents **{shaded_count} hundredths**.`, isVertical: true },
+      { type: "text", content: `Each full column of the grid is **10 hundredths** (or 0.1).`, isVertical: true },
+      { type: "text", content: `To show **{decimal_val}**, you can shade:`, isVertical: true },
+      { type: "text", content: `- **{tenths_digit}** full columns (**{tenths_digit}** tenths)`, isVertical: true },
+      { type: "text", content: `- **{hundredths_digit}** extra squares (**{hundredths_digit}** hundredths)`, isVertical: true },
+      { type: "text", content: `Total squares to shade: **{shaded_count}**.`, isVertical: true }
+    ];
+    inst.solution = hydrateNode(rawSolution, customVars);
+
+    inst.correctAnswerText = String(shadedCount);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+  if (logic === 'dots_in_circles_v1') {
+    let numGroups, dotsPerGroup;
+    if (overrideVariables) {
+      numGroups = overrideVariables.num_groups;
+      dotsPerGroup = overrideVariables.dots_per_group;
+    } else {
+      const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { groups: [2, 5], dots: [1, 9] };
+      numGroups = Math.floor(Math.random() * (dataSource.groups[1] - dataSource.groups[0] + 1)) + dataSource.groups[0];
+      dotsPerGroup = Math.floor(Math.random() * (dataSource.dots[1] - dataSource.dots[0] + 1)) + dataSource.dots[0];
+    }
+
+    const color = PRIMARY_COLORS[Math.floor(Math.random() * PRIMARY_COLORS.length)];
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      num_groups: numGroups,
+      dots_per_group: dotsPerGroup,
+      total_dots: numGroups * dotsPerGroup,
+      fill_color: color
+    };
+    inst.adaptiveConfig.variables = customVars;
+    inst.type = 'fillInTheBlank';
+    inst.isVertical = true;
+
+    const rawParts = [
+      { type: "text", content: "Fill in the blanks to describe the model.", isVertical: true },
+      { 
+        type: "dotsGrouping", 
+        numGroups: numGroups, 
+        dotsPerGroup: dotsPerGroup, 
+        color: color 
+      },
+      { type: "text", content: "There are [[ans1]] groups of dots.", isVertical: true },
+      { type: "text", content: "There are [[ans2]] dots in each group.", isVertical: true }
+    ];
+    inst.parts = hydrateNode(rawParts, customVars);
+
+    const rawSolution = [
+      { type: "text", content: "### Count the number of groups", isVertical: true },
+      { 
+        type: "dotsGrouping", 
+        numGroups: numGroups, 
+        dotsPerGroup: dotsPerGroup, 
+        color: color,
+        showGroupLabels: true 
+      },
+      { type: "text", content: "There are **{num_groups} groups** of dots.", isVertical: true },
+      { type: "text", content: "Each group has an equal number of dots. Count the number of dots in a group.", isVertical: true },
+      { 
+        type: "dotsGrouping", 
+        numGroups: 1, 
+        dotsPerGroup: dotsPerGroup, 
+        color: color,
+        showDotLabels: true 
+      },
+      { type: "text", content: "There are **{dots_per_group} dots** in each group.", isVertical: true }
+    ];
+    inst.solution = hydrateNode(rawSolution, customVars);
+
+    inst.correctAnswerText = JSON.stringify({ ans1: String(numGroups), ans2: String(dotsPerGroup) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
   if (logic === 'balanced_addition_equations_v1') {
     let n1, n2, n3, n4, total;
     let missingIndex = 0;
@@ -2742,6 +4733,123 @@ function numberToWords(n) {
     const answerPayload = JSON.stringify({ ans_value: String(num) });
     inst.correctAnswerText = answerPayload;
     inst.adaptiveConfig.correctAnswerText = answerPayload;
+  }
+
+  if (logic === 'math_multiplication_from_image_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const groupRange = dataSource.group_count_range || [2, 4];
+    const perGroupRange = dataSource.per_group_range || [2, 5];
+    const maxProduct = Number(dataSource.max_product || 20);
+    const emojiChoices = Array.isArray(dataSource.emoji_choices) && dataSource.emoji_choices.length > 0
+      ? dataSource.emoji_choices
+      : ['🌸', '🍎', '⭐', '🧱', '🐶'];
+
+    let groupCount, perGroup, emoji, imageUrl;
+    if (overrideVariables) {
+      groupCount = overrideVariables.group_count;
+      perGroup = overrideVariables.per_group;
+      emoji = overrideVariables.emoji;
+      imageUrl = overrideVariables.image_url;
+    } else {
+      let attempts = 0;
+      do {
+        groupCount = Math.floor(Math.random() * (groupRange[1] - groupRange[0] + 1)) + groupRange[0];
+        perGroup = Math.floor(Math.random() * (perGroupRange[1] - perGroupRange[0] + 1)) + perGroupRange[0];
+        attempts += 1;
+      } while ((groupCount * perGroup) >= maxProduct && attempts < 50);
+
+      emoji = dataSource.emoji || emojiChoices[Math.floor(Math.random() * emojiChoices.length)];
+      imageUrl = dataSource.image_url || null;
+    }
+
+    const product = groupCount * perGroup;
+    const objectLabel = dataSource.object_label || (emoji ? 'objects' : 'pictures');
+
+    const renderGroupedSvg = () => {
+      const iconSize = imageUrl ? 24 : 20;
+      const cellWidth = imageUrl ? 46 : 36;
+      const rowHeight = imageUrl ? 44 : 36;
+      const leftPad = 12;
+      const topPad = 10;
+      const gapY = 6;
+      const width = leftPad * 2 + (perGroup * cellWidth);
+      const height = topPad * 2 + (groupCount * rowHeight) + ((groupCount - 1) * gapY);
+
+      let rowMarkup = '';
+      for (let row = 0; row < groupCount; row += 1) {
+        const y = topPad + row * (rowHeight + gapY);
+        rowMarkup += `<rect x="5" y="${y}" width="${width - 10}" height="${rowHeight}" fill="#ffffff" stroke="#111827" stroke-width="1" />`;
+
+        for (let col = 0; col < perGroup; col += 1) {
+          const x = leftPad + (col * cellWidth) + ((cellWidth - iconSize) / 2);
+          if (imageUrl) {
+            rowMarkup += `<image href="${imageUrl}" x="${x}" y="${y + 6}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet" />`;
+          } else {
+            rowMarkup += `<text x="${x + (iconSize / 2)}" y="${y + 25}" text-anchor="middle" font-size="${iconSize - 1}">${emoji}</text>`;
+          }
+        }
+      }
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="width:100%;height:auto;max-width:440px;">
+          ${rowMarkup}
+        </svg>
+      `;
+    };
+
+    const templateVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      group_count: groupCount,
+      per_group: perGroup,
+      product,
+      emoji,
+      image_url: imageUrl,
+      object_label: objectLabel
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.type = 'textInput';
+    inst.isVertical = true;
+    inst.showSubmitButton = true;
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: question.questionText || question.question_text || `Write the multiplication number sentence shown for these ${objectLabel}:`,
+        isVertical: true
+      },
+      {
+        type: 'svg',
+        content: renderGroupedSvg(),
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: 'Type the complete multiplication number sentence (for example, 2 x 3 = 6).',
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = `${groupCount} x ${perGroup} = ${product}`;
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: `Count the groups first. There are **${groupCount} groups**.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Count how many are in each group. There are **${perGroup}** in each group.`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `So the multiplication sentence is **${groupCount} x ${perGroup} = ${product}**.`,
+        isVertical: true
+      }
+    ];
   }
 
   if (logic === 'even_odd_multi_v1') {
@@ -3721,6 +5829,198 @@ function numberToWords(n) {
             ]
         }
     ], templateVars);
+  }
+
+  if (logic === 'multiplication_compare_to_36_sort_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const targetValue = Number(dataSource.target_value || 36);
+    const itemCount = Math.max(3, Number(dataSource.item_count || 3));
+    const factorRange = dataSource.factor_range || [2, 12];
+    const requireLess = dataSource.require_less !== false;
+    const requireEqual = dataSource.require_equal !== false;
+    const requireGreater = dataSource.require_greater !== false;
+
+    const makeExpr = (a, b) => ({
+      a,
+      b,
+      product: a * b,
+      content: `${a} × ${b}`
+    });
+
+    const allExpressions = [];
+    for (let a = factorRange[0]; a <= factorRange[1]; a += 1) {
+      for (let b = factorRange[0]; b <= factorRange[1]; b += 1) {
+        allExpressions.push(makeExpr(a, b));
+      }
+    }
+
+    const lessPool = allExpressions.filter((expr) => expr.product < targetValue);
+    const equalPool = allExpressions.filter((expr) => expr.product === targetValue);
+    const greaterPool = allExpressions.filter((expr) => expr.product > targetValue);
+
+    const requiredBuckets = [];
+    if (requireLess) requiredBuckets.push({ id: 'less_than', label: `less than ${targetValue}`, pool: lessPool });
+    if (requireEqual) requiredBuckets.push({ id: 'equal_to', label: `equal to ${targetValue}`, pool: equalPool });
+    if (requireGreater) requiredBuckets.push({ id: 'greater_than', label: `greater than ${targetValue}`, pool: greaterPool });
+
+    const pickUniqueFromPool = (pool, usedContents) => {
+      const choices = pool.filter((expr) => !usedContents.has(expr.content));
+      if (choices.length === 0) return null;
+      return choices[Math.floor(Math.random() * choices.length)];
+    };
+
+    const selected = [];
+    const usedContents = new Set();
+
+    requiredBuckets.forEach((bucket) => {
+      const expr = pickUniqueFromPool(bucket.pool, usedContents);
+      if (expr) {
+        selected.push({ ...expr, bucketId: bucket.id, bucketLabel: bucket.label });
+        usedContents.add(expr.content);
+      }
+    });
+
+    while (selected.length < itemCount) {
+      const availableBuckets = requiredBuckets.filter((bucket) => bucket.pool.length > 0);
+      if (availableBuckets.length === 0) break;
+      const bucket = availableBuckets[Math.floor(Math.random() * availableBuckets.length)];
+      const expr = pickUniqueFromPool(bucket.pool, usedContents);
+      if (!expr) break;
+      selected.push({ ...expr, bucketId: bucket.id, bucketLabel: bucket.label });
+      usedContents.add(expr.content);
+    }
+
+    const shuffled = [...selected].sort(() => Math.random() - 0.5);
+    const dragItems = shuffled.map((expr, idx) => ({
+      id: `expr_${idx + 1}`,
+      content: expr.content,
+      targetGroupId: expr.bucketId
+    }));
+
+    inst.type = 'dragAndDrop';
+    inst.dropGroups = requiredBuckets.map((bucket) => ({
+      id: bucket.id,
+      label: bucket.label
+    }));
+    inst.dragItems = dragItems;
+    inst.parts = hydrateNode(question.parts && question.parts.length > 0 ? question.parts : [
+      {
+        type: 'text',
+        content: `Multiply to find the products. Is each product less than ${targetValue}, equal to ${targetValue}, or greater than ${targetValue}?`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: 'Place each expression into the correct box.',
+        isVertical: true
+      }
+    ], { target_value: targetValue });
+    inst.correctAnswerIndex = -1;
+    inst.correctAnswerText = JSON.stringify(
+      Object.fromEntries(dragItems.map((item) => [item.id, item.targetGroupId]))
+    );
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      target_value: targetValue,
+      expressions: selected.map((expr) => ({
+        expression: expr.content,
+        product: expr.product,
+        bucket: expr.bucketLabel
+      }))
+    };
+
+    const repeatedAddition = (groups, size) => Array.from({ length: groups }, () => String(size)).join(' + ');
+    const bucketed = {
+      less_than: selected.filter((expr) => expr.bucketId === 'less_than'),
+      equal_to: selected.filter((expr) => expr.bucketId === 'equal_to'),
+      greater_than: selected.filter((expr) => expr.bucketId === 'greater_than')
+    };
+    const renderFinalBucket = (title, exprs) => `
+      <div style="flex:1;min-width:0;border:2px solid #8fd3ff;border-radius:2px;padding:10px 8px 14px;background:#fff;">
+        <div style="font-size:14px;font-weight:500;color:#666;text-align:center;padding-bottom:8px;border-bottom:3px solid #8fd3ff;margin-bottom:12px;">
+          ${title}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;min-height:64px;">
+          ${exprs.map((expr) => `<span style="display:inline-flex;align-items:center;justify-content:center;background:#4b86e8;color:#fff;padding:6px 12px;border-radius:2px;font-size:16px;font-weight:500;">${expr.content}</span>`).join('')}
+        </div>
+      </div>
+    `;
+
+    const solutionParts = [
+      {
+        type: 'text',
+        content: 'Look at one expression at a time.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `Multiply to find the product of each expression. Then, compare the product to ${targetValue}.`,
+        isVertical: true
+      }
+    ];
+
+    selected.forEach((expr, idx) => {
+      solutionParts.push(
+        {
+          type: 'text',
+          content: `**${expr.content}**`,
+          isVertical: true
+        },
+        {
+          type: 'text',
+          content: `The expression ${expr.content} means ${expr.a} groups of ${expr.b}.`,
+          isVertical: true
+        },
+        {
+          type: 'text',
+          content: `${repeatedAddition(expr.a, expr.b)} = ${expr.product}`,
+          isVertical: true
+        },
+        {
+          type: 'text',
+          content: `${expr.content} = ${expr.product}`,
+          isVertical: true
+        },
+        {
+          type: 'text',
+          content: `${expr.content} belongs in the **${expr.bucketLabel}** box.`,
+          isVertical: true
+        }
+      );
+
+      if (idx < selected.length - 1) {
+        solutionParts.push({
+          type: 'html',
+          content: '<div style="height:1px;background:#d9d9d9;margin:14px 0;"></div>',
+          isVertical: true
+        });
+      }
+    });
+
+    solutionParts.push(
+      {
+        type: 'text',
+        content: 'Place each expression into the correct box.',
+        isVertical: true
+      },
+      {
+        type: 'html',
+        isVertical: true,
+        content: `
+          <div style="display:flex;gap:8px;align-items:stretch;margin-top:8px;">
+            ${renderFinalBucket(`less than ${targetValue}`, bucketed.less_than)}
+            ${renderFinalBucket(`equal to ${targetValue}`, bucketed.equal_to)}
+            ${renderFinalBucket(`greater than ${targetValue}`, bucketed.greater_than)}
+          </div>
+        `
+      }
+    );
+
+    inst.solution = hydrateNode(question.solution && question.solution.length > 0 ? question.solution : solutionParts, {
+      target_value: targetValue
+    });
   }
 
   if (logic === 'base10_remediation_v1') {

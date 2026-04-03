@@ -125,6 +125,16 @@ function InlineLatexBlanks({
     );
 }
 
+const parseBooleanLike = (value, fallback = true) => {
+    if (value === undefined || value === null) return fallback;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    const normalized = String(value).trim().toLowerCase();
+    if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+    return fallback;
+};
+
 export default function FillInTheBlankRenderer({
     question,
     userAnswer,
@@ -265,15 +275,26 @@ export default function FillInTheBlankRenderer({
     };
 
     const parseCorrectAnswers = () => {
+        const raw = q.correctAnswerText;
+        if (raw === undefined || raw === null || raw === '') return {};
+
         try {
-            const parsed = JSON.parse(q.correctAnswerText || '{}');
-            return parsed && typeof parsed === 'object' ? parsed : {};
-        } catch {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+            if (typeof parsed === 'string' || typeof parsed === 'number') {
+                return { __default: String(parsed) };
+            }
             return {};
+        } catch {
+            return { __default: String(raw) };
         }
     };
 
     const correctAnswers = parseCorrectAnswers();
+    const getExpectedAnswer = (partId) => {
+        if (partId && correctAnswers?.[partId] !== undefined) return correctAnswers[partId];
+        return correctAnswers?.__default ?? '';
+    };
 
     const getInputConfig = (part) => {
         const declaredType = String(part?.answerType || part?.answer_type || '').toLowerCase();
@@ -284,7 +305,7 @@ export default function FillInTheBlankRenderer({
             return { inputMode: 'decimal', pattern: '[-+]?[0-9]*[.]?[0-9]+' };
         }
 
-        const expected = correctAnswers?.[part.id];
+        const expected = getExpectedAnswer(part.id);
         if (typeof expected === 'number') {
             return Number.isInteger(expected)
                 ? { inputMode: 'numeric', pattern: '[0-9]*' }
@@ -329,17 +350,29 @@ export default function FillInTheBlankRenderer({
         const val = getValue(partId);
         
         // Dynamic maxLength based on correct result if available
-        const expected = correctAnswers?.[partId] ?? '';
-        const defaultMax = expected ? String(expected).length : 20;
+        const expected = getExpectedAnswer(partId);
+        const defaultMax = expected ? String(expected).length : 4;
         const maxLength = Number.isFinite(Number(properties?.maxLength)) 
             ? Number(properties.maxLength) 
             : defaultMax;
+        const explicitSize = String(properties?.size || '').toLowerCase();
+        const sizeClassName = explicitSize === 'small'
+            ? styles.inputSmall
+            : explicitSize === 'medium'
+                ? styles.inputMedium
+                : explicitSize === 'large'
+                    ? styles.inputLarge
+                    : '';
+        const resolvedWidth = properties.width
+            || (explicitSize
+                ? undefined // Allow CSS to control width for small/medium/large
+                : (maxLength <= 1 ? '52px' : `${Math.max(52, maxLength * 12 + 16)}px`));
 
         return (
             <input
                 key={`raw-input-${partId}`}
                 type="text"
-                className={styles.input}
+                className={`${styles.input} ${sizeClassName}`.trim()}
                 value={val}
                 onChange={(e) => handleInputChange(partId, e.target.value)}
                 onFocus={() => setLastFocusedId(partId)}
@@ -349,7 +382,7 @@ export default function FillInTheBlankRenderer({
                 disabled={isAnswered}
                 placeholder={properties.placeholder || ''}
                 aria-label={properties.placeholder || partId || 'blank input'}
-                style={{ width: properties.width || (maxLength <= 1 ? '32px' : `${Math.max(44, maxLength * 10 + 12)}px`) }}
+                style={{ width: resolvedWidth }}
                 inputMode={showKeypad ? 'none' : inputConfig.inputMode}
                 pattern={inputConfig.pattern}
                 maxLength={maxLength}
@@ -366,6 +399,17 @@ export default function FillInTheBlankRenderer({
                 className={`${styles.partWrapper} ${isVertical ? styles.verticalPart : styles.inlinePart}`}
             >
                 {content}
+            </div>
+        );
+    };
+
+    const renderCompositePart = (part, index) => {
+        const childParts = Array.isArray(part?.parts) ? part.parts : [];
+        if (childParts.length === 0) return null;
+
+        return (
+            <div className={styles.pairedRow}>
+                {childParts.map((child, childIndex) => renderPart(child, `${index}-${childIndex}`))}
             </div>
         );
     };
@@ -964,6 +1008,13 @@ export default function FillInTheBlankRenderer({
         const cfg = part?.layout || {};
         const inputId = part.id || 'vertical_input';
         const expectedAns = String(cfg.expect || cfg.ans || cfg.answer || '');
+        const inputFromLeftToRight = cfg.inputFromLeftToRight !== undefined
+            ? parseBooleanLike(cfg.inputFromLeftToRight, true)
+            : cfg.input_from_left_to_right !== undefined
+                ? parseBooleanLike(cfg.input_from_left_to_right, true)
+                : q?.adaptiveConfig?.data_source?.input_from_left_to_right !== undefined
+                    ? parseBooleanLike(q.adaptiveConfig.data_source.input_from_left_to_right, true)
+                    : true;
 
         return (
             <ArithmeticBlock
@@ -977,7 +1028,98 @@ export default function FillInTheBlankRenderer({
                 isAnswered={isAnswered}
                 showQuestionMark={cfg.showQuestionMark}
                 carries={Array.isArray(cfg.carries) ? cfg.carries : []}
+                inputFromLeftToRight={inputFromLeftToRight}
             />
+        );
+    };
+
+    const renderBoxMethodMultiply = (part) => {
+        const layout = part?.layout || {};
+        const topParts = Array.isArray(layout.top_parts) ? layout.top_parts : [];
+        const leftParts = Array.isArray(layout.left_parts) ? layout.left_parts : [];
+        const cells = Array.isArray(layout.cells) ? layout.cells : [];
+        const sumInputs = Array.isArray(layout.sum_inputs) ? layout.sum_inputs : [];
+        const finalInput = layout.final_input || {};
+
+        const topInput = sumInputs[0] || { id: 'row_sum_top', size: 'large' };
+        const bottomInput = sumInputs[1] || { id: 'row_sum_bottom', size: 'large' };
+        const finalId = finalInput.id || 'ans';
+
+        const renderBoxMethodField = ({ id, segments = 4, active = false, offset = false }) => {
+            const value = getValue(id);
+            const showComma = segments >= 4;
+            const showCursor = active && !value;
+
+            return (
+                <div
+                    className={[
+                        styles.boxMethodField,
+                        active ? styles.boxMethodFieldActive : '',
+                        segments === 4 ? styles.boxMethodFieldFour : styles.boxMethodFieldThree,
+                        offset ? styles.boxMethodFieldOffset : ''
+                    ].filter(Boolean).join(' ')}
+                >
+                    <div className={styles.boxMethodGuides} aria-hidden="true">
+                        {Array.from({ length: segments - 1 }).map((_, guideIdx) => (
+                            <span key={`${id}-guide-${guideIdx}`} className={styles.boxMethodGuide} />
+                        ))}
+                    </div>
+                    {showComma ? <span className={styles.boxMethodComma}>,</span> : null}
+                    {showCursor ? <span className={styles.boxMethodCursor}>|</span> : null}
+                    <input
+                        type="text"
+                        className={styles.boxMethodFieldInput}
+                        value={value}
+                        onChange={(e) => handleInputChange(id, e.target.value)}
+                        onFocus={() => setLastFocusedId(id)}
+                        ref={(el) => {
+                            if (el) arithmeticCellRefs.current[id] = el;
+                        }}
+                        disabled={isAnswered}
+                        inputMode={showKeypad ? 'none' : 'numeric'}
+                        pattern="[0-9,]*"
+                        maxLength={5}
+                        aria-label={id}
+                    />
+                </div>
+            );
+        };
+
+        return (
+            <div className={styles.boxMethodWrap}>
+                <div className={styles.boxMethodBoard}>
+                    <div className={styles.boxMethodTopLabel}>
+                        {topParts.join(' + ')}
+                    </div>
+                    <div className={styles.boxMethodBody}>
+                        <div className={styles.boxMethodLeftLabel}>
+                            {leftParts.map((item, idx) => (
+                                <span key={`left-${idx}`}>{idx > 0 ? `+ ${item}` : item}</span>
+                            ))}
+                        </div>
+                        <div className={styles.boxMethodGridArea}>
+                            <div className={styles.boxMethodGrid}>
+                                {cells.map((cell, idx) => (
+                                    <div key={`cell-${idx}`} className={styles.boxMethodCell}>{cell}</div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className={styles.boxMethodSums}>
+                            <div className={styles.boxMethodRowInput}>
+                                {renderBoxMethodField({ id: topInput.id, segments: 4, active: true })}
+                            </div>
+                            <div className={styles.boxMethodPlusRow}>
+                                <span className={styles.boxMethodPlus}>+</span>
+                                {renderBoxMethodField({ id: bottomInput.id, segments: 3, offset: true })}
+                            </div>
+                            <div className={styles.boxMethodDivider} />
+                            <div className={styles.boxMethodRowInput}>
+                                {renderBoxMethodField({ id: finalId, segments: 4 })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         );
     };
 
@@ -1591,6 +1733,28 @@ export default function FillInTheBlankRenderer({
                     </div>
                 ));
 
+            case 'svg':
+            case 'html':
+                return wrapPart(part, index, (
+                    <div
+                        className={styles.svgContainer}
+                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
+                    />
+                ));
+
+            case 'box_display': {
+                const values = Array.isArray(part.content) ? part.content : [];
+                return wrapPart(part, index, (
+                    <div className={styles.boxDisplay}>
+                        {values.map((value, valueIndex) => (
+                            <span key={`${index}-${valueIndex}`} className={styles.boxDisplayItem}>
+                                {String(value)}
+                            </span>
+                        ))}
+                    </div>
+                ));
+            }
+
             case 'sequence':
                 const isCommaSeparated = Boolean(part?.isCommaSeparated || part?.is_comma_separated);
                 const children = Array.isArray(part.children) ? part.children : [];
@@ -1605,6 +1769,20 @@ export default function FillInTheBlankRenderer({
                             </span>
                         ))}
                     </div>
+                ));
+
+            case 'pair':
+                return wrapPart(part, index, renderCompositePart(part, index));
+
+            case 'digit_blank':
+                return wrapPart(part, index, (
+                    <span className={styles.inlineBlankWrap}>
+                        {renderInput(part.id || `digit_blank_${index}`, {
+                            placeholder: part.placeholder || '',
+                            answerType: part.answerType || 'number',
+                            maxLength: Number(part.size) > 0 ? Number(part.size) : 1,
+                        })}
+                    </span>
                 ));
 
             case 'blank':
@@ -1659,6 +1837,9 @@ export default function FillInTheBlankRenderer({
             case 'verticalMultiply':
             case 'v1v2Multiply':
                 return wrapPart(part, index, renderVerticalMultiply(part));
+
+            case 'boxMethodMultiply':
+                return wrapPart(part, index, renderBoxMethodMultiply(part));
 
             case 'blank':
                 return wrapPart(part, index, (

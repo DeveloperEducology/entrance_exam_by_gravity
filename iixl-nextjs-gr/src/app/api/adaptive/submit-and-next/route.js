@@ -114,12 +114,17 @@ function buildBasicFeedback(question, selectedAnswer = null) {
             const cells = Array.isArray(answerRow?.cells) ? answerRow.cells : [];
             if (cells.length > 0) {
               const prefix = String(answerRow?.prefix || '');
-              const joined = cells.map((cell, idx) => String(parsed[cell?.id ?? `cell_${idx}`] ?? '')).join('');
+              const joined = cells.map((cell, idx) => {
+                const value = parsed[cell?.id ?? `cell_${idx}`];
+                return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
+              }).join('');
               return `${prefix}${joined}`.trim();
             }
 
             if (Object.keys(parsed).length === 0) return String(rawText);
-            return Object.values(parsed).join(', ');
+            return Object.values(parsed)
+              .map((value) => Array.isArray(value) ? String(value[0] ?? '') : String(value ?? ''))
+              .join(', ');
           }
           return String(rawText);
         } catch { }

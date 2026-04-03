@@ -164,9 +164,10 @@
 
 .dropGroups {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.25rem;
     margin-bottom: 2rem;
+    align-items: start;
 }
 
 .dropGroup {
@@ -326,41 +327,83 @@
 
 @media (max-width: 768px) {
     .container {
-        padding: 0.5rem;
+        padding: 0.25rem;
     }
 
     .questionCard {
-        padding: 1.25rem 1rem;
-        border-radius: 16px;
+        padding: 0.85rem 0.75rem 1rem;
+        border-radius: 12px;
     }
 
     .questionContent {
-        font-size: 1rem;
+        font-size: 0.92rem;
+        margin-bottom: 0.5rem;
     }
 
     .itemsPool {
-        padding: 1rem;
-        min-height: 80px;
-        gap: 0.5rem;
+        justify-content: flex-start;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 0.45rem;
+        min-height: 58px;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
+        border-radius: 12px;
     }
 
     .dragItem {
-        padding: 0.5rem 0.75rem;
-        min-width: 80px;
+        padding: 0.35rem 0.7rem;
+        min-width: 0;
+        border-radius: 10px;
     }
 
     .itemLabel {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
 
     .dropGroups {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+        margin-bottom: 1rem;
+    }
+
+    .dropGroup {
+        gap: 0.4rem;
+    }
+
+    .groupHeader {
+        padding: 0.45rem 0.25rem;
+        border-radius: 8px;
+    }
+
+    .groupLabel {
+        font-size: 0.62rem;
+        letter-spacing: 0.02em;
     }
 
     .dropZone {
-        min-height: 100px;
-        padding: 0.75rem;
+        min-height: 175px;
+        padding: 0.55rem 0.35rem;
+        border-radius: 10px;
+        border-width: 2px;
+        gap: 0.45rem;
+    }
+
+    .emptyZone {
+        font-size: 0.72rem;
+    }
+
+    .instruction {
+        font-size: 0.68rem;
+        margin-bottom: 0.7rem;
+        padding: 0.28rem 0.6rem;
+    }
+
+    .submitButton {
+        max-width: 116px;
+        margin: 0.75rem 0 0;
+        padding: 0.7rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.86rem;
     }
 }
-

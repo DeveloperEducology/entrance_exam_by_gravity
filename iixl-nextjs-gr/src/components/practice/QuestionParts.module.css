@@ -78,17 +78,18 @@
 }
 
 .svgContainer {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: flex-start;
-    flex-wrap: wrap;
+    width: 100%;
     gap: 0.6rem;
-    margin: 1rem 0;
+    margin: 0.6rem 0 1rem;
 }
 
 .svgContainer svg {
-    max-width: min(100%, 320px);
-    max-height: 240px;
+    width: 100%;
+    max-width: min(100%, 560px);
+    max-height: none;
     height: auto;
 }
 
@@ -265,6 +266,167 @@
     font-size: 1.2rem;
     font-weight: 700;
     color: #172136;
+}
+
+.boxMethodWrap {
+    width: 100%;
+    margin: 0.4rem 0 0.9rem;
+}
+
+.boxMethodBoard {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 2px solid #111827;
+    padding: 1rem 1rem 0.9rem;
+    background: #fff;
+}
+
+.boxMethodTopLabel {
+    margin-left: 4.6rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.boxMethodBody {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.boxMethodLeftLabel {
+    width: 3.6rem;
+    padding-top: 2.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.boxMethodGridArea {
+    padding-top: 0.2rem;
+}
+
+.boxMethodGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 90px);
+    grid-template-rows: repeat(2, 60px);
+    border: 2px solid #111827;
+}
+
+.boxMethodCell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #111827;
+    border-bottom: 1px solid #111827;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.boxMethodCell:nth-child(2n) {
+    border-right: none;
+}
+
+.boxMethodCell:nth-last-child(-n + 2) {
+    border-bottom: none;
+}
+
+.boxMethodSums {
+    min-width: 124px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-top: 0.25rem;
+}
+
+.boxMethodStaticInput {
+    position: relative;
+    width: 154px;
+    height: 46px;
+    border: 2px solid #cbd5e1;
+    border-radius: 0;
+    background: #fff;
+}
+
+.boxMethodStaticInput::before,
+.boxMethodStaticInput::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-right: 1px dashed #cbd5e1;
+}
+
+.boxMethodStaticInput::before {
+    left: 25%;
+}
+
+.boxMethodStaticInput::after {
+    left: 50%;
+}
+
+.boxMethodStaticInput::marker {
+    display: none;
+}
+
+.boxMethodStaticPlusRow {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.boxMethodPlus {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1;
+}
+
+.boxMethodDivider {
+    width: 100%;
+    border-top: 2px solid #111827;
+    margin: 0.1rem 0 0.05rem;
+}
+
+@media (max-width: 768px) {
+    .boxMethodBoard {
+        width: 100%;
+        max-width: 100%;
+        padding: 0.85rem;
+    }
+
+    .boxMethodBody {
+        flex-wrap: wrap;
+        gap: 0.85rem;
+    }
+
+    .boxMethodTopLabel {
+        margin-left: 3.5rem;
+        font-size: 0.95rem;
+    }
+
+    .boxMethodLeftLabel {
+        width: 2.8rem;
+        padding-top: 1.75rem;
+        gap: 1.7rem;
+        font-size: 0.9rem;
+    }
+
+    .boxMethodGrid {
+        grid-template-columns: repeat(2, 74px);
+        grid-template-rows: repeat(2, 52px);
+    }
+
+    .boxMethodStaticInput {
+        width: 138px;
+        height: 42px;
+    }
 }
 
 @media (max-width: 768px) {

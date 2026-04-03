@@ -131,11 +131,14 @@
 }
 
 .pairedRow {
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.2rem;
     margin: 0.1rem 0 0.2rem;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
 }
 
 .pairedRow .verticalPart,
@@ -230,6 +233,288 @@
     margin: 0 0.25rem;
 }
 
+.boxDisplay {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0.4rem 0 0.6rem;
+}
+
+.boxDisplayItem {
+    width: 52px;
+    height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2.5px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.boxMethodWrap {
+    width: 100%;
+    margin: 0.4rem 0 0.9rem;
+}
+
+.boxMethodBoard {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 2px solid #111827;
+    padding: 1rem 1rem 0.9rem;
+    background: #fff;
+}
+
+.boxMethodTopLabel {
+    margin-left: 4.6rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: 0.01em;
+}
+
+.boxMethodBody {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.boxMethodLeftLabel {
+    width: 3.6rem;
+    padding-top: 2.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.boxMethodGridArea {
+    padding-top: 0.2rem;
+}
+
+.boxMethodGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 90px);
+    grid-template-rows: repeat(2, 60px);
+    border: 2px solid #111827;
+}
+
+.boxMethodCell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #111827;
+    border-bottom: 1px solid #111827;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.boxMethodCell:nth-child(2n) {
+    border-right: none;
+}
+
+.boxMethodCell:nth-last-child(-n + 2) {
+    border-bottom: none;
+}
+
+.boxMethodSums {
+    min-width: 124px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-top: 0.25rem;
+}
+
+.boxMethodRowInput {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.boxMethodField {
+    position: relative;
+    width: 154px;
+    height: 46px;
+    border: 2px solid #cbd5e1;
+    border-radius: 0;
+    background: #fff;
+    overflow: hidden;
+}
+
+.boxMethodFieldActive {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.08);
+}
+
+.boxMethodFieldThree {
+    width: 102px;
+}
+
+.boxMethodFieldOffset {
+    margin-left: 4px;
+}
+
+.boxMethodGuides {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    pointer-events: none;
+}
+
+.boxMethodFieldFour .boxMethodGuides {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.boxMethodFieldThree .boxMethodGuides {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.boxMethodGuide {
+    border-right: 1px dashed #cbd5e1;
+}
+
+.boxMethodFieldActive .boxMethodGuide {
+    border-right-color: #60a5fa;
+}
+
+.boxMethodGuide:last-child {
+    border-right: none;
+}
+
+.boxMethodFieldInput {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: #111827;
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 0 12px;
+    outline: none;
+    z-index: 2;
+}
+
+.boxMethodFieldInput::placeholder {
+    color: transparent;
+}
+
+.boxMethodComma {
+    position: absolute;
+    left: 34px;
+    top: 50%;
+    transform: translateY(-46%);
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #111827;
+    z-index: 1;
+}
+
+.boxMethodCursor {
+    position: absolute;
+    left: 50px;
+    top: 50%;
+    transform: translateY(-54%);
+    font-size: 1.55rem;
+    color: #111827;
+    z-index: 1;
+}
+
+.boxMethodPlusRow {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.boxMethodPlus {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1;
+}
+
+.boxMethodDivider {
+    width: 100%;
+    border-top: 2px solid #111827;
+    margin: 0.1rem 0 0.05rem;
+}
+
+@media (max-width: 768px) {
+    .boxMethodBoard {
+        width: 100%;
+        max-width: 100%;
+        padding: 0.85rem;
+    }
+
+    .boxMethodBody {
+        flex-wrap: wrap;
+        gap: 0.85rem;
+    }
+
+    .boxMethodTopLabel {
+        margin-left: 3.5rem;
+        font-size: 0.95rem;
+    }
+
+    .boxMethodLeftLabel {
+        width: 2.8rem;
+        padding-top: 1.75rem;
+        gap: 1.7rem;
+        font-size: 0.9rem;
+    }
+
+    .boxMethodGrid {
+        grid-template-columns: repeat(2, 74px);
+        grid-template-rows: repeat(2, 52px);
+    }
+
+    .boxMethodCell {
+        font-size: 1rem;
+    }
+
+    .boxMethodField {
+        width: 138px;
+        height: 42px;
+    }
+
+    .boxMethodFieldThree {
+        width: 94px;
+    }
+}
+
+.boxDisplayItem:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+}
+
+.svgContainer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0.35rem 0;
+}
+
+.svgContainer svg {
+    width: 100%;
+    height: auto;
+    max-width: min(100%, 600px);
+}
+
 .image {
     border-radius: 4px;
 }
@@ -254,51 +539,76 @@
     color: #475569;
     margin-left: -0.1rem;
     margin-right: 0.35rem;
-    display: inline-block;
+    /* display: inline-block; */
 }
 
 .input {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.9rem;
-    border: 2px solid #cbd5e1;
-    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
     text-align: center;
-    transition: all 0.2s ease;
-    font-weight: 600;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px; /* Slightly rounded for premium look */
+    background: #ffffff;
+    color: #1e293b;
+    caret-color: #3b82f6;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
     max-width: 100%;
+    line-height: normal;
 }
 
 .input:focus {
     outline: none;
-    border-color: #7c3aed;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+    border-color: #3b82f6;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
 }
 
 .input:disabled {
-    background: #f8f9fa;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
     cursor: not-allowed;
 }
 
 .inlineBlankWrap {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
     vertical-align: middle;
-    margin: 0 6px 0 0;
-    width: 50%; /* Mandatory 50% width rule */
-    min-width: 40px;
-    max-width: 100%;
+    margin: 0 0.15rem;
 }
 
 .inlineBlankWrap .input {
-    min-height: 38px;
-    height: 42px;
-    padding: 2px 10px;
-    border-radius: 8px;
-    width: 100% !important;
-    font-size: 1.15rem;
-    border: 3px solid #cbd5e1; /* Neutral slate instead of confusing green */
-    background: #ffffff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    width: 52px !important;
+    height: 52px !important;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    font-size: 1.4rem;
+    border: 2px solid #94a3b8;
+}
+
+.inputSmall {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.2rem;
+}
+
+.inputMedium {
+    width: 60px !important;
+    height: 60px !important;
+    font-size: 1.4rem;
+}
+
+.inputLarge {
+    width: 72px !important;
+    height: 72px !important;
+    font-size: 1.6rem;
 }
 
 .mathLatexInteractive {
@@ -826,14 +1136,20 @@
 }
 
 .pairedRow {
-    display: block;
-    width: 100%;
-    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.05rem;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0.05rem 0;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
 }
 
 .pairedRow .verticalPart,
 .pairedRow .inlinePart {
-    width: 100%;
+    width: auto;
+    flex: 0 0 auto;
 }
 
 .smartTableOuter {
@@ -1085,7 +1401,7 @@
     }
 
     .questionContent {
-        margin-bottom: 0.5rem;
+        margin-bottom: 1rem;
         line-height: 1.3;
         font-size: 0.85rem;
         gap: 0.25rem;
@@ -1349,6 +1665,8 @@
 
 .inlineBlankWrap {
     display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
     vertical-align: middle;
-    margin: 0 4px;
+    margin: 0 0.05rem;
 }

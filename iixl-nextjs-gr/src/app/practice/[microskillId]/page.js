@@ -361,6 +361,27 @@ function getSelectedAnswerDisplay(question, answer) {
     return 'No order set';
   }
 
+  if (type === 'draganddrop') {
+    if (!answer || typeof answer !== 'object') return 'No answer';
+    const dragItems = Array.isArray(question.dragItems) ? question.dragItems : [];
+    const dropGroups = Array.isArray(question.dropGroups) ? question.dropGroups : [];
+    const groupLabelById = Object.fromEntries(
+      dropGroups.map((group) => [String(group.id), String(group.label || group.id)])
+    );
+
+    const grouped = dropGroups.map((group) => {
+      const labels = Object.entries(answer)
+        .filter(([, groupId]) => String(groupId) === String(group.id))
+        .map(([itemId]) => {
+          const item = dragItems.find((entry) => String(entry.id) === String(itemId));
+          return item?.content || itemId;
+        });
+      return labels.length > 0 ? `${groupLabelById[String(group.id)]}: ${labels.join(', ')}` : null;
+    }).filter(Boolean);
+
+    return grouped.length > 0 ? grouped.join(' | ') : 'No answer';
+  }
+
   if (
     type === 'fillintheblank' ||
     type === 'gridarithmetic' ||
@@ -909,6 +930,7 @@ export default function PracticePage() {
         seenQuestionIds,
         adaptiveConfig: currentQuestion.adaptiveConfig,
         correctAnswerText: currentQuestion.correctAnswerText,
+        questionSnapshot: currentQuestion,
       };
 
       console.log('Submit Body:', submitBody);

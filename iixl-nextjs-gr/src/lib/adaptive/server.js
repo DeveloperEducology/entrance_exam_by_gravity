@@ -124,6 +124,14 @@ function parseMaybeJson(value, fallback = null) {
   }
 }
 
+function normalizeMathSentence(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/×/g, 'x')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
 function isMissingTableError(error) {
   const message = String(error?.message ?? '').toLowerCase();
   return (
@@ -231,6 +239,7 @@ export function toPublicQuestion(question) {
     wordLength: fourPics.wordLength,
     letterBank: fourPics.letterBank,
     isMultiSelect: Boolean(question.isMultiSelect),
+    isGrid: Boolean(question.isGrid),
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
   };
@@ -267,7 +276,7 @@ export function validateAnswer(question, answer) {
       return Number(answer) === Number(question.correctAnswerIndex);
 
     case 'textinput':
-      return String(answer ?? '').trim().toLowerCase() === String(question.correctAnswerText ?? '').trim().toLowerCase();
+      return normalizeMathSentence(answer) === normalizeMathSentence(question.correctAnswerText);
 
     case 'fillintheblank':
     case 'gridarithmetic':
@@ -285,9 +294,14 @@ export function validateAnswer(question, answer) {
         return String(answerVal ?? '').trim().toLowerCase() === String(rawText ?? '').trim().toLowerCase();
       }
       
-      return Object.keys(parsed).every((key) => (
-        String(answer?.[key] ?? '').trim().toLowerCase() === String(parsed[key] ?? '').trim().toLowerCase()
-      ));
+      return Object.keys(parsed).every((key) => {
+        const actual = String(answer?.[key] ?? '').trim().toLowerCase();
+        const expected = parsed[key];
+        if (Array.isArray(expected)) {
+          return expected.map((value) => String(value ?? '').trim().toLowerCase()).includes(actual);
+        }
+        return actual === String(expected ?? '').trim().toLowerCase();
+      });
     }
 
     case 'draganddrop':
@@ -314,17 +328,38 @@ export function validateAnswer(question, answer) {
     }
 
     case 'shadegrid': {
-      const expected = parseShadeGridTarget(question);
-      if (expected == null) return false;
-      const actual = (
-        typeof answer === 'number' ? answer :
-          typeof answer === 'string' ? parseNumber(answer) :
-            Array.isArray(answer) ? answer.length :
-              Array.isArray(answer?.selected) ? answer.selected.length :
-                parseNumber(answer?.count)
-      );
-      if (actual == null) return false;
-      return Number(actual) === Number(expected);
+      const config = question.adaptiveConfig || {};
+      const expectedCount = parseShadeGridTarget(question);
+      if (expectedCount == null) return false;
+      
+      const selected = (Array.isArray(answer?.selected) ? answer.selected : []).map(Number).sort((a, b) => a - b);
+      const actualCount = selected.length;
+      
+      if (Number(actualCount) !== Number(expectedCount)) return false;
+      
+      // Optional Shape Validation
+      if (config.enforceShape === 'rectangle') {
+        const targetRows = Number(config.variables?.rows);
+        const targetCols = Number(config.variables?.cols);
+        const gridCols = Number(config.gridCols || 10);
+        
+        if (targetRows && targetCols && selected.length > 0) {
+          const minCell = selected[0];
+          const startR = Math.floor(minCell / gridCols);
+          const startC = minCell % gridCols;
+          
+          const expectedIndices = [];
+          for (let r = 0; r < targetRows; r++) {
+            for (let c = 0; c < targetCols; c++) {
+              expectedIndices.push((startR + r) * gridCols + (startC + c));
+            }
+          }
+          expectedIndices.sort((a, b) => a - b);
+          return JSON.stringify(selected) === JSON.stringify(expectedIndices);
+        }
+      }
+      
+      return true;
     }
 
     default:
