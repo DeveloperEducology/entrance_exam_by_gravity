@@ -6909,6 +6909,290 @@ function numberToWords(n) {
     inst.id = `inst_${question.id || question.template_id || 'tpl'}_${ts}_${rd}`;
   }
 
+  if (logic === 'math_multiplication_dynamic_v4') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range1 = dataSource.range1 || [10, 99]; // Multiplicand
+    const range2 = dataSource.range2 || [2, 9];   // Multiplier
+    
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      const fixedN1 = Number(dataSource.n1);
+      const fixedN2 = Number(dataSource.n2);
+      const fixedProd = Number(dataSource.product);
+
+      if (!isNaN(fixedN1) && !isNaN(fixedN2)) {
+        n1 = fixedN1;
+        n2 = fixedN2;
+      } else if (!isNaN(fixedProd) && !isNaN(fixedN1)) {
+        n1 = fixedN1;
+        n2 = Math.round(fixedProd / n1);
+      } else {
+        n1 = Math.floor(Math.random() * (range1[1] - range1[0] + 1)) + range1[0];
+        n2 = Math.floor(Math.random() * (range2[1] - range2[0] + 1)) + range2[0];
+      }
+    }
+
+    const prod = n1 * n2;
+    const s1 = String(n1);
+    const s2 = String(n2);
+    const multDigits = s2.split('').reverse(); // multiplier digits from ones to left
+    const partials = multDigits.map((digit, idx) => Number(digit) * n1 * Math.pow(10, idx));
+    const partialStrings = partials.map(p => String(p));
+    
+    const maxLen = String(prod).length;
+    const cols = maxLen + 1; // plus one for operator column if needed
+
+    const cells = [];
+    const ansMap = {};
+    
+    // Row 1 & 2: Factors
+    const f1Str = String(n1).padStart(cols, ' ');
+    const f2Str = String(n2).padStart(cols, ' ');
+    for (let c = 0; c < cols; c++) {
+        if (f1Str[c] !== ' ') cells.push({ r: 1, c, content: f1Str[c] });
+        if (f2Str[c] !== ' ') {
+            const cell = { r: 2, c, content: f2Str[c] };
+            if (c === 0 || f2Str[c-1] === ' ') cell.prefix = '×';
+            cells.push(cell);
+        }
+    }
+
+    // Carry row for first partial product (optional input circles)
+    for (let c = 0; c < cols - 1; c++) {
+        const id = `c_${Math.pow(10, cols - 1 - c)}`;
+        cells.push({ r: 0, c, type: 'input', id: id, placeholder: 'c' });
+    }
+
+    // Partial Products & Final Answer
+    const isMultiDigit = s2.length > 1;
+    if (isMultiDigit) {
+        // Render Partial Products
+        partialStrings.forEach((ps, pIdx) => {
+            const rowIdx = 3 + pIdx;
+            const padded = ps.padStart(cols, ' ');
+            for (let c = 0; c < cols; c++) {
+                if (padded[c] !== ' ') {
+                    const id = `p${pIdx}_${Math.pow(10, cols - 1 - c)}`;
+                    cells.push({ r: rowIdx, c, type: 'input', id });
+                    ansMap[id] = padded[c];
+                }
+            }
+        });
+        
+        // Final Product Row
+        const finalRowIdx = 3 + partialStrings.length;
+        const prodStr = String(prod).padStart(cols, ' ');
+        for (let c = 0; c < cols; c++) {
+            if (prodStr[c] !== ' ') {
+                const id = `a_${Math.pow(10, cols - 1 - c)}`;
+                cells.push({ r: finalRowIdx, c, type: 'input', id });
+                ansMap[id] = prodStr[c];
+            }
+        }
+    } else {
+        // Single digit multiplier: Just one answer row
+        const prodStr = String(prod).padStart(cols, ' ');
+        for (let c = 0; c < cols; c++) {
+            if (prodStr[c] !== ' ') {
+                const id = `a_${Math.pow(10, cols - 1 - c)}`;
+                cells.push({ r: 3, c, type: 'input', id });
+                ansMap[id] = prodStr[c];
+            }
+        }
+    }
+
+    inst.parts = [
+        { type: 'text', content: `Multiply **${n1}** by **${n2}** using the standard algorithm.`, isVertical: true },
+        {
+            id: 'multiplication_grid',
+            type: 'smartTable',
+            config: { rows: 10, cols: cols, showBorders: false, alignment: 'right' },
+            cells: cells
+        }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = ansMap;
+    inst.adaptiveConfig.variables = { n1, n2, prod };
+    
+    // Solution Steps
+    const solutionParts = [];
+    if (!isMultiDigit) {
+        solutionParts.push({ type: 'text', content: `### **Step 1: Multiply ${n1} by ${n2}**\nMultiply each digit of ${n1} by ${n2}, carrying over values to the next place.` });
+    } else {
+        multDigits.forEach((digit, idx) => {
+           const pv = Math.pow(10, idx);
+           const pValText = pv === 1 ? 'ones' : (pv === 10 ? 'tens' : 'hundreds');
+           solutionParts.push({ type: 'text', content: `### **Step ${idx+1}: Multiply by the ${pValText} digit (${digit})**\nMultiply **${n1}** by **${digit}** and shift by ${idx} place(s).` });
+        });
+        solutionParts.push({ type: 'text', content: `### **Final Step: Add the partial products**\nSum the results of the multiplication steps to get the final total.` });
+    }
+    solutionParts.push({ type: 'text', content: `\n### **The product is ${prod}.**` });
+    inst.solution = solutionParts;
+  }
+
+  // Always provide a unique instance ID if it was hydrated from a template
+  if (!overrideVariables) {
+    const ts = Date.now();
+    const rd = Math.floor(Math.random() * 100000);
+    inst.id = `inst_${question.id || question.template_id || 'tpl'}_${ts}_${rd}`;
+  }
+
+  if (logic === 'place_face_value_diff_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [1000, 99999];
+    
+    let number, digit, targetIdx;
+    if (overrideVariables && overrideVariables.number) {
+        // Fix: Use already generated values if provided
+        number = parseInt(String(overrideVariables.number).replace(/,/g, ''));
+        digit = Number(overrideVariables.digit);
+        // targetIdx should ideally be preserved; if not, finding first occurrence is safer than random
+        targetIdx = String(number).indexOf(String(digit));
+    } else {
+        // Generate random number and pick a random digit from it
+        number = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        const sNum = String(number);
+        const validIdxs = sNum.split('').map((d, i) => d !== '0' ? i : null).filter(v => v !== null);
+        targetIdx = validIdxs[Math.floor(Math.random() * validIdxs.length)];
+        digit = Number(sNum[targetIdx]);
+    }
+
+    const sNumFinal = String(number);
+    const power = sNumFinal.length - 1 - targetIdx;
+    const placeValue = digit * Math.pow(10, power);
+    const faceValue = digit;
+    const diff = placeValue - faceValue;
+    
+    inst.adaptiveConfig.variables = { 
+      number: number.toLocaleString(), 
+      digit, 
+      placeValue: placeValue.toLocaleString(), 
+      faceValue, 
+      diff: diff.toLocaleString() 
+    };
+
+    // Hydrate Parts to replace {digit}, {number} etc
+    if (Array.isArray(inst.parts)) {
+      inst.parts = inst.parts.map(p => hydrateNode(p, inst.adaptiveConfig.variables));
+    }
+
+    // MCQ Options
+    const optionsArray = [
+      { label: String(diff.toLocaleString()), isCorrect: true },
+      { label: String(placeValue.toLocaleString()), isCorrect: false },
+      { label: String(faceValue), isCorrect: false },
+      { label: String((placeValue + faceValue).toLocaleString()), isCorrect: false }
+    ];
+    
+    // Pure integer-based LCG (no floats, no sin/cos) for absolute cross-platform parity
+    const seededShuffle = (arr, seed) => {
+        let m = arr.length;
+        let x = seed;
+        while (m) {
+            x = (1103515245 * x + 12345) & 0x7FFFFFFF;
+            let i = x % m--;
+            let t = arr[m];
+            arr[m] = arr[i];
+            arr[i] = t;
+        }
+        return arr;
+    };
+
+    inst.options = seededShuffle(optionsArray, number);
+    inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect);
+    inst.type = 'mcq';
+
+    // Structured Solution Steps as requested
+    inst.solution = [
+        { type: 'text', content: `### **Solution:**` },
+        { type: 'text', content: `Place value of **${digit}** = **${placeValue.toLocaleString()}**` },
+        { type: 'text', content: `Face value of **${digit}** = **${faceValue}**` },
+        { type: 'text', content: `**Difference** = ${placeValue.toLocaleString()} - ${faceValue} = **${diff.toLocaleString()}**` }
+    ];
+  }
+
+  if (logic === 'successor_predecessor_prod_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    
+    let type, digits, number;
+    const params = dataSource.params || {};
+    const digitList = params.digit_range || [3];
+    const typeList = params.number_types || ['smallest', 'greatest'];
+
+    if (overrideVariables && overrideVariables.number) {
+       number = parseInt(String(overrideVariables.number).replace(/,/g, ''));
+       type = overrideVariables.type;
+       digits = overrideVariables.digits;
+    } else {
+       // Pick randomly from the provided lists
+       type = typeList[Math.floor(Math.random() * typeList.length)];
+       digits = digitList[Math.floor(Math.random() * digitList.length)];
+       
+       if (type.toLowerCase().includes('small')) {
+          number = Math.pow(10, digits - 1);
+       } else if (type.toLowerCase().includes('great') || type.toLowerCase().includes('large')) {
+          number = Math.pow(10, digits) - 1;
+       } else {
+          number = 100;
+       }
+    }
+    
+    const succ = number + 1;
+    const pred = number - 1;
+    const prod = succ * pred;
+    const label = `${type} ${digits}-digit number`;
+    
+    inst.adaptiveConfig.variables = {
+       number: number.toLocaleString(),
+       type,
+       digits,
+       succ: succ.toLocaleString(),
+       pred: pred.toLocaleString(),
+       prod: prod.toLocaleString(),
+       label
+    };
+
+    if (Array.isArray(inst.parts)) {
+      inst.parts = inst.parts.map(p => hydrateNode(p, inst.adaptiveConfig.variables));
+    }
+
+    const optionsArray = [
+      { label: String(prod.toLocaleString()), isCorrect: true },
+      { label: String((number * number).toLocaleString()), isCorrect: false },
+      { label: String((number * number + 1).toLocaleString()), isCorrect: false },
+      { label: String((number * number - 101).toLocaleString()), isCorrect: false }
+    ];
+
+    const seededShuffle = (arr, seed) => {
+        let m = arr.length;
+        let x = seed;
+        while (m) {
+            x = (1103515245 * x + 12345) & 0x7FFFFFFF;
+            let i = x % m--;
+            let t = arr[m];
+            arr[m] = arr[i];
+            arr[i] = t;
+        }
+        return arr;
+    };
+
+    inst.options = seededShuffle(optionsArray, number);
+    inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect);
+    inst.type = 'mcq';
+    
+    inst.solution = [
+        { type: 'text', content: `### **Solution:**`, isVertical: true },
+        { type: 'text', content: `1. **${label}** = **${number.toLocaleString()}**`, isVertical: true },
+        { type: 'text', content: `2. **Successor** = ${number.toLocaleString()} + 1 = **${succ.toLocaleString()}**`, isVertical: true },
+        { type: 'text', content: `3. **Predecessor** = ${number.toLocaleString()} - 1 = **${pred.toLocaleString()}**`, isVertical: true },
+        { type: 'text', content: `4. **Product** = ${succ.toLocaleString()} × ${pred.toLocaleString()} = **${prod.toLocaleString()}**`, isVertical: true }
+    ];
+  }
+
   // Final Type Safety: Never return "template" as the type to the renderer
   if ((inst.type === 'template' || !inst.type) && (inst.logic_type || inst.adaptiveConfig?.logic_type)) {
      inst.type = 'fillInTheBlank';
