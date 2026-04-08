@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { uploadToR2 } from '../lib/r2';
-import { Search, Plus, Copy, Check, Upload, Trash2, ExternalLink, Image as ImageIcon, Filter, X, CloudRain, Database, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Copy, Check, Upload, Trash2, ExternalLink, Image as ImageIcon, Filter, X, CloudRain, Database, Loader2, AlertCircle, Cloud } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function MediaGallery() {
@@ -19,60 +19,20 @@ export function MediaGallery() {
     const fetchImages = async () => {
         setLoading(true);
         try {
-            // 1. Fetch from Questions (Usage)
-            const { data: questions, error } = await supabase
-                .from('questions')
-                .select('id, type, parts, options, drag_groups');
+            // Fetch from the new Node.js/MongoDB media registry
+            const { data, error } = await supabase
+                .from('media')
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const extractedImages = new Map();
-
-            questions.forEach(q => {
-                // Helper to add image
-                const addImg = (url, context) => {
-                    if (!url || typeof url !== 'string' || !url.startsWith('http')) return;
-                    if (!extractedImages.has(url)) {
-                        extractedImages.set(url, {
-                            url,
-                            sources: [],
-                            type: 'question_usage'
-                        });
-                    }
-                    extractedImages.get(url).sources.push({ id: q.id, type: q.type, context });
-                };
-
-                // Check Parts
-                if (q.parts && Array.isArray(q.parts)) {
-                    q.parts.forEach(p => {
-                        if (p.type === 'image' && p.imageUrl) addImg(p.imageUrl, 'Part');
-                        // Some parts might have content as url if type is image but mapped differently
-                        if (p.type === 'image' && p.content) addImg(p.content, 'Part');
-                    });
-                }
-
-                // Check Options (Image Choice)
-                if (q.type === 'imageChoice' && q.options && Array.isArray(q.options)) {
-                    q.options.forEach(opt => addImg(opt, 'Option'));
-                }
-
-                // Check Drag Groups
-                if (q.drag_groups && Array.isArray(q.drag_groups)) {
-                    q.drag_groups.forEach(g => {
-                        if (g.image) addImg(g.image, 'Drag Group');
-                    });
-                }
-            });
-
-            // 2. Fetch from Storage Bucket (if exists) - Optional enhancement
-            // We'll skip this for now as we don't know the bucket name, 
-            // but we can list files if we knew it. 
-            // For now, we rely on the extracted unique URLs.
-
-            setImages(Array.from(extractedImages.values()));
+            // Optional: You could still fetch questions to show usage counts, 
+            // but for now let's prioritize the registry data and names.
+            setImages(data || []);
 
         } catch (err) {
-            console.error("Error fetching media:", err);
+            console.error("Error fetching media registry:", err);
         } finally {
             setLoading(false);
         }
@@ -166,10 +126,14 @@ export function MediaGallery() {
                                     </div>
                                 </div>
                                 <div className="p-3">
-                                    <div className="text-xs text-slate-500 truncate mb-1" title={img.url}>{img.url}</div>
+                                    <div className="text-[10px] font-bold text-slate-900 truncate mb-0.5" title={img.name}>{img.name || 'Untitled Image'}</div>
+                                    <div className="text-[9px] text-slate-400 truncate mb-2" title={img.url}>{img.url}</div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                                            Used in {img.sources.length} Qs
+                                        <span className="text-[10px] font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                                            {img.type ? img.type.split('/')[1]?.toUpperCase() : 'IMAGE'}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400">
+                                            {img.created_at ? new Date(img.created_at).toLocaleDateString() : ''}
                                         </span>
                                     </div>
                                 </div>
@@ -199,61 +163,88 @@ function AddMediaModal({ onClose, onUploaded }) {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [provider, setProvider] = useState('supabase'); // supabase, r2
+    const [progress, setProgress] = useState({ current: 0, total: 0 });
+    const [bulkErrors, setBulkErrors] = useState([]);
 
-    // Check if R2 is configured
-    const isR2Configured = import.meta.env.VITE_R2_ACCOUNT_ID && import.meta.env.VITE_R2_BUCKET_NAME;
-
+    const [isR2Configured, setIsR2Configured] = useState(false);
     useEffect(() => {
+        setIsR2Configured(!!(import.meta.env.VITE_R2_ACCOUNT_ID && import.meta.env.VITE_R2_BUCKET_NAME));
         if (isR2Configured) setProvider('r2');
     }, [isR2Configured]);
 
-    const handleUrlSubmit = () => {
+    const handleUrlSubmit = async () => {
         if (url) {
-            onUploaded();
+            try {
+                const cleanName = url.split('/').pop().split('?')[0].replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, " ") || "External Image";
+                await supabase.from('media').insert({
+                    name: cleanName,
+                    url: url,
+                    type: 'image/external'
+                });
+                onUploaded();
+            } catch (err) {
+                console.error("Failed to register URL:", err);
+                setError("Failed to register URL in registry.");
+            }
         }
     };
 
     const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const selectedFiles = Array.from(e.target.files);
+        if (selectedFiles.length === 0) return;
 
         setUploading(true);
         setError(null);
-        setUrl('');
+        setBulkErrors([]);
+        setProgress({ current: 0, total: selectedFiles.length });
 
-        try {
-            // Standardize filename
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            try {
+                // Standardize filename
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-            let publicUrl = '';
+                let publicUrl = '';
 
-            if (provider === 'r2') {
-                const path = fileName;
-                publicUrl = await uploadToR2(file, path);
-            } else {
-                // Supabase Storage
-                const filePath = `${fileName}`;
-                const { data, error: uploadError } = await supabase.storage
-                    .from('images') // Assumption!
-                    .upload(filePath, file);
+                if (provider === 'r2') {
+                    const path = fileName;
+                    publicUrl = await uploadToR2(file, path);
+                } else {
+                    // Supabase Storage
+                    const filePath = `${fileName}`;
+                    const { error: uploadError } = await supabase.storage
+                        .from('images') // Assumption!
+                        .upload(filePath, file);
 
-                if (uploadError) throw uploadError;
+                    if (uploadError) throw uploadError;
 
-                const { data: { publicUrl: sbUrl } } = supabase.storage
-                    .from('images')
-                    .getPublicUrl(filePath);
-                publicUrl = sbUrl;
+                    const { data: { publicUrl: sbUrl } } = supabase.storage
+                        .from('images')
+                        .getPublicUrl(filePath);
+                    publicUrl = sbUrl;
+                }
+
+                // Register in MongoDB Media Table
+                const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, " ") || "Uploaded Image";
+                await supabase.from('media').insert({
+                    name: cleanName,
+                    url: publicUrl,
+                    type: file.type
+                });
+
+                setProgress(prev => ({ ...prev, current: i + 1 }));
+
+            } catch (err) {
+                console.error(`Upload failed for ${file.name}:`, err);
+                setBulkErrors(prev => [...prev, `${file.name}: ${err.message}`]);
             }
+        }
 
-            setUrl(publicUrl);
-
-        } catch (err) {
-            console.error("Upload failed:", err);
-            setError(err.message || "Upload failed. Please check your connection and configuration.");
-        } finally {
+        if (bulkErrors.length === 0) {
+            onUploaded();
+        } else {
             setUploading(false);
-            e.target.value = null; // Reset input
         }
     };
 
@@ -320,7 +311,7 @@ function AddMediaModal({ onClose, onUploaded }) {
                                         onChange={() => setProvider('r2')}
                                         className="text-brand-600 focus:ring-brand-500"
                                     />
-                                    <span className="flex items-center gap-1.5"><CloudRain className="w-4 h-4 text-slate-500" /> R2 Storage</span>
+                                    <span className="flex items-center gap-1.5"><Cloud className="w-4 h-4 text-slate-500" /> Cloudflare R2</span>
                                 </label>
                             </div>
 
@@ -341,33 +332,49 @@ function AddMediaModal({ onClose, onUploaded }) {
                                 </div>
                             )}
 
-                            <div className={cn(
-                                "border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative",
-                                uploading ? "border-brand-300 bg-brand-50 cursor-wait" : "border-slate-300 hover:bg-slate-50 hover:border-slate-400"
-                            )}>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleFileUpload}
-                                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                    disabled={uploading}
-                                />
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-brand-500 transition-all bg-slate-50/50 relative">
                                 {uploading ? (
-                                    <div className="flex flex-col items-center justify-center py-4">
-                                        <Loader2 className="w-8 h-8 text-brand-600 animate-spin mb-3" />
-                                        <p className="text-sm font-medium text-brand-700">Uploading to {provider === 'r2' ? 'R2' : 'Supabase'}...</p>
-                                        <p className="text-xs text-brand-500 mt-1">Please wait...</p>
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+                                            <p className="text-sm font-medium text-slate-900">Uploading {progress.current} of {progress.total} files...</p>
+                                        </div>
+                                        <div className="w-full bg-slate-200 rounded-full h-2">
+                                            <div 
+                                                className="bg-brand-600 h-2 rounded-full transition-all duration-300" 
+                                                style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 mx-auto mb-3">
-                                            <Upload className="w-6 h-6" />
+                                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <Upload className="w-6 h-6 text-slate-400" />
                                         </div>
-                                        <p className="text-sm font-medium text-slate-900">Click to upload image</p>
-                                        <p className="text-xs text-slate-500 mt-1">SVG, PNG, JPG, GIF</p>
+                                        <p className="text-sm text-slate-600 mb-1 font-medium">Click to select multiple files</p>
+                                        <p className="text-xs text-slate-400">PNG, JPG, SVG or GIF</p>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            onChange={handleFileUpload}
+                                            accept="image/*"
+                                        />
                                     </>
                                 )}
                             </div>
+
+                            {bulkErrors.length > 0 && (
+                                <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+                                    <div className="flex items-center gap-2 text-red-600 font-medium text-xs mb-1">
+                                        <AlertCircle className="w-3 h-3" />
+                                        Some files failed:
+                                    </div>
+                                    <ul className="text-[10px] text-red-500 list-disc list-inside max-h-20 overflow-y-auto">
+                                        {bulkErrors.map((err, i) => <li key={i}>{err}</li>)}
+                                    </ul>
+                                </div>
+                            )}
 
                             {url && !uploading && !error && (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">

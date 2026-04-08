@@ -17,6 +17,10 @@ export function ResourceList({ title, tableName, columns = ['id', 'name'], sortB
     const [upstreamValue, setUpstreamValue] = useState('');
     const [upstreamOptions, setUpstreamOptions] = useState([]);
 
+    // Edit State
+    const [editingItemId, setEditingItemId] = useState(null);
+    const [editItemData, setEditItemData] = useState({});
+
     useEffect(() => {
         // Initial Fetch for Relations and Upstream Options
         const init = async () => {
@@ -98,6 +102,40 @@ export function ResourceList({ title, tableName, columns = ['id', 'name'], sortB
         } else {
             alert('Error creating item: ' + error.message);
         }
+    };
+
+    const handleUpdate = async () => {
+        const dataToSave = { ...editItemData };
+        delete dataToSave.id;
+
+        const { error } = await supabase.from(tableName).update(dataToSave).eq('id', editingItemId);
+        if (!error) {
+            setEditingItemId(null);
+            setEditItemData({});
+            fetchItems();
+        } else {
+            alert('Error updating item: ' + error.message);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this item?')) return;
+        const { error } = await supabase.from(tableName).delete().eq('id', id);
+        if (!error) {
+            fetchItems();
+        } else {
+            alert('Error deleting item: ' + error.message);
+        }
+    };
+
+    const startEdit = (item) => {
+        setEditingItemId(item.id);
+        setEditItemData(item);
+    };
+
+    const cancelEdit = () => {
+        setEditingItemId(null);
+        setEditItemData({});
     };
 
     return (
@@ -197,14 +235,47 @@ export function ResourceList({ title, tableName, columns = ['id', 'name'], sortB
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {items.map(item => (
-                            <tr key={item.id} className="hover:bg-slate-50">
+                        {items.map(item => editingItemId === item.id ? (
+                            <tr key={item.id} className="bg-brand-50 border-y border-brand-100">
                                 {columns.map(col => (
-                                    <td key={col} className="px-6 py-4 text-slate-700">{typeof item[col] === 'object' ? JSON.stringify(item[col]) : item[col]}</td>
+                                    <td key={col} className="px-6 py-4">
+                                        {col === 'id' ? (
+                                            <span className="text-slate-500 text-sm font-mono">{item.id}</span>
+                                        ) : relationships[col] ? (
+                                            <select
+                                                className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-500"
+                                                value={editItemData[col] || ''}
+                                                onChange={e => setEditItemData(prev => ({ ...prev, [col]: e.target.value }))}
+                                            >
+                                                <option value="">Select {col.replace('_id', '')}</option>
+                                                {relationData[col]?.map(rel => (
+                                                    <option key={rel.id} value={rel.id}>{rel.name}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-500"
+                                                value={editItemData[col] || ''}
+                                                onChange={e => setEditItemData(prev => ({ ...prev, [col]: e.target.value }))}
+                                            />
+                                        )}
+                                    </td>
                                 ))}
                                 <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                    <button className="p-2 hover:bg-slate-100 rounded text-slate-400"><Edit className="w-4 h-4" /></button>
-                                    <button className="p-2 hover:bg-slate-100 rounded text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                    <button onClick={cancelEdit} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors" title="Cancel"><X className="w-4 h-4" /></button>
+                                    <button onClick={handleUpdate} className="p-2 bg-brand-600 hover:bg-brand-700 rounded-lg text-white transition-colors shadow-sm" title="Save"><Save className="w-4 h-4" /></button>
+                                </td>
+                            </tr>
+                        ) : (
+                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                {columns.map(col => (
+                                    <td key={col} className="px-6 py-4 text-slate-700">
+                                        {col === 'id' ? <span className="text-xs font-mono text-slate-400">{item[col]}</span> : typeof item[col] === 'object' ? JSON.stringify(item[col]) : item[col]}
+                                    </td>
+                                ))}
+                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                    <button onClick={() => startEdit(item)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-600 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                                 </td>
                             </tr>
                         ))}

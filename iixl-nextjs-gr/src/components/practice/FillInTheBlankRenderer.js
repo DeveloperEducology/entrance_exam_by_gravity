@@ -1413,6 +1413,83 @@ export default function FillInTheBlankRenderer({
     };
 
     const renderSmartTable = (part) => {
+        // Handle New Grid Format (from WEXLS Math Architect Blueprint)
+        if (part.config && Array.isArray(part.cells)) {
+            const rowCount = Number(part.config.rows || 1);
+            const colCount = Number(part.config.cols || 1);
+            const alignment = part.config.alignment || 'center';
+            const showBorders = part.config.showBorders !== false;
+
+            const grid = Array.from({ length: rowCount }).map(() => Array.from({ length: colCount }).fill(null));
+            part.cells.forEach(cell => {
+                if (cell.r < rowCount && cell.c < colCount) grid[cell.r][cell.c] = cell;
+            });
+
+            return (
+                <div className={styles.smartTableOuter}>
+                    <div className={styles.smartTableContainer} style={{ border: showBorders ? undefined : 'none' }}>
+                        <div className={styles.smartTableScroll}>
+                            <table className={`${styles.smartTable} ${alignment === 'right' ? styles.smartTableRightAlign : ''}`} style={{ border: showBorders ? undefined : 'none' }}>
+                                <tbody>
+                                    {grid.map((row, rIdx) => (
+                                        <tr key={rIdx}>
+                                            {row.map((cell, cIdx) => {
+                                                if (!cell) return <td key={cIdx} className={styles.smartTableCell} />;
+                                                
+                                                const isInput = cell.type === 'input';
+                                                const isCarry = cell.id?.startsWith('c_') || rIdx === 0;
+                                                const hasHighlight = cell.highlight === true;
+
+                                                if (isInput) {
+                                                    const maxLen = isCarry ? 1 : (cell.maxLength || 1);
+                                                    return (
+                                                        <td key={cIdx} className={`${styles.smartTableCell} ${hasHighlight ? styles.smartTableCellHighlighted : ''}`}>
+                                                            <input
+                                                                type="text"
+                                                                className={isCarry ? styles.smartTableCarryInput : styles.smartTableInput}
+                                                                value={getValue(cell.id)}
+                                                                ref={(el) => {
+                                                                    if (el) arithmeticCellRefs.current[cell.id] = el;
+                                                                }}
+                                                                inputMode={showKeypad ? 'none' : "numeric"}
+                                                                placeholder={cell.placeholder || ''}
+                                                                onChange={(e) => {
+                                                                    let val = e.target.value.replace(/[^0-9]/g, '');
+                                                                    if (maxLen) val = val.slice(0, maxLen);
+                                                                    handleInputChange(cell.id, val);
+                                                                }}
+                                                                onFocus={() => setLastFocusedId(cell.id)}
+                                                                maxLength={maxLen}
+                                                                disabled={isAnswered}
+                                                            />
+                                                        </td>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <td 
+                                                        key={cIdx} 
+                                                        className={`${styles.smartTableCell} ${hasHighlight ? styles.smartTableCellHighlighted : ''}`}
+                                                        style={{ color: cell.color || undefined, fontWeight: cell.fontWeight || undefined }}
+                                                    >
+                                                        <span className={cell.prefix ? styles.smartTablePrefixWrap : ''}>
+                                                            {cell.prefix && <span className={styles.smartTablePrefix}>{cell.prefix}</span>}
+                                                            {cell.content}
+                                                        </span>
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Legacy Column/Row Format
         const columns = Array.isArray(part?.columns) ? part.columns : [];
         const rows = Array.isArray(part?.rows) ? part.rows : [];
         if (columns.length === 0 && rows.length === 0) return null;
@@ -1744,12 +1821,22 @@ export default function FillInTheBlankRenderer({
 
             case 'box_display': {
                 const values = Array.isArray(part.content) ? part.content : [];
+                const handleBoxItemClick = (val) => {
+                    if (!lastFocusedId || isAnswered) return;
+                    handleInputChange(lastFocusedId, String(val));
+                };
                 return wrapPart(part, index, (
                     <div className={styles.boxDisplay}>
                         {values.map((value, valueIndex) => (
-                            <span key={`${index}-${valueIndex}`} className={styles.boxDisplayItem}>
+                            <button
+                                key={`${index}-${valueIndex}`}
+                                className={styles.boxDisplayItem}
+                                onClick={() => handleBoxItemClick(value)}
+                                disabled={isAnswered}
+                                type="button"
+                            >
                                 {String(value)}
-                            </span>
+                            </button>
                         ))}
                     </div>
                 ));

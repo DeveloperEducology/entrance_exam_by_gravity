@@ -393,6 +393,54 @@ function renderGridArithmetic(part, index, styles) {
 }
 
 function renderSmartTable(part, index, styles) {
+    // New Grid Format support
+    if (part.config && Array.isArray(part.cells)) {
+        const rowCount = Number(part.config.rows || 1);
+        const colCount = Number(part.config.cols || 1);
+        const alignment = part.config.alignment || 'center';
+        const showBorders = part.config.showBorders !== false;
+
+        const grid = Array.from({ length: rowCount }).map(() => Array.from({ length: colCount }).fill(null));
+        part.cells.forEach(cell => {
+            if (cell.r < rowCount && cell.c < colCount) grid[cell.r][cell.c] = cell;
+        });
+
+        return (
+            <div key={index} className={styles.smartTableOuter}>
+                <div className={styles.smartTableContainer} style={{ border: showBorders ? undefined : 'none' }}>
+                    <div className={styles.smartTableScroll}>
+                        <table className={`${styles.smartTable} ${alignment === 'right' ? styles.smartTableRightAlign : ''}`} style={{ border: showBorders ? undefined : 'none' }}>
+                            <tbody>
+                                {grid.map((row, rIdx) => (
+                                    <tr key={rIdx}>
+                                        {row.map((cell, cIdx) => {
+                                            if (!cell) return <td key={cIdx} className={styles.smartTableCell} />;
+                                            const hasHighlight = cell.highlight === true;
+
+                                            return (
+                                                <td 
+                                                    key={cIdx} 
+                                                    className={`${styles.smartTableCell} ${hasHighlight ? styles.smartTableCellHighlighted : ''}`}
+                                                    style={{ color: cell.color || undefined, fontWeight: cell.fontWeight || undefined }}
+                                                >
+                                                    <span className={cell.prefix ? styles.smartTablePrefixWrap : ''}>
+                                                        {cell.prefix && <span className={styles.smartTablePrefix}>{cell.prefix}</span>}
+                                                        {cell.content}
+                                                    </span>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Legacy Format support
     const title = part?.title || '';
     const columns = Array.isArray(part?.columns) ? part.columns : [];
     const rows = Array.isArray(part?.rows) ? part.rows : [];

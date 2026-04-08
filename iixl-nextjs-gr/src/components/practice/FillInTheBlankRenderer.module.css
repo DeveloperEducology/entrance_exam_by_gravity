@@ -258,6 +258,8 @@
     line-height: 1;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
+    cursor: pointer;
+    outline: none;
 }
 
 .boxMethodWrap {
@@ -1282,10 +1284,8 @@
 }
 
 .smartTableInput {
-    width: 80%;
-    min-width: 48px;
-    max-width: 100px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
     border: 2px solid #3b82f6;
     border-radius: 8px;
     background: #fff;
@@ -1620,7 +1620,7 @@
 }
 
 .smartTableHeaderCell {
-    padding: 0.6rem 0.85rem;
+    padding: 0.5rem 0.2rem;
     text-align: center;
     font-size: 0.75rem;
     font-weight: 700;
@@ -1631,12 +1631,36 @@
 }
 
 .smartTableCell {
-    padding: 0.6rem 0.85rem;
+    padding: 0.6rem 0.2rem;
     text-align: center;
     font-size: 1.1rem;
     font-weight: 600;
     color: #111827;
     border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.3s ease;
+}
+
+.smartTableCellHighlighted {
+    background-color: rgba(59, 130, 246, 0.1);
+    border: 2px solid #3b82f6 !important;
+    border-radius: 4px;
+}
+
+.smartTableRightAlign {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.smartTablePrefixWrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.smartTablePrefix {
+    color: #64748b;
+    font-weight: 700;
 }
 
 .smartTableCell :global(.input) {
@@ -1669,4 +1693,65 @@
     flex: 0 0 auto;
     vertical-align: middle;
     margin: 0 0.05rem;
+}
+
+.selectableSentence {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    background: #f8fafc;
+    border: 2.5px solid #e2e8f0;
+    border-radius: 14px;
+}
+
+.token {
+    padding: 0.45rem 1rem;
+    background: white;
+    border: 2.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.token:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(59, 130, 246, 0.15);
+}
+
+.tokenSelected {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    color: white;
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+}
+
+.tokenCorrect {
+    border-color: #10b981 !important;
+    background: #10b981 !important;
+    color: white !important;
+}
+
+.tokenIncorrect {
+    border-color: #ef4444 !important;
+    background: #ef4444 !important;
+    color: white !important;
+}
+
+.tokenDisabled {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.9;
 }

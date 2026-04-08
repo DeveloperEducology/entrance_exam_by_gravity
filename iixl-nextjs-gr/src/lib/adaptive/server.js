@@ -116,6 +116,8 @@ function parseShadeGridTarget(question) {
 }
 
 function parseMaybeJson(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === 'object') return value;
   if (typeof value !== 'string') return fallback;
   try {
     return JSON.parse(value);
@@ -222,6 +224,24 @@ export function getAdaptivePolicyVersion() {
 export function toPublicQuestion(question) {
   if (!question) return null;
   const fourPics = getFourPicsPuzzle(question);
+  
+  // SANITIZATION: Strip answers before sending to client
+  const publicOptions = (question.options ?? []).map(opt => {
+    if (opt && typeof opt === 'object' && !Array.isArray(opt) && !opt.type) {
+      const { isCorrect, is_correct, feedback, feedbackText, ...rest } = opt;
+      return rest;
+    }
+    return opt;
+  });
+
+  const publicItems = (question.items ?? []).map(it => {
+    if (it && typeof it === 'object' && !Array.isArray(it)) {
+      const { correctPosition, correct_position, ...rest } = it;
+      return rest;
+    }
+    return it;
+  });
+
   return {
     id: question.id,
     microSkillId: question.microSkillId ?? null,
@@ -230,8 +250,8 @@ export function toPublicQuestion(question) {
     difficulty: question.difficulty ?? 'easy',
     complexity: Number(question.complexity ?? 0),
     parts: question.parts ?? [],
-    options: question.options ?? [],
-    items: question.items ?? [],
+    options: publicOptions,
+    items: publicItems,
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
     adaptiveConfig: question.adaptiveConfig ?? null,
@@ -242,19 +262,22 @@ export function toPublicQuestion(question) {
     isGrid: Boolean(question.isGrid),
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
+    tokens: question.tokens ?? [],
+    correctAnswerText: question.correctAnswerText,
+    correctAnswerIndex: question.correctAnswerIndex,
+    validation: question.validation,
   };
 }
 
 export async function fetchQuestionsByMicroskill(db, microskillId) {
-  let rows = [];
-  for (const skillColumn of SKILL_COLUMNS) {
-    rows = await db.collection('questions')
-      .find({ [skillColumn]: microskillId })
-      .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
-      .toArray();
-
-    if (rows && rows.length > 0) break;
-  }
+  if (!microskillId) return [];
+  const query = {
+    $or: SKILL_COLUMNS.map(col => ({ [col]: microskillId }))
+  };
+  const rows = await db.collection('questions')
+    .find(query)
+    .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
+    .toArray();
 
   return rows.map(mapDbQuestion);
 }
@@ -266,14 +289,60 @@ export function validateAnswer(question, answer) {
   switch (type) {
     case 'mcq':
     case 'imagechoice':
+    case 'tokenselection': {
+      const isToken = type === 'tokenselection';
       if (question.isMultiSelect) {
-        const selected = Array.isArray(answer) ? [...answer].map(Number).sort() : [];
-        const correct = Array.isArray(question.correctAnswerIndices)
-          ? [...question.correctAnswerIndices].map(Number).sort()
-          : [];
+        const selected = Array.isArray(answer) 
+          ? [...answer].sort() 
+          : (isToken ? parseMaybeJson(answer, []) : []).sort();
+        
+        const indices = Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+          ? question.correctAnswerIndices
+          : null;
+          
+        const correctSource = isToken 
+          ? (indices || parseMaybeJson(question.correctAnswerText, []))
+          : (indices || []);
+        
+        const correct = Array.isArray(correctSource) ? [...correctSource].sort() : [];
         return JSON.stringify(selected) === JSON.stringify(correct);
       }
-      return Number(answer) === Number(question.correctAnswerIndex);
+      if (isToken) {
+        const rawAnswer = parseMaybeJson(answer, answer);
+        const normalizedAnswer = Array.isArray(rawAnswer) ? rawAnswer[0] : rawAnswer;
+        const expectedRaw = question.correctAnswerIndex || question.correctAnswerText;
+        const expectedParsed = parseMaybeJson(expectedRaw, expectedRaw);
+        const expected = Array.isArray(expectedParsed) ? expectedParsed[0] : expectedParsed;
+        return String(normalizedAnswer ?? '') === String(expected ?? '');
+      }
+
+      // 1. Try by Index
+      const hasValidIndex = Number.isFinite(Number(question.correctAnswerIndex)) && Number(question.correctAnswerIndex) >= 0;
+      if (hasValidIndex && Number(answer) === Number(question.correctAnswerIndex)) {
+        return true;
+      }
+
+      // 2. Fallback: Validate by value if index mismatch (common in dynamically generated adaptive questions)
+      const correctText = question.correctAnswerText;
+      const parsedCorrect = parseMaybeJson(correctText, null);
+      const expectedValue = (parsedCorrect && typeof parsedCorrect === 'object' && !Array.isArray(parsedCorrect))
+        ? (parsedCorrect.ans || parsedCorrect.value || parsedCorrect.correctAnswer || parsedCorrect.correct_answer)
+        : (parsedCorrect || correctText);
+
+      if (expectedValue != null) {
+        const options = Array.isArray(question.options) ? question.options : [];
+        const selectedOption = options[Number(answer)];
+        if (!selectedOption) return false;
+        
+        const selectedLabel = (typeof selectedOption === 'object')
+          ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
+          : selectedOption;
+          
+        return String(selectedLabel).trim().toLowerCase() === String(expectedValue).trim().toLowerCase();
+      }
+
+      return false;
+    }
 
     case 'textinput':
       return normalizeMathSentence(answer) === normalizeMathSentence(question.correctAnswerText);
@@ -287,27 +356,60 @@ export function validateAnswer(question, answer) {
         ? rawText
         : parseMaybeJson(rawText, null);
 
+      // 1. Intelligent Primitive Match: If answer is a string/number, check against logic values
+      if (typeof answer === 'string' || typeof answer === 'number') {
+        const expectedVal = (parsed && typeof parsed === 'object')
+          ? (parsed.ans || parsed.value || parsed.correctAnswer || Object.values(parsed)[0])
+          : rawText;
+
+        if (String(answer).trim().toLowerCase() === String(expectedVal ?? '').trim().toLowerCase()) {
+          return true;
+        }
+      }
+
+      // 2. Structured Object Match (Standard for multi-box/arithmetic layouts)
       if (!parsed || typeof parsed !== 'object') {
-        // Fallback for plain string/number answers in fillInTheBlank
         if (!answer) return false;
         const answerVal = (typeof answer === 'object') ? Object.values(answer)[0] : answer;
         return String(answerVal ?? '').trim().toLowerCase() === String(rawText ?? '').trim().toLowerCase();
       }
       
-      return Object.keys(parsed).every((key) => {
+      // Check that all expected answers are correct
+      const allCorrect = Object.keys(parsed).every((key) => {
         const actual = String(answer?.[key] ?? '').trim().toLowerCase();
-        const expected = parsed[key];
-        if (Array.isArray(expected)) {
-          return expected.map((value) => String(value ?? '').trim().toLowerCase()).includes(actual);
+        const expected = String(parsed[key] ?? '').trim().toLowerCase();
+        
+        // Mathematical leniency: Treat empty string same as "0" for numeric inputs
+        if (actual === "" && expected === "0") return true;
+        if (actual === "0" && expected === "") return true;
+
+        if (Array.isArray(parsed[key])) {
+          return parsed[key].map((value) => String(value ?? '').trim().toLowerCase()).includes(actual);
         }
-        return actual === String(expected ?? '').trim().toLowerCase();
+        return actual === expected;
+      });
+
+      if (!allCorrect) return false;
+
+      // Anti-guessing check: Ensure NO extra incorrect values were entered in non-mapped inputs
+      // (e.g. putting a carry "1" where none is needed)
+      return Object.keys(answer || {}).every((key) => {
+          // If the key is in parsed, we already checked it
+          if (parsed[key] !== undefined) return true;
+          
+          // If not in parsed, it SHOULD be empty or "0"
+          const actual = String(answer[key] ?? '').trim().toLowerCase();
+          return actual === "" || actual === "0";
       });
     }
 
     case 'draganddrop':
-      return (question.dragItems || [])
-        .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '')
-        .every((item) => String(answer?.[item.id] ?? '') === String(item.targetGroupId));
+    case 'draganddropv2': {
+      const items = (question.dragItems || [])
+        .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '');
+      if (items.length === 0) return false;
+      return items.every((item) => String(answer?.[item.id] ?? '') === String(item.targetGroupId));
+    }
 
     case 'sorting': {
       const expectedOrder = parseMaybeJson(question.correctAnswerText, null);
@@ -535,9 +637,11 @@ export function chooseNextQuestion({
   const candidates = questions.filter((q) => !recentSet.has(String(q.id)));
   // Full-cycle behavior: only repeat after all questions are used.
   // If cycle is exhausted, start a new cycle but still avoid immediate same-question replay.
+  const poolCandidates = questions.filter((q) => String(q.id) !== String(excludeQuestionId || ''));
   const pool = candidates.length > 0
     ? candidates
-    : questions.filter((q) => String(q.id) !== String(excludeQuestionId || ''));
+    : (poolCandidates.length > 0 ? poolCandidates : questions);
+
   const normalizedTarget = normalizeDifficulty(targetDifficulty);
   const debug = {
     totalQuestions: questions.length,
@@ -587,8 +691,9 @@ export function chooseNextQuestion({
   const sameDifficultyRepeats = questions.filter((q) => {
     if (normalizeDifficulty(q.difficulty) !== normalizedTarget) return false;
     // Allow immediate repeats if it's a dynamic template generator, because it outputs a unique variation every time.
-    const isDynamicGenerator = Boolean(q.adaptiveConfig?.logic_type);
+    const isDynamicGenerator = Boolean(q.logic_type || q.logicType || q.adaptiveConfig?.logic_type);
     if (isDynamicGenerator) return true;
+
     return String(q.id) !== String(excludeQuestionId || '');
   });
   if (sameDifficultyRepeats.length > 0) {

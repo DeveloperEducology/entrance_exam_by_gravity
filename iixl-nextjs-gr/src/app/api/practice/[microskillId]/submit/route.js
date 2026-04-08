@@ -135,24 +135,73 @@ function validateAnswer(question, answer) {
 
   switch (type) {
     case 'mcq':
-    case 'imagechoice':
-      if (question.isMultiSelect) {
+    case 'imagechoice': {
+      const isMulti = Boolean(question.isMultiSelect);
+      if (isMulti) {
         const selected = Array.isArray(answer) ? [...answer].map(Number).sort() : [];
         const correct = Array.isArray(question.correctAnswerIndices) ? [...question.correctAnswerIndices].map(Number).sort() : [];
         return JSON.stringify(selected) === JSON.stringify(correct);
       }
-      return Number(answer) === Number(question.correctAnswerIndex);
+
+      // 1. Try by Index
+      const hasValidIndex = Number.isFinite(Number(question.correctAnswerIndex)) && Number(question.correctAnswerIndex) >= 0;
+      if (hasValidIndex && Number(answer) === Number(question.correctAnswerIndex)) {
+        return true;
+      }
+
+      // 2. Fallback: Validate by value if index mismatch (common in dynamically generated adaptive questions)
+      const correctText = question.correctAnswerText;
+      const parsedCorrect = parseMaybeJson(correctText, null);
+      const expectedValue = (parsedCorrect && typeof parsedCorrect === 'object' && !Array.isArray(parsedCorrect))
+        ? (parsedCorrect.ans || parsedCorrect.value || parsedCorrect.correctAnswer || parsedCorrect.correct_answer)
+        : (parsedCorrect || correctText);
+
+      if (expectedValue != null) {
+        const options = Array.isArray(question.options) ? question.options : [];
+        const selectedOption = options[Number(answer)];
+        if (!selectedOption) return false;
+        
+        const selectedLabel = (typeof selectedOption === 'object')
+          ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
+          : selectedOption;
+          
+        return String(selectedLabel).trim().toLowerCase() === String(expectedValue).trim().toLowerCase();
+      }
+
+      return false;
+    }
     case 'textinput':
       return normalizeMathSentence(answer) === normalizeMathSentence(question.correctAnswerText);
     case 'fillintheblank':
     case 'gridarithmetic':
     case 'table':
     case 'smarttable': {
-      const correctAnswers = parseMaybeJson(question.correctAnswerText, {});
-      if (!correctAnswers || typeof correctAnswers !== 'object') return false;
-      return Object.keys(correctAnswers).every((key) => {
+      const rawText = question.correctAnswerText;
+      const parsed = (typeof rawText === 'object' && rawText !== null)
+        ? rawText
+        : parseMaybeJson(rawText, null);
+
+      // 1. Intelligent Primitive Match: If answer is a string/number, check against logic values
+      if (typeof answer === 'string' || typeof answer === 'number') {
+        const expectedVal = (parsed && typeof parsed === 'object')
+          ? (parsed.ans || parsed.value || parsed.correctAnswer || Object.values(parsed)[0])
+          : rawText;
+
+        if (String(answer).trim().toLowerCase() === String(expectedVal ?? '').trim().toLowerCase()) {
+          return true;
+        }
+      }
+
+      // 2. Structured Object Match
+      if (!parsed || typeof parsed !== 'object') {
+        if (!answer) return false;
+        const answerVal = (typeof answer === 'object') ? Object.values(answer)[0] : answer;
+        return String(answerVal ?? '').trim().toLowerCase() === String(rawText ?? '').trim().toLowerCase();
+      }
+      
+      return Object.keys(parsed).every((key) => {
         const actual = String(answer?.[key] ?? '').trim().toLowerCase();
-        const expected = correctAnswers[key];
+        const expected = parsed[key];
         if (Array.isArray(expected)) {
           return expected.map((value) => String(value).trim().toLowerCase()).includes(actual);
         }
@@ -243,6 +292,8 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
           .join(', ');
       }
     }
+    const fallback = question?.validation?.answer ?? question?.correct_answer_text ?? question?.correctAnswerText;
+    if (!feedback.correctAnswerDisplay) feedback.correctAnswerDisplay = String(fallback ?? '');
   } else if (type === 'draganddrop') {
     const parsed = parseMaybeJson(question.correctAnswerText, null);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {

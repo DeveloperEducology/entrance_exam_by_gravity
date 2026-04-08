@@ -1,13 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 export function MicroSkills() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [newItemData, setNewItemData] = useState({});
+
+    // Edit State
+    const [editingItemId, setEditingItemId] = useState(null);
+    const [editItemData, setEditItemData] = useState({});
 
     // Filter State
     const [grades, setGrades] = useState([]);
@@ -18,10 +21,19 @@ export function MicroSkills() {
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedUnit, setSelectedUnit] = useState('');
 
+    // Global Data for Creation/Editing
+    const [allUnits, setAllUnits] = useState([]);
+
     useEffect(() => {
         fetchGrades();
+        fetchAllUnits();
         fetchItems(); // Initial fetch (all or empty?)
     }, []);
+
+    const fetchAllUnits = async () => {
+        const { data } = await supabase.from('units').select('id, name').order('name');
+        setAllUnits(data || []);
+    };
 
     const fetchGrades = async () => {
         const { data } = await supabase.from('grades').select('id, name').order('sort_order');
@@ -144,6 +156,49 @@ export function MicroSkills() {
         }
     };
 
+    const handleUpdate = async () => {
+        const dataToSave = {
+            name: editItemData.name,
+            code: editItemData.code,
+            sort_order: editItemData.sort_order || 0,
+            unit_id: editItemData.unit_id
+        };
+
+        const { error } = await supabase.from('micro_skills').update(dataToSave).eq('id', editingItemId);
+        if (!error) {
+            setEditingItemId(null);
+            setEditItemData({});
+            fetchItems();
+        } else {
+            alert('Error updating item: ' + error.message);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this micro skill?')) return;
+        const { error } = await supabase.from('micro_skills').delete().eq('id', id);
+        if (!error) {
+            fetchItems();
+        } else {
+            alert('Error deleting item: ' + error.message);
+        }
+    };
+
+    const startEdit = (item) => {
+        setEditingItemId(item.id);
+        setEditItemData({
+            name: item.name,
+            code: item.code,
+            sort_order: item.sort_order,
+            unit_id: item.unit_id
+        });
+    };
+
+    const cancelEdit = () => {
+        setEditingItemId(null);
+        setEditItemData({});
+    };
+
     // For creating, we need all units if specific unit is not selected, or just the selected one.
     // Actually, to make it simple, let's just use the selected unit if available.
 
@@ -245,7 +300,7 @@ export function MicroSkills() {
                                 disabled={!!selectedUnit} // Lock if already selected in filter
                             >
                                 <option value="">Select Unit</option>
-                                {units.map(u => (
+                                {allUnits.map(u => (
                                     <option key={u.id} value={u.id}>{u.name}</option>
                                 ))}
                             </select>
@@ -270,8 +325,50 @@ export function MicroSkills() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {items.map(item => (
-                            <tr key={item.id} className="hover:bg-slate-50">
+                        {items.map(item => editingItemId === item.id ? (
+                            <tr key={item.id} className="bg-brand-50 border-y border-brand-100">
+                                <td className="px-6 py-4">
+                                    <input
+                                        className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-500"
+                                        value={editItemData.name || ''}
+                                        onChange={e => setEditItemData(prev => ({ ...prev, name: e.target.value }))}
+                                    />
+                                </td>
+                                <td className="px-6 py-4">
+                                    <input
+                                        className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-500"
+                                        value={editItemData.code || ''}
+                                        onChange={e => setEditItemData(prev => ({ ...prev, code: e.target.value }))}
+                                    />
+                                </td>
+                                <td className="px-6 py-4">
+                                    {/* Edit Unit */}
+                                    <select
+                                        className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-500"
+                                        value={editItemData.unit_id || ''}
+                                        onChange={e => setEditItemData(prev => ({ ...prev, unit_id: e.target.value }))}
+                                    >
+                                        <option value="">Select Unit</option>
+                                        {allUnits.map(u => (
+                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <input
+                                        type="number"
+                                        className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-500"
+                                        value={editItemData.sort_order || 0}
+                                        onChange={e => setEditItemData(prev => ({ ...prev, sort_order: e.target.value }))}
+                                    />
+                                </td>
+                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                    <button onClick={cancelEdit} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors" title="Cancel"><X className="w-4 h-4" /></button>
+                                    <button onClick={handleUpdate} className="p-2 bg-brand-600 hover:bg-brand-700 rounded-lg text-white transition-colors shadow-sm" title="Save"><Save className="w-4 h-4" /></button>
+                                </td>
+                            </tr>
+                        ) : (
+                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4 text-slate-900 font-medium">{item.name}</td>
                                 <td className="px-6 py-4 text-slate-600 font-mono text-xs">{item.code}</td>
                                 <td className="px-6 py-4 text-slate-600">
@@ -279,8 +376,8 @@ export function MicroSkills() {
                                 </td>
                                 <td className="px-6 py-4 text-slate-600">{item.sort_order}</td>
                                 <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                    <button className="p-2 hover:bg-slate-100 rounded text-slate-400"><Edit className="w-4 h-4" /></button>
-                                    <button className="p-2 hover:bg-slate-100 rounded text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                    <button onClick={() => startEdit(item)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-600 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                                 </td>
                             </tr>
                         ))}

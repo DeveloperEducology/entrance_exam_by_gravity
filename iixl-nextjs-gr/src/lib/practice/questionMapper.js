@@ -135,6 +135,11 @@ function normalizeQuestionType(value) {
     'shade-grid': 'shadeGrid',
     sorting: 'sorting',
     mcq: 'mcq',
+    tokenselection: 'tokenSelection',
+    token_selection: 'tokenSelection',
+    'token-selection': 'tokenSelection',
+    draganddropv2: 'dragAndDropv2',
+    drag_and_drop_v2: 'dragAndDropv2',
   };
 
   if (aliases[lowered]) return aliases[lowered];
@@ -161,15 +166,30 @@ export function mapDbQuestion(row) {
   return {
     id: row.id ?? (row._id ? String(row._id) : undefined),
     microSkillId: row.micro_skill_id ?? row.microskill_id ?? null,
-    questionText: row.question_text ?? row.questionText ?? '',
+    questionText: row.question_text ?? row.questionText ?? row.instruction ?? '',
     type: normalizeQuestionType(row.type),
     parts: normalizeParts(parseMaybeJson(row.parts, [])),
     options: parsedOptions,
     items,
     dragItems,
     dropGroups,
-    correctAnswerIndex: toNumber(row.correct_answer_index ?? row.correctAnswerIndex, null),
-    correctAnswerIndices: parseMaybeJson(row.correct_answer_indices ?? row.correctAnswerIndices, []),
+    correctAnswerIndex: row.correct_answer_index ?? row.correctAnswerIndex ?? (() => {
+      if (Array.isArray(parsedOptions)) {
+        const idx = parsedOptions.findIndex(o => o && typeof o === 'object' && toBoolean(o.isCorrect ?? o.is_correct, false));
+        return idx >= 0 ? idx : null;
+      }
+      return null;
+    })(),
+    correctAnswerIndices: (() => {
+      const explicit = parseMaybeJson(row.correct_answer_indices ?? row.correctAnswerIndices, null);
+      if (Array.isArray(explicit) && explicit.length > 0) return explicit;
+      if (Array.isArray(parsedOptions)) {
+        return parsedOptions
+          .map((o, i) => (o && typeof o === 'object' && toBoolean(o.isCorrect ?? o.is_correct, false) ? i : null))
+          .filter(v => v !== null);
+      }
+      return [];
+    })(),
     correctAnswerText: row.correct_answer_text ?? row.correctAnswerText ?? '',
     solution: row.solution ?? '',
     difficulty: row.difficulty ?? 'easy',
@@ -187,5 +207,6 @@ export function mapDbQuestion(row) {
     data_source: parseMaybeJson(row.data_source ?? row.dataSource, null),
     template_id: row.template_id ?? row.templateId ?? null,
     scaffold: parseMaybeJson(row.scaffold, null),
+    tokens: parseMaybeJson(row.tokens, []),
   };
 }

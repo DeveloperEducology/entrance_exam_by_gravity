@@ -1,0 +1,548 @@
+.learningLab {
+  min-height: 100vh;
+  background-color: #f0f7ff;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #2d3e50;
+  padding-bottom: 4rem;
+}
+
+/* HEADER */
+.labHeader {
+  background: white;
+  padding: 0.75rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logoSection {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo {
+  background: #0073af;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: -0.5px;
+}
+
+.headerTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a2b3c;
+}
+
+.hudGroup {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.6rem 1.25rem;
+  border-radius: 16px;
+  text-align: center;
+  min-width: 110px;
+  box-shadow: 0 4px 15px rgba(0, 115, 175, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  background: white;
+  box-shadow: 0 8px 25px rgba(0, 115, 175, 0.1);
+  border-color: rgba(0, 115, 175, 0.2);
+}
+
+.statLabel {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+}
+
+.statValue {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+/* BREADCRUMBS */
+.breadcrumb {
+  max-width: 1200px;
+  margin: 1.5rem auto 1rem auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.crumb {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: all 0.2s;
+}
+
+.crumb:hover {
+  border-color: #0073af;
+  color: #0073af;
+  background: #f0f9ff;
+}
+
+/* MAIN LAYOUT */
+.labMain {
+  max-width: 1300px;
+  margin: 0 auto;
+  display: flex;
+  gap: 2rem;
+  padding: 0 1.5rem 4rem 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .labMain {
+    flex-direction: column;
+  }
+}
+
+/* QUESTION AREA */
+.questionSide {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.mainCard {
+  background: white;
+  border-radius: 24px;
+  padding: 3rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  position: relative;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.learnExample {
+  align-self: center;
+  background: white;
+  border: 1px solid #0073af44;
+  color: #0073af;
+  padding: 0.6rem 1.5rem;
+  border-radius: 100px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 2rem;
+  transition: all 0.2s;
+}
+
+.learnExample:hover {
+  background: #f0f9ff;
+  border-color: #0073af;
+}
+
+.questionContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 2rem;
+}
+
+.questionTextContainer {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.speakerBtn {
+  color: #0073af;
+  background: #f0f9ff;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.questionText {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.interactionBox {
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.workItOut {
+  align-self: center;
+  color: #0073af;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  margin-top: 2rem;
+}
+
+/* SIDEBAR */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sideCard {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+}
+
+.cardHeader {
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.blueHeader { background: #0073af; }
+.orangeHeader { background: #f57c00; }
+
+.cardBody {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.scoreLarge {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #0073af;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.badgeGroup {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.badgeBlue { background: #eff6ff; color: #1d4ed8; }
+.badgeGreen { background: #f0fdf4; color: #15803d; }
+
+.challengeTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.challengeSub {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 1.25rem;
+}
+
+.tokenList {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.tokenCircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+}
+
+.tokenFilled {
+  background: #f57c00;
+  border-color: #f57c00;
+  box-shadow: 0 0 10px rgba(245, 124, 0, 0.3);
+}
+
+.teacherLink {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 1rem;
+}
+
+/* INTERACTION SPECIFICS */
+.choiceBtn {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  padding: 1rem 2rem;
+  margin-bottom: 1rem;
+  background: white;
+  border: 2px solid #e0f2fe;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.choiceBtn:hover {
+  border-color: #0073af;
+  background: #f0f9ff;
+}
+
+.choiceSelected {
+  border-color: #0073af;
+  background: #f0f9ff;
+  box-shadow: 0 4px 12px rgba(0,115,175,0.1);
+}
+
+/* PROFESSIONAL MATH GRID */
+.gridWorkspace {
+  background: white;
+  padding: 3rem;
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  margin: 1rem auto;
+  border: 1px solid #f1f5f9;
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .gridWorkspace {
+    padding: 1.5rem 0.5rem;
+    border-radius: 0;
+    margin: 0.5rem -1rem;
+  }
+}
+
+.mathGrid {
+  display: grid;
+  gap: 8px 12px;
+  align-items: center;
+  justify-items: center;
+}
+
+.cellDigit {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-family: 'Roboto Mono', monospace;
+  position: relative;
+}
+
+.cellPrefix {
+  position: absolute;
+  left: -40px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.carryInput {
+  width: 38px;
+  height: 38px;
+  text-align: center;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  background: #fffbeb;
+  color: #b45309;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.carryInput:focus {
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+
+.answerInput {
+  width: 48px;
+  height: 48px;
+  text-align: center;
+  border: 2px solid #0073af;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  outline: none;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  transition: all 0.2s;
+}
+
+.answerInput:focus {
+  border-width: 3px;
+  box-shadow: 0 0 0 4px rgba(0, 115, 175, 0.15);
+}
+
+.sumDivider {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 3px;
+  background: #334155;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+}
+.solutionContainer {
+  position: relative;
+  padding-left: 50px;
+  margin-top: 1.5rem;
+}
+
+.solutionTab {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  background: #f57c00;
+  border-radius: 8px 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tabText {
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+}
+
+.walkthroughBox {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 0 16px 16px 0;
+  border: 1px solid #e2e8f0;
+  border-left: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.correctFeedback { background: #ecfdf5; color: #065f46; border: 1px solid #10b98144; }
+.incorrectFeedback { background: #fef2f2; color: #991b1b; border: 1px solid #ef444444; }
+
+/* LOADING */
+.loadingContainer {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.loaderPulse {
+  width: 60px;
+  height: 60px;
+  background: #0073af;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+/* RESPONSIVE OVERRIDES */
+@media (max-width: 992px) {
+  .labContainer {
+    flex-direction: column;
+    padding: 1rem;
+  }
+  .labSidebar {
+    width: 100%;
+    position: static;
+  }
+  .labHeader {
+    flex-direction: column;
+    height: auto;
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+  .logoSection {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 600px) {
+  .logo { font-size: 1.2rem; }
+  .headerTitle { font-size: 0.9rem; }
+  .choiceBtn { 
+    max-width: 100%; 
+    padding: 1rem; 
+    font-size: 1rem; 
+  }
+  .gridWorkspace {
+    padding: 1.5rem 0.5rem;
+    border-radius: 0;
+    margin: 0.5rem -1rem;
+  }
+  .scoreLarge { font-size: 2.5rem; }
+}

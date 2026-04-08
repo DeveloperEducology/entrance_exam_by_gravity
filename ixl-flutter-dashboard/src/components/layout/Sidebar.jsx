@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, List, Users, BookOpen, Settings, Book, Image, Wand2 } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, List, Users, BookOpen, Settings, Book, Image, Wand2, LayoutTemplate, Layers, FileText, Edit3, Sigma, FileJson, Database } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function Sidebar() {
@@ -10,10 +10,18 @@ export function Sidebar() {
         { label: 'Grades', icon: BookOpen, to: '/grades' },
         { label: 'Subjects', icon: Book, to: '/subjects' },
         { label: 'Units', icon: LayoutDashboard, to: '/units' },
+        { label: 'Visual Editor', icon: Edit3, to: '/visual-editor' },
+        { label: 'Equations', icon: Sigma, to: '/equation-reference' },
         { label: 'Micro Skills', icon: Users, to: '/micro-skills' },
         { label: 'Auto Generator', icon: Wand2, to: '/auto-generator' },
+        { label: 'Bulk Generator', icon: Layers, to: '/bulk-generator' },
+        { label: 'SVG Generator', icon: LayoutTemplate, to: '/svg-generator' },
         { label: 'Media Gallery', icon: Image, to: '/media' },
+        { label: 'Documentation', icon: FileText, to: '/docs' },
+        { label: 'JSON View', icon: FileJson, to: '/json-view' },
+        { label: 'Schema Docs', icon: Database, to: '/schema' },
         { label: 'Users', icon: Users, to: '/users' },
+
         { label: 'Settings', icon: Settings, to: '/settings' },
     ];
 

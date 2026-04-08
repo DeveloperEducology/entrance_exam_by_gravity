@@ -159,40 +159,31 @@ function getShadeGridCorrectAnswer(question, correctAnswerHint = null) {
 function getCorrectAnswerDisplay(question) {
   if (!question) return '';
 
-  switch (question.type) {
+  const type = String(question.type || '').toLowerCase();
+  switch (type) {
     case 'mcq':
-    case 'imageChoice': {
+    case 'imagechoice': {
       if (question.isMultiSelect) {
         const indices = Array.isArray(question.correctAnswerIndices) ? question.correctAnswerIndices : [];
-        const labels = indices.map((idx) => {
-          const option = question.options?.[idx];
-          if (typeof option === 'string' && !option.trim().startsWith('<') && !/^https?:\/\//i.test(option)) {
-            return option;
-          }
-          return `Option ${Number(idx) + 1}`;
-        });
+        const labels = indices.map((idx) => getOptionLabel(question.options?.[idx], Number(idx)));
         return labels.join(', ');
       }
 
       const idx = Number(question.correctAnswerIndex);
       if (!Number.isFinite(idx) || idx < 0) return '';
-      const option = question.options?.[idx];
-      if (typeof option === 'string' && !option.trim().startsWith('<') && !/^https?:\/\//i.test(option)) {
-        return option;
-      }
-      return `Option ${idx + 1}`;
+      return getOptionLabel(question.options?.[idx], idx);
     }
 
-    case 'textInput':
+    case 'textinput':
     case 'measure':
-    case 'fourPicsOneWord':
-    case 'shadeGrid':
+    case 'fourpicsoneword':
+    case 'shadegrid':
       return String(question.correctAnswerText || '');
 
-    case 'fillInTheBlank':
-    case 'gridArithmetic':
+    case 'fillintheblank':
+    case 'gridarithmetic':
     case 'table':
-    case 'smartTable': {
+    case 'smarttable': {
       const parsed = parseMaybeJson(question.correctAnswerText, {});
       if (!parsed || typeof parsed !== 'object') return String(question.correctAnswerText || '');
       const entries = Object.entries(parsed);
@@ -207,6 +198,53 @@ function getCorrectAnswerDisplay(question) {
         return orderedIds.map((id) => labelById.get(String(id)) || String(id)).join(', ');
       }
       return String(question.correctAnswerText || '');
+    }
+
+    case 'draganddrop':
+    case 'draganddropv2': {
+      const dragItems = Array.isArray(question.dragItems) ? question.dragItems : [];
+      const dropGroups = Array.isArray(question.dropGroups) ? question.dropGroups : [];
+      const itemsByGroupId = {};
+      
+      dragItems.forEach(item => {
+        const targetId = String(item.targetGroupId || item.target_group_id || '');
+        if (targetId) {
+          if (!itemsByGroupId[targetId]) itemsByGroupId[targetId] = [];
+          itemsByGroupId[targetId].push(item.content || item.id);
+        }
+      });
+
+      const summaries = dropGroups.map(group => {
+        const items = itemsByGroupId[String(group.id)];
+        return items && items.length > 0 ? `${group.label || group.id}: ${items.join(', ')}` : null;
+      }).filter(Boolean);
+
+      return summaries.length > 0 ? summaries.join(' | ') : 'No targets defined';
+    }
+
+    case 'tokenselection': {
+      let ids = [];
+      const rawText = question.correctAnswerText;
+      if (Array.isArray(rawText)) {
+        ids = rawText;
+      } else {
+        try {
+          const parsed = JSON.parse(String(rawText || '[]'));
+          ids = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          ids = rawText ? [rawText] : [];
+        }
+      }
+
+      const sentencePart = (question.parts || []).find(p => p.type === 'token_sentence');
+      const tokenArr = sentencePart ? (sentencePart.tokens || []) : (question.tokens || []);
+      
+      const labels = ids.map(id => {
+        const token = tokenArr.find(t => String(t.id) === String(id));
+        return token ? token.text : id;
+      });
+
+      return labels.length > 0 ? labels.join(', ') : 'No answer';
     }
 
     default:
@@ -228,7 +266,7 @@ function isVisualOption(option) {
 
 function getOptionLabel(option, index) {
   if (typeof option === 'object' && option !== null) {
-    const label = option.label ?? option.text ?? '';
+    const label = option.label ?? option.text ?? option.content ?? '';
     if (label) return String(label);
   }
   if (typeof option === 'string' && !isVisualOption(option)) return option;
@@ -322,7 +360,7 @@ function getSelectedAnswerDisplay(question, answer) {
 
   const getOptionLabel = (option, index) => {
     if (typeof option === 'object' && option !== null) {
-      const label = option.label ?? option.text ?? '';
+      const label = option.label ?? option.text ?? option.content ?? '';
       if (label) return String(label);
     }
     if (typeof option === 'string') {
@@ -351,6 +389,30 @@ function getSelectedAnswerDisplay(question, answer) {
     return 'No option selected';
   }
 
+  if (type === 'tokenselection') {
+    let ids = [];
+    if (Array.isArray(answer)) {
+      ids = answer;
+    } else {
+      try {
+        const parsed = JSON.parse(String(answer || '[]'));
+        ids = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        ids = answer ? [answer] : [];
+      }
+    }
+
+    const sentencePart = (question.parts || []).find(p => p.type === 'token_sentence');
+    const tokenArr = sentencePart ? (sentencePart.tokens || []) : (question.tokens || []);
+    
+    const labels = ids.map(id => {
+      const token = tokenArr.find(t => String(t.id) === String(id));
+      return token ? token.text : id;
+    });
+
+    return labels.length > 0 ? labels.join(', ') : 'No selection';
+  }
+
   if (type === 'sorting') {
     if (Array.isArray(answer)) {
        return answer.map(id => {
@@ -361,7 +423,7 @@ function getSelectedAnswerDisplay(question, answer) {
     return 'No order set';
   }
 
-  if (type === 'draganddrop') {
+  if (type === 'draganddrop' || type === 'draganddropv2') {
     if (!answer || typeof answer !== 'object') return 'No answer';
     const dragItems = Array.isArray(question.dragItems) ? question.dragItems : [];
     const dropGroups = Array.isArray(question.dropGroups) ? question.dropGroups : [];
@@ -389,18 +451,20 @@ function getSelectedAnswerDisplay(question, answer) {
     type === 'smarttable'
   ) {
     if (!answer || typeof answer !== 'object') return 'No answer';
-    const parts = Array.isArray(question.parts) ? question.parts : [];
-    const arithmeticPart = parts.find((part) => part?.type === 'arithmeticLayout');
-    const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
-    const answerRow = rows.find((row) => String(row?.kind || '').toLowerCase() === 'answer');
-    const cells = Array.isArray(answerRow?.cells) ? answerRow.cells : [];
-
-    if (cells.length > 0) {
-      const prefix = String(answerRow?.prefix || '');
-      const joined = cells
-        .map((cell, idx) => String(answer?.[cell?.id ?? `cell_${idx}`] ?? ''))
-        .join('');
-      return `${prefix}${joined}`.trim() || 'No answer';
+    
+    // Find arithmetic IDs (prefixed with a_ for addition, d_ for subtraction)
+    const keys = Object.keys(answer);
+    const answerKeys = keys.filter(k => k.startsWith('a_') || k.startsWith('d_'));
+    
+    if (answerKeys.length > 0) {
+      // Sort by place value descending (1000, 100, 10, 1)
+      const sorted = answerKeys.sort((a, b) => {
+        const valA = parseInt(a.split('_')[1]) || 0;
+        const valB = parseInt(b.split('_')[1]) || 0;
+        return valB - valA;
+      });
+      const joined = sorted.map(k => String(answer[k] ?? '')).join('');
+      return joined || 'No answer';
     }
 
     const entries = Object.entries(answer);
@@ -422,7 +486,11 @@ function getSelectedAnswerDisplay(question, answer) {
   }
 
   if (answer && typeof answer === 'object') {
-    return JSON.stringify(answer);
+    try {
+      return JSON.stringify(answer);
+    } catch {
+      return '';
+    }
   }
 
   return String(answer ?? '');
@@ -903,7 +971,12 @@ export default function PracticePage() {
     setTransitionStage('idle');
   };
 
-  const handleSubmit = async (answer = userAnswer) => {
+  const handleSubmit = async (answerPayload = userAnswer) => {
+    // Safety check: if called by a button directly, answerPayload might be the Click Event
+    const answer = (answerPayload && typeof answerPayload === 'object' && (answerPayload.nativeEvent || answerPayload.type))
+      ? userAnswer
+      : answerPayload;
+
     if (!currentQuestion || isAnswered || isSubmitting) return;
     setSubmitError('');
     setFeedbackData(null);
@@ -913,8 +986,8 @@ export default function PracticePage() {
 
     setIsSubmitting(true);
     try {
-      const studentId = await resolveStudentId();
-      setCurrentStudentId(studentId || '');
+      const studentId = currentStudentId || await resolveStudentId();
+      if (studentId && !currentStudentId) setCurrentStudentId(studentId);
       const actualMicroSkillId = curriculumContext.microskill?.id || microskillId;
       const responseMs = Math.max(1, Date.now() - Number(questionStartedAt || Date.now()));
       const submitBody = {
@@ -1021,7 +1094,7 @@ export default function PracticePage() {
 
       // Show feedback briefly for correct answers, then move on
       if (correct) {
-        await delay(1200);
+        await delay(500);
         applyNextQuestion(upcoming);
       }
     } catch (error) {

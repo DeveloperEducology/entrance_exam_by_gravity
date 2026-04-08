@@ -78,6 +78,7 @@ function toPublicQuestion(question) {
     isGrid: Boolean(question.isGrid),
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
+    tokens: question.tokens ?? [],
   };
 }
 

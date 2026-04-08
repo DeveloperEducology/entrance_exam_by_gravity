@@ -25,10 +25,72 @@ export function instantiateTemplate(question, overrideVariables = null) {
   if (!logic) return question;
 
   const inst = JSON.parse(JSON.stringify(question));
-  inst.id = `inst_${inst.id || inst.template_id || inst.adaptiveConfig?.template_id}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  // Ensure the frontend knows what component to render
-  inst.type = 'fillInTheBlank';
   inst.adaptiveConfig = inst.adaptiveConfig || {};
+
+  if (logic === 'drag_drop_v2_sorting_v1') {
+    const config = inst.adaptiveConfig || {};
+    const taskType = config.taskType || 'prime_composite';
+    const itemCount = Number(config.itemCount || 4);
+    
+    let dragItems = [];
+    let dropGroups = [];
+    let solutionText = "";
+
+    if (taskType === 'prime_composite') {
+      const primes = [];
+      const composites = [];
+      const isP = (n) => {
+        if (n < 2) return false;
+        for (let i = 2; i <= Math.sqrt(n); i++) if (n % i === 0) return false;
+        return true;
+      };
+
+      while (primes.length < Math.floor(itemCount / 2)) {
+        const n = Math.floor(Math.random() * 48) + 2;
+        if (isP(n) && !primes.includes(n)) primes.push(n);
+      }
+      while (composites.length < Math.ceil(itemCount / 2)) {
+        const n = Math.floor(Math.random() * 46) + 4;
+        if (!isP(n) && !composites.includes(n)) composites.push(n);
+      }
+
+      dragItems = [
+        ...primes.map((v, i) => ({ id: `p-${i}`, content: String(v), targetGroupId: 'prime' })),
+        ...composites.map((v, i) => ({ id: `c-${i}`, content: String(v), targetGroupId: 'composite' }))
+      ];
+      dropGroups = [
+        { id: 'prime', label: 'Prime', hint: 'Exactly 2 factors' },
+        { id: 'composite', label: 'Composite', hint: 'More than 2 factors' }
+      ];
+      solutionText = `Prime numbers are divisible only by 1 and himself (${primes.join(', ')}), while composite numbers have more than two factors (${composites.join(', ')}).`;
+    } else if (taskType === 'even_odd') {
+      const evens = [];
+      const odds = [];
+      while (evens.length < Math.floor(itemCount / 2)) {
+        const n = (Math.floor(Math.random() * 49) + 1) * 2;
+        if (!evens.includes(n)) evens.push(n);
+      }
+      while (odds.length < Math.ceil(itemCount / 2)) {
+        const n = (Math.floor(Math.random() * 49) * 2) + 1;
+        if (!odds.includes(n)) odds.push(n);
+      }
+      dragItems = [
+        ...evens.map((v, i) => ({ id: `e-${i}`, content: String(v), targetGroupId: 'even' })),
+        ...odds.map((v, i) => ({ id: `o-${i}`, content: String(v), targetGroupId: 'odd' }))
+      ];
+      dropGroups = [
+        { id: 'even', label: 'Even', hint: 'Ends in 0, 2, 4, 6, 8' },
+        { id: 'odd', label: 'Odd', hint: 'Ends in 1, 3, 5, 7, 9' }
+      ];
+      solutionText = `Even numbers are divisible by 2 (${evens.join(', ')}), while odd numbers have a remainder when divided by 2 (${odds.join(', ')}).`;
+    }
+
+    inst.dragItems = dragItems.sort(() => Math.random() - 0.5);
+    inst.dropGroups = dropGroups;
+    inst.solution = solutionText;
+    inst.type = 'dragAndDropv2';
+    return inst;
+  }
 
   const isExplicitlyCorrect = (value) =>
     value === true || value === 1 || String(value).toLowerCase() === 'true';
@@ -614,6 +676,58 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const answerPayload = JSON.stringify({ ans_value: String(correctValue) });
     inst.correctAnswerText = answerPayload;
     inst.adaptiveConfig.correctAnswerText = answerPayload;
+  }
+
+  if (logic === 'even_odd_multi_v1') {
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 50], category_target: 'even' };
+    const range = dataSource.range || [1, 50];
+    const targetCategory = dataSource.category_target || 'even';
+    const otherCategory = targetCategory === 'even' ? 'odd' : 'even';
+    
+    // Generate candidates
+    const allNumbers = [];
+    for (let i = range[0]; i <= range[1]; i++) allNumbers.push(i);
+    
+    // Shuffle and pick 4 unique numbers
+    const shuffled = [...allNumbers].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, 4);
+    
+    const matches = selected.filter(n => (targetCategory === 'even' ? n % 2 === 0 : n % 2 !== 0));
+    const nonMatches = selected.filter(n => (targetCategory === 'even' ? n % 2 !== 0 : n % 2 === 0));
+    
+    const templateVars = {
+      category_target: targetCategory,
+      other_category: otherCategory,
+      list_of_matches: matches.length > 0 ? matches.join(', ') : 'None',
+      list_of_non_matches: nonMatches.length > 0 ? nonMatches.join(', ') : 'None',
+      num_1: selected[0],
+      num_2: selected[1],
+      num_3: selected[2],
+      num_4: selected[3],
+      num_list: selected
+    };
+
+    inst.adaptiveConfig.variables = templateVars;
+    inst.parts = hydrateNode(question.parts || [], templateVars);
+    inst.solution = hydrateNode(question.solution || [], templateVars);
+    
+    inst.options = selected.map(n => ({
+      content: String(n),
+      isCorrect: (targetCategory === 'even' ? n % 2 === 0 : n % 2 !== 0)
+    }));
+
+    inst.isMultiSelect = matches.length > 1;
+    inst.showSubmitButton = inst.isMultiSelect; // Force submit button if multi-select
+    inst.type = 'mcq';
+    
+    // Build answer key metadata for internal validation
+    inst.correctAnswerIndices = inst.options
+      .map((opt, i) => (opt.isCorrect ? i : null))
+      .filter(v => v !== null);
+    
+    if (!inst.isMultiSelect && inst.correctAnswerIndices.length > 0) {
+      inst.correctAnswerIndex = inst.correctAnswerIndices[0];
+    }
   }
 
   if (logic === 'grade_5_arithmetic_word_problem') {
@@ -2549,6 +2663,48 @@ export function instantiateTemplate(question, overrideVariables = null) {
         isVertical: true
       }
     ], templateVars);
+  }  if (logic === 'addition_basic_v1') {
+    const ds = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const rangeA = ds.range_a || [1, 9];
+    const rangeB = ds.range_b || [1, 9];
+
+    let a, b;
+    if (overrideVariables) {
+      a = overrideVariables.num1 || overrideVariables.a;
+      b = overrideVariables.num2 || overrideVariables.b;
+    } else {
+      a = Math.floor(Math.random() * (rangeA[1] - rangeA[0] + 1)) + rangeA[0];
+      b = Math.floor(Math.random() * (rangeB[1] - rangeB[0] + 1)) + rangeB[0];
+    }
+
+    const sum = a + b;
+
+    inst.type = 'fillInTheBlank';
+    inst.parts = [
+      { type: 'text', content: ds.instruction || 'Add.', hasAudio: true },
+      {
+        type: 'pair',
+        parts: [
+          { type: 'text', content: `**${a} + ${b} = **` },
+          { type: 'digit_blank', id: 'ans_1', size: String(sum).length }
+        ]
+      }
+    ];
+
+    inst.solution = [
+      { 
+        type: 'section', 
+        label: 'solve', 
+        contentParts: [
+          { type: 'text', content: `To find the sum of **${a}** and **${b}**, you can count forward from ${Math.max(a, b)}.` },
+          { type: 'text', content: `**${a} + ${b} = ${sum}**` }
+        ]
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ ans_1: String(sum) });
+    inst.adaptiveConfig.variables = { a, b, num1: a, num2: b, sum, result: sum };
+    return inst;
   }
 
   if (logic === 'arithmetic_template_v1') {
@@ -6178,5 +6334,586 @@ function numberToWords(n) {
     ], templateVars);
   }
 
+  if (logic === 'addition_master' || logic === 'math_arithmetic_v1') {
+    // Dynamic extraction: support root, nested, and adaptiveConfig sources
+    const config = inst.layout_config || inst.adaptiveConfig?.layout_config || inst.adaptiveConfig || {};
+    const data = inst.question_data || inst.adaptiveConfig?.question_data || inst.data_source || inst.adaptiveConfig?.data_source || inst;
+    const val = inst.validation || inst.adaptiveConfig?.validation || {};
+    const scaffold = inst.scaffold || inst.adaptiveConfig?.scaffold || {};
+
+    let operands = data.operands;
+    
+    // Auto-generate operands if missing or empty
+    if (!operands || !Array.isArray(operands) || operands.length === 0) {
+      const instr = String(scaffold.instruction || '').toLowerCase();
+      const count = data.operand_count || 2;
+      
+      operands = Array.from({ length: count }).map((_, i) => {
+        // Simple heuristic: if instruction mentions "two-digit", use range [10, 99]
+        if (instr.includes('two-digit') || instr.includes('two digit')) {
+          // If 1st is two-digit and instruction says "one-digit and two-digit", 2nd should be one-digit
+          if (i === 1 && (instr.includes('one-digit') || instr.includes('one digit'))) return Math.floor(Math.random() * 9) + 1;
+          return Math.floor(Math.random() * 80) + 11; // Ensure 11-91 for regrouping chance
+        }
+        return Math.floor(Math.random() * 9) + 1; // Default one-digit
+      });
+    }
+
+    const operator = data.operator || '+';
+    const missingIdx = data.missing_index ?? operands.length; 
+    const ans = val.answer ?? (operator === '+' ? operands.reduce((a, b) => a + Number(b), 0) : operands[0] - operands[1]);
+
+    const inputType = config.input_type || 'numpad';
+    
+    if (inputType === 'multiple_choice') {
+      inst.type = 'mcq';
+    } else if (inputType === 'drag_drop') {
+      inst.type = 'dragAndDropv2'; // Note: Requires specific dragItems/dropGroups setup
+    } else {
+      inst.type = 'fillInTheBlank';
+    }
+
+    inst.showSubmitButton = config.show_submit ?? (inst.type !== 'mcq');
+    
+    const parts = [];
+
+    // 1. Instruction
+    if (scaffold.instruction) {
+      parts.push({
+        type: 'text',
+        content: scaffold.instruction,
+        hasAudio: Boolean(scaffold.has_audio),
+        isVertical: true
+      });
+    }
+
+    // 2. Hint
+    if (data.hint_value) {
+      parts.push({
+        type: 'text',
+        content: `*Hint: ${data.hint_value}*`,
+        isVertical: true
+      });
+    }
+
+    // 3. Problem Rendering (Shared for most modes)
+    if (config.orientation === 'vertical') {
+      const maxLen = Math.max(...operands.map(o => String(o).length), String(ans).length);
+      const rows = [];
+
+      if (config.allow_regrouping_visuals) {
+        rows.push({
+          kind: 'carry',
+          cells: Array.from({ length: maxLen }).map((_, i) => ({ id: `carry_${i}`, type: 'digit' }))
+        });
+      }
+
+      operands.forEach((op, idx) => {
+        const isLastOp = idx === operands.length - 1;
+        const prefix = isLastOp ? `${operator} ` : '  ';
+        if (idx === missingIdx) {
+          if (inst.type === 'mcq') {
+             rows.push({ kind: 'text', text: prefix + '?' });
+          } else {
+             const cells = String(op).split('').map((char, charIdx) => ({ id: `op_${idx}_${charIdx}`, correctValue: char, type: 'digit' }));
+             rows.push({ kind: 'answer', prefix, cells });
+          }
+        } else {
+          rows.push({ kind: 'text', text: prefix + String(op) });
+        }
+      });
+
+      rows.push({ kind: 'divider' });
+
+      if (missingIdx === operands.length) {
+        if (inst.type === 'mcq') {
+           rows.push({ kind: 'text', text: '?' });
+        } else {
+           const ansStr = String(ans);
+           const cells = ansStr.split('').map((char, i) => ({ id: `ans_${i}`, correctValue: char, type: 'digit' }));
+           rows.push({ kind: 'answer', variant: 'joined', cells });
+        }
+      } else {
+        rows.push({ kind: 'text', text: String(ans) });
+      }
+
+      parts.push({
+        type: 'arithmeticLayout',
+        layout: { 
+          rows, 
+          inputMode: 'digitpad',
+          mode: config.allow_regrouping_visuals ? 'beginner' : 'standard'
+        },
+        isVertical: true
+      });
+    } else {
+      const eqTokens = [];
+      operands.forEach((op, idx) => {
+        if (idx === missingIdx) eqTokens.push(inst.type === 'mcq' ? '?' : '[ans]');
+        else eqTokens.push(String(op));
+        if (idx < operands.length - 1) eqTokens.push(operator);
+      });
+      eqTokens.push('=');
+      if (missingIdx === operands.length) eqTokens.push(inst.type === 'mcq' ? '?' : '[ans]');
+      else eqTokens.push(String(ans));
+
+      parts.push({
+        type: 'text',
+        content: `\\(${eqTokens.join(' ')}\\)`,
+        isVertical: true
+      });
+    }
+
+    inst.parts = parts;
+
+    // Mode-specific Logic (Options generation, Answer mapping)
+    const ansMap = {};
+    if (inst.type === 'mcq') {
+      if (!inst.options || inst.options.length === 0) {
+        const optionValues = [ans];
+        const distractorOffsets = [1, -1, 10, -10, 2, -2];
+        for (const offset of distractorOffsets) {
+          if (optionValues.length >= 4) break;
+          const dist = ans + offset;
+          if (dist >= 0 && !optionValues.includes(dist)) optionValues.push(dist);
+        }
+        while (optionValues.length < 4) {
+          const dist = ans + (Math.floor(Math.random() * 20) - 10);
+          if (dist >= 0 && !optionValues.includes(dist)) optionValues.push(dist);
+        }
+        inst.options = optionValues.sort(() => Math.random() - 0.5).map(v => ({ content: String(v) }));
+      }
+      inst.correctAnswerIndex = inst.options.findIndex(o => String(o.content || o) === String(ans));
+      inst.correctAnswerText = String(ans);
+    } else if (inst.type === 'fillInTheBlank') {
+      if (config.orientation === 'vertical') {
+        parts.forEach(p => {
+          if (p.type === 'arithmeticLayout') {
+            p.layout.rows.forEach(r => {
+              if (r.cells) {
+                r.cells.forEach(c => {
+                  if (c.id && c.correctValue !== undefined) ansMap[c.id] = String(c.correctValue);
+                });
+              }
+            });
+          }
+        });
+      }
+      if (Object.keys(ansMap).length === 0) ansMap.ans = String(ans);
+      
+      // Store BOTH as JSON and as a raw value for multi-engine compatibility
+      inst.correctAnswerText = JSON.stringify(ansMap);
+      inst.correct_answer_text = String(ans); 
+    }
+
+    // Ensure validation object is updated for the session
+    inst.validation = { ...val, answer: ans };
+    inst.correctAnswer = ans; // Root level help
+
+    // Hydrate Solution
+    if (val.steps) {
+      inst.solution = val.steps.map(s => `**Step ${s.step}:** ${s.note}`).join('\n\n');
+    }
+  }
+
+  if (logic === 'math_addition_dynamic_v4') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [100, 999];
+    
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      const fixedN1 = Number(dataSource.n1);
+      const fixedN2 = Number(dataSource.n2);
+      const fixedSum = Number(dataSource.sum);
+
+      if (!isNaN(fixedN1) && !isNaN(fixedN2)) {
+        n1 = fixedN1;
+        n2 = fixedN2;
+      } else if (!isNaN(fixedSum)) {
+        if (!isNaN(fixedN1)) {
+           n1 = fixedN1;
+           n2 = fixedSum - n1;
+        } else if (!isNaN(fixedN2)) {
+           n2 = fixedN2;
+           n1 = fixedSum - n2;
+        } else {
+           // Fixed sum, random operands
+           const minVal = range[0];
+           n1 = Math.floor(Math.random() * (fixedSum - 2 * minVal)) + minVal;
+           n2 = fixedSum - n1;
+        }
+      } else {
+        const ensureCarry = dataSource.ensure_carry !== false;
+        let attempts = 0;
+        do {
+          n1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+          n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+          
+          const hasAnyCarry = (a, b) => {
+            let c = 0;
+            let sa = String(a).split('').reverse();
+            let sb = String(b).split('').reverse();
+            for(let i=0; i < Math.max(sa.length, sb.length); i++) {
+               let cur = Number(sa[i] || 0) + Number(sb[i] || 0) + c;
+               if (cur >= 10) return true;
+               c = Math.floor(cur / 10);
+            }
+            return false;
+          };
+
+          const anyCarry = hasAnyCarry(n1, n2);
+          if (ensureCarry === anyCarry || attempts > 50) break;
+          attempts++;
+        } while (true);
+      }
+    }
+
+    const sum = n1 + n2;
+    const maxLen = Math.max(String(n1).length, String(n2).length);
+    const sumLen = String(sum).length;
+    const cols = Math.max(maxLen, sumLen);
+    
+    // Right-aligned digit strings
+    const s1 = String(n1).padStart(cols, ' ');
+    const s2 = String(n2).padStart(cols, ' ');
+    const ss = String(sum).padStart(cols, ' ');
+
+    const cells = [];
+    const ansMap = {};
+    const carryList = []; // stores carry value for each column (idx 0 to cols-1)
+    
+    let currentCarry = 0;
+    for (let i = cols - 1; i >= 0; i--) {
+        const d_1 = s1[i] === ' ' ? 0 : Number(s1[i]);
+        const d_2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+        const colSum = d_1 + d_2 + currentCarry;
+        const nextCarry = Math.floor(colSum / 10);
+        carryList[i] = nextCarry;
+        currentCarry = nextCarry;
+    }
+
+    const missingRow = Number(dataSource.missing_row || 3); // 1: n1, 2: n2, 3: answer
+
+    // 1. Generate Digits (Row 1 & 2)
+    for (let c = 0; c < cols; c++) {
+        const placeValue = Math.pow(10, cols - 1 - c);
+        
+        // Row 1 (n1)
+        if (s1[c] !== ' ') {
+            if (missingRow === 1) {
+                const id = `n1_${placeValue}`;
+                cells.push({ r: 1, c, type: 'input', id: id });
+                ansMap[id] = s1[c];
+            } else {
+                cells.push({ r: 1, c, content: s1[c] });
+            }
+        }
+
+        // Row 2 (n2)
+        if (s2[c] !== ' ') {
+            const cellBase = { r: 2, c };
+            if (c === 0 || s2[c-1] === ' ') cellBase.prefix = '+';
+
+            if (missingRow === 2) {
+                const id = `n2_${placeValue}`;
+                cells.push({ ...cellBase, type: 'input', id: id });
+                ansMap[id] = s2[c];
+            } else {
+                cells.push({ ...cellBase, content: s2[c] });
+            }
+        }
+    }
+
+    // 2. Generate Carry Row (Row 0)
+    const showCarry = dataSource.show_carry !== false;
+    if (showCarry) {
+        for (let c = cols - 1; c > 0; c--) {
+            const placeValue = Math.pow(10, cols - 1 - (c - 1));
+            const carryId = `c_${placeValue}`;
+            const carryValue = carryList[c];
+            
+            cells.push({ r: 0, c: c - 1, type: 'input', id: carryId, placeholder: 'c' });
+            if (carryValue > 0) ansMap[carryId] = String(carryValue);
+        }
+    }
+
+    // 3. Generate Answer Row (Row 3)
+    for (let c = 0; c < cols; c++) {
+        const placeValue = Math.pow(10, cols - 1 - c);
+        const ansId = `a_${placeValue}`;
+        
+        if (ss[c] !== ' ') {
+            if (missingRow === 3) {
+                cells.push({ r: 3, c, type: 'input', id: ansId });
+                ansMap[ansId] = ss[c];
+            } else {
+                cells.push({ r: 3, c, content: ss[c] });
+            }
+        }
+    }
+
+    // 4. Update Question Structure
+    inst.parts = [
+        {
+            type: 'text',
+            content: `Calculate the sum of **${n1}** and **${n2}** using column addition.`,
+            isVertical: true
+        },
+        {
+            id: 'addition_grid',
+            type: 'smartTable',
+            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right' },
+            cells: cells
+        }
+    ];
+
+    inst.correctAnswerText = ansMap;
+    inst.adaptiveConfig.variables = { n1, n2, sum };
+
+    // 5. High-Fidelity Solution Structure (as seen in screenshot)
+    const solutionParts = [];
+    for (let i = cols - 1; i >= 0; i--) {
+        const placeValue = Math.pow(10, cols - 1 - i);
+        const pName = placeValue === 1 ? 'ones' : (placeValue === 10 ? 'tens' : (placeValue === 100 ? 'hundreds' : 'thousands'));
+        
+        const d_1 = s1[i] === ' ' ? 0 : Number(s1[i]);
+        const d_2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+        const prevCarry = i === cols - 1 ? 0 : carryList[i+1];
+        const colSum = d_1 + d_2 + prevCarry;
+        const digit = colSum % 10;
+        const nextCarry = carryList[i];
+
+        let note = `### **Add the ${pName}.** Add ${d_1} + ${d_2}${prevCarry > 0 ? ' + ' + prevCarry + ' (carry)' : ''}. `;
+        if (nextCarry > 0) note += `Remember to regroup.`;
+
+        // Create a solution-specific smartTable for this step
+        const stepCells = [];
+        
+        // Addends
+        for (let c = 0; c < cols; c++) {
+            if (s1[c] !== ' ') {
+                stepCells.push({ r: 1, c, content: s1[c], highlight: c === i });
+            }
+            if (s2[c] !== ' ') {
+                const cell = { r: 2, c, content: s2[c], highlight: c === i };
+                if (c === 0 || s2[c-1] === ' ') cell.prefix = '+';
+                stepCells.push(cell);
+            }
+        }
+
+        // Carries in this step (only show relevant ones)
+        for (let j = cols - 1; j >= i; j--) {
+            if (j > 0) {
+               const val = carryList[j];
+               if (val > 0) {
+                   stepCells.push({ r: 0, c: j - 1, content: String(val), highlight: (j - 1) === (i - 1), color: '#3b82f6' });
+               }
+            }
+        }
+
+        // Answer digits revealed so far
+        for (let j = cols - 1; j >= i; j--) {
+            if (ss[j] !== ' ') {
+                stepCells.push({ r: 3, c: j, content: ss[j], highlight: j === i });
+            }
+        }
+
+        solutionParts.push({ type: 'text', content: note, isVertical: true });
+        solutionParts.push({
+            type: 'smartTable',
+            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right', isReadOnly: true },
+            cells: stepCells
+        });
+    }
+
+    solutionParts.push({ type: 'text', content: `\n### **The sum is ${sum}.**`, isVertical: true });
+    inst.solution = solutionParts;
+  }
+
+  if (logic === 'math_subtraction_dynamic_v4') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [100, 999];
+    
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      const fixedN1 = Number(dataSource.n1);
+      const fixedN2 = Number(dataSource.n2);
+      const fixedDiff = Number(dataSource.diff || dataSource.difference);
+
+      if (!isNaN(fixedN1) && !isNaN(fixedN2)) {
+        n1 = fixedN1;
+        n2 = fixedN2;
+      } else if (!isNaN(fixedDiff)) {
+          n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+          n1 = n2 + fixedDiff;
+      } else {
+          // Standard random: Ensure n1 >= n2
+          let a = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+          let b = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+          n1 = Math.max(a, b);
+          n2 = Math.min(a, b);
+      }
+    }
+
+    const diff = n1 - n2;
+    const maxLen = Math.max(String(n1).length, String(n2).length);
+    const cols = maxLen;
+    
+    const s1 = String(n1).padStart(cols, ' ');
+    const s2 = String(n2).padStart(cols, ' ');
+    const sd = String(diff).padStart(cols, ' ');
+
+    const cells = [];
+    const ansMap = {};
+    const missingRow = Number(dataSource.missing_row || 3); // 1: n1, 2: n2, 3: diff
+
+    // 1. Generate Digits (Row 1 & 2)
+    for (let c = 0; c < cols; c++) {
+        const placeValue = Math.pow(10, cols - 1 - c);
+        
+        // Row 1 (n1)
+        if (s1[c] !== ' ') {
+            if (missingRow === 1) {
+                const id = `n1_${placeValue}`;
+                cells.push({ r: 1, c, type: 'input', id: id });
+                ansMap[id] = s1[c];
+            } else {
+                cells.push({ r: 1, c, content: s1[c] });
+            }
+        }
+
+        // Row 2 (n2)
+        if (s2[c] !== ' ') {
+            const cellBase = { r: 2, c };
+            if (c === 0 || s2[c-1] === ' ') cellBase.prefix = '-';
+
+            if (missingRow === 2) {
+                const id = `n2_${placeValue}`;
+                cells.push({ ...cellBase, type: 'input', id: id });
+                ansMap[id] = s2[c];
+            } else {
+                cells.push({ ...cellBase, content: s2[c] });
+            }
+        }
+    }
+
+    // 2. Borrow Row (Row 0)
+    // Subtraction Borrowing logic simplified for template UI
+    const showBorrow = dataSource.show_borrow !== false;
+    if (showBorrow) {
+        for (let c = 0; c < cols; c++) {
+           const placeValue = Math.pow(10, cols - 1 - c);
+           cells.push({ r: 0, c, type: 'input', id: `b_${placeValue}`, placeholder: 'b' });
+        }
+    }
+
+    // 3. Difference Row (Row 3)
+    for (let c = 0; c < cols; c++) {
+        const placeValue = Math.pow(10, cols - 1 - c);
+        const ansId = `d_${placeValue}`;
+        
+        if (sd[c] !== ' ') {
+            if (missingRow === 3) {
+                cells.push({ r: 3, c, type: 'input', id: ansId });
+                ansMap[ansId] = sd[c];
+            } else {
+                cells.push({ r: 3, c, content: sd[c] });
+            }
+        }
+    }
+
+    inst.parts = [
+        {
+            type: 'text',
+            content: `Calculate **${n1}** minus **${n2}** using column subtraction.`,
+            isVertical: true
+        },
+        {
+            id: 'subtraction_grid',
+            type: 'smartTable',
+            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right' },
+            cells: cells
+        }
+    ];
+
+    inst.correctAnswerText = ansMap;
+    inst.adaptiveConfig.variables = { n1, n2, diff };
+
+    // 4. Solution with Grids
+    const solutionParts = [];
+    let activeBorrow = 0;
+
+    for (let i = cols - 1; i >= 0; i--) {
+        const placeValue = Math.pow(10, cols - 1 - i);
+        const pName = placeValue === 1 ? 'ones' : (placeValue === 10 ? 'tens' : (placeValue === 100 ? 'hundreds' : 'thousands'));
+        
+        let d1 = s1[i] === ' ' ? 0 : Number(s1[i]);
+        const d2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+        
+        let note = `### **Subtract the ${pName}.**\n`;
+        
+        const originalD1 = d1;
+        if (activeBorrow > 0) {
+            d1 -= activeBorrow;
+            note += `We borrowed 1 from this column earlier, so **${originalD1}** becomes **${d1}**.\n\n`;
+        }
+
+        const currentBorrowNeeded = d1 < d2 ? 1 : 0;
+        if (currentBorrowNeeded) {
+           const borrowedD1 = d1 + 10;
+           note += `Since **${d1}** is less than **${d2}**, we borrow 1 from the next place to make it **${borrowedD1}**.\n`;
+           note += `**${borrowedD1} - ${d2} = ${borrowedD1 - d2}.**`;
+        } else {
+           if (i === 0 && d1 === 0) {
+              // leading zero
+           } else {
+              note += `**${d1} - ${d2} = ${d1 - d2}.**`;
+           }
+        }
+        activeBorrow = currentBorrowNeeded;
+
+        const stepCells = [];
+        for (let c = 0; c < cols; c++) {
+            if (s1[c] !== ' ') stepCells.push({ r: 1, c, content: s1[c], highlight: c === i });
+            if (s2[c] !== ' ') {
+                const cell = { r: 2, c, content: s2[c], highlight: c === i };
+                if (c === 0 || s2[c-1] === ' ') cell.prefix = '-';
+                stepCells.push(cell);
+            }
+            if (sd[c] !== ' ' && c >= i) stepCells.push({ r: 3, c, content: sd[c], highlight: c === i });
+        }
+
+        solutionParts.push({ type: 'text', content: note, isVertical: true });
+        solutionParts.push({
+            type: 'smartTable',
+            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right', isReadOnly: true },
+            cells: stepCells
+        });
+    }
+
+    solutionParts.push({ type: 'text', content: `\n### **The difference is ${diff}.**`, isVertical: true });
+    inst.solution = solutionParts;
+    inst.type = 'fillInTheBlank';
+  }
+
+  // Always provide a unique instance ID if it was hydrated from a template
+  if (!overrideVariables) {
+    const ts = Date.now();
+    const rd = Math.floor(Math.random() * 100000);
+    inst.id = `inst_${question.id || question.template_id || 'tpl'}_${ts}_${rd}`;
+  }
+
+  // Final Type Safety: Never return "template" as the type to the renderer
+  if ((inst.type === 'template' || !inst.type) && (inst.logic_type || inst.adaptiveConfig?.logic_type)) {
+     inst.type = 'fillInTheBlank';
+  }
+
   return inst;
 }
+

@@ -1,0 +1,104 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border-left: 2px solid var(--primary);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  gap: 1.5rem;
+  background: white;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.tool {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.tool:hover {
+  background: rgba(var(--primary-h), var(--primary-s), var(--primary-l), 0.05);
+  color: var(--primary);
+}
+
+.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.active:hover {
+  color: white;
+  background: var(--primary);
+}
+
+.divider {
+  width: 1px;
+  height: 30px;
+  background: var(--glass-border);
+  margin: 0 1rem;
+}
+
+.close {
+  margin-left: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.close:hover {
+  background: var(--error);
+  color: white;
+}
+
+.canvas {
+  flex: 1;
+  cursor: crosshair;
+}
+
+.footer {
+  height: 40px;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-top: 1px solid var(--glass-border);
+}
+
+@media (max-width: 1024px) {
+  .overlay {
+    width: 100vw;
+  }
+}

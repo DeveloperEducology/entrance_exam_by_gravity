@@ -1,0 +1,78 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.circle {
+  width: 200px;
+  height: 200px;
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.slice {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  transform-origin: 50% 50%;
+  transition: background 0.3s ease;
+  border-right: 1px solid var(--glass-border);
+}
+
+.shaded {
+  background: var(--primary);
+  opacity: 0.8;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover {
+  background: rgba(var(--primary-h), var(--primary-s), var(--primary-l), 0.1);
+}
+
+.interactive.shaded:hover {
+  opacity: 1;
+}
+
+.fractionText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.numerator {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.denominator {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.divider {
+  width: 100%;
+  min-width: 40px;
+  height: 3px;
+  background: var(--text-main);
+  border-radius: 2px;
+  margin: 4px 0;
+}

@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.97.0",
     "@tailwindcss/postcss": "^4.2.1",
     "bcryptjs": "^3.0.3",
+    "compromise": "^14.15.0",
     "cookie": "^1.1.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

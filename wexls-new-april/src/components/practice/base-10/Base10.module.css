@@ -1,0 +1,84 @@
+.representer {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  padding: 2rem;
+  background: var(--glass-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.blockGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  max-width: 250px;
+}
+
+.block {
+  background: var(--primary);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+
+.unit .block {
+  width: 14px;
+  height: 14px;
+}
+
+.rod .block {
+  width: 14px;
+  height: 140px;
+  background: linear-gradient(to bottom, var(--primary), var(--secondary));
+  position: relative;
+}
+
+.rodOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(to bottom, transparent, transparent 13px, rgba(0, 0, 0, 0.1) 14px);
+}
+
+.flat .block {
+  width: 140px;
+  height: 140px;
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  position: relative;
+}
+
+.gridOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(to right, transparent, transparent 13px, rgba(0, 0, 0, 0.1) 14px),
+              repeating-linear-gradient(to bottom, transparent, transparent 13px, rgba(0, 0, 0, 0.1) 14px);
+}
+
+.cube .block {
+  width: 140px;
+  height: 140px;
+  background: var(--accent);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.2);
+}

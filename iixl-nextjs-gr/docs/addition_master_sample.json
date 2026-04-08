@@ -1,0 +1,39 @@
+{
+  "_id": "75244a59-7342-4c2d-87ea-43dcbf946e89",
+  "__v": 0,
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "created_at": "2026-04-07T07:19:40.835Z",
+  "data_source": {
+    "operands": [
+      47,
+      25
+    ],
+    "operator": "+",
+    "missing_index": 2
+  },
+  "difficulty": "hard",
+  "drag_groups": [],
+  "drag_items": [],
+  "id": "75244a59-7342-4c2d-87ea-43dcbf946e89",
+  "is_multi_select": false,
+  "is_vertical": true,
+  "logic_type": "addition_master",
+  "marks": 1,
+  "micro_skill_id": "c19afd52-7783-4730-8532-36e06a9bc36a",
+  "options": [],
+  "parts": [
+    {
+      "type": "text",
+      "content": "Solve using column addition with regrouping"
+    }
+  ],
+  "question_text": "Solve using column addition with regrouping",
+  "scaffold": {
+    "instruction": "Solve using column addition with regrouping",
+    "audio_text": "Calculate forty-seven plus twenty-five."
+  },
+  "show_submit_button": true,
+  "solution": [],
+  "updated_at": "2026-04-07T07:19:40.835Z"
+}

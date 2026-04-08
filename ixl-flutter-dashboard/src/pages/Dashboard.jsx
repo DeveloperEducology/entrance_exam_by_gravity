@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Upload } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Upload, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { supabase } from '../lib/supabaseClient';
+import { api as supabase } from '../lib/apiClient';
 
 const MOCK_QUESTIONS = [];
 
@@ -24,52 +24,73 @@ export function Dashboard() {
 
     // Hierarchy Map for client-side filtering (when DB relations are missing)
     const [hierarchyMap, setHierarchyMap] = useState({});
+    const [skillNameMap, setSkillNameMap] = useState({});
+
+    // Text Search State
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
+
+    useEffect(() => {
+        // Reset page on any filter change
+        setCurrentPage(1);
+    }, [searchTerm, filterType, filterDifficulty, selectedGrade, selectedUnit, selectedSkill]);
 
     useEffect(() => {
         const fetchQuestions = async () => {
             setLoading(true);
             try {
-                // 1. Try fetching with deep relationship nesting
-                const { data, error } = await supabase
-                    .from('questions')
-                    .select('*, micro_skills ( *, units ( *, subjects ( * ) ) )')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-                setQuestions(data || []);
-            } catch (err) {
-                console.warn('Deep fetch failed. Using simple fetch + client-side mapping.', err);
-                // 2. Fallback: Simple fetch
                 const { data } = await supabase
                     .from('questions')
                     .select('*')
                     .order('created_at', { ascending: false });
                 setQuestions(data || []);
+            } catch (err) {
+                console.warn('Fetch failed.', err);
             } finally {
                 setLoading(false);
             }
         };
 
         const fetchHierarchy = async () => {
-            // Fetch independent hierarchy to build a lookup map
-            // This allows filtering even if 'questions' table isn't joined to 'micro_skills'
+            // Fetch independent tables to build a lookup map to support flat NoSQL relationships
             try {
-                const { data } = await supabase
-                    .from('micro_skills')
-                    .select('id, units ( id, subjects ( id, grade_id ) )');
+                const [
+                    { data: skillsData },
+                    { data: unitsData },
+                    { data: subjectsData }
+                ] = await Promise.all([
+                    supabase.from('micro_skills').select('*'),
+                    supabase.from('units').select('*'),
+                    supabase.from('subjects').select('*')
+                ]);
 
-                if (data) {
+                if (skillsData && unitsData && subjectsData) {
+                    const subjectMap = {};
+                    subjectsData.forEach(s => subjectMap[s.id] = s);
+
+                    const unitMap = {};
+                    unitsData.forEach(u => unitMap[u.id] = u);
+
                     const map = {};
-                    data.forEach(skill => {
-                        const unit = Array.isArray(skill.units) ? skill.units[0] : skill.units;
-                        const subject = Array.isArray(unit?.subjects) ? unit.subjects[0] : unit?.subjects;
+                    const nameMap = {};
+                    skillsData.forEach(skill => {
+                        const unitId = skill.unit_id;
+                        const unit = unitMap[unitId] || {};
+                        const subjectId = unit.subject_id;
+                        const subject = subjectMap[subjectId] || {};
 
                         map[skill.id] = {
-                            unitId: unit?.id,
-                            gradeId: subject?.grade_id
+                            unitId: unitId,
+                            gradeId: subject.grade_id || unit.grade_id // support legacy mapping
                         };
+                        map[skill.name] = map[skill.id]; // map by name as well in case of old data
+                        nameMap[skill.id] = skill.name;
                     });
                     setHierarchyMap(map);
+                    setSkillNameMap(nameMap);
                 }
             } catch (e) {
                 console.error("Error fetching hierarchy map:", e);
@@ -100,7 +121,7 @@ export function Dashboard() {
             // 1. Get Subjects for Grade
             const { data: subjects } = await supabase.from('subjects').select('id').eq('grade_id', gradeId);
             if (subjects && subjects.length > 0) {
-                const subjectIds = subjects.map(s => s.id);
+                const subjectIds = subjects.map(s => s.id || s._id).filter(Boolean);
                 // 2. Get Units for Subjects
                 const { data: unitsData } = await supabase.from('units').select('*').in('subject_id', subjectIds).order('name');
                 setUnits(unitsData || []);
@@ -123,14 +144,99 @@ export function Dashboard() {
         }
     };
 
-    // Text Search State
-    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedIds, setSelectedIds] = useState(new Set());
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredQuestions.length && filteredQuestions.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredQuestions.map(q => q.id)));
+        }
+    };
+
+    const toggleSelect = (id) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBulkDelete = async () => {
+        if (!selectedIds.size) return;
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} questions?`)) return;
+
+        const idsToDelete = Array.from(selectedIds);
+        const { error } = await supabase.from('questions').delete().in('id', idsToDelete);
+
+        if (error) {
+            alert('Error deleting questions');
+            console.error(error);
+        } else {
+            setQuestions(questions.filter(q => !selectedIds.has(q.id)));
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this question?')) return;
+
+        const { error } = await supabase.from('questions').delete().eq('id', id);
+
+        if (error) {
+            alert('Error deleting question');
+            console.error(error);
+        } else {
+            setQuestions(questions.filter(q => q.id !== id));
+            if (selectedIds.has(id)) {
+                const newSelected = new Set(selectedIds);
+                newSelected.delete(id);
+                setSelectedIds(newSelected);
+            }
+        }
+    };
+    const handleClone = async (id) => {
+        const { data: q } = await supabase.from('questions').select('*').eq('id', id).single();
+        if (!q) {
+            alert('Question not found');
+            return;
+        }
+
+        const { id: oldId, _id, created_at, updated_at, ...copiedQuestion } = q;
+
+        let parsedParts = copiedQuestion.parts;
+        if (typeof parsedParts === 'string') {
+            try { parsedParts = JSON.parse(parsedParts); } catch (e) { parsedParts = []; }
+        }
+        if (Array.isArray(parsedParts) && parsedParts.length > 0 && parsedParts[0].type === 'text') {
+            parsedParts[0].content = parsedParts[0].content + ' (Copy)';
+            copiedQuestion.parts = JSON.stringify(parsedParts);
+        } else if (copiedQuestion.question_text) {
+            copiedQuestion.question_text = copiedQuestion.question_text + ' (Copy)';
+        }
+
+        const { data: inserted, error } = await supabase.from('questions').insert([copiedQuestion]);
+        if (error) {
+            alert('Error cloning question: ' + error.message);
+        } else if (inserted && inserted.length > 0) {
+            setQuestions([inserted[0], ...questions]);
+        }
+    };
+
 
     const filteredQuestions = questions.filter(q => {
+        // Safe parts parser
+        let parsedParts = q.parts;
+        if (typeof parsedParts === 'string') {
+            try { parsedParts = JSON.parse(parsedParts); } catch (e) { parsedParts = []; }
+        }
+
         // 1. Text Search
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            const qText = q.question_text || (q.parts && q.parts.find(p => p.type === 'text')?.content) || '';
+            const qText = q.question_text || (Array.isArray(parsedParts) && parsedParts.find(p => p.type === 'text')?.content) || '';
             const matchesText = qText.toLowerCase().includes(term);
             const matchesId = q.id.toString().toLowerCase().includes(term);
             if (!matchesText && !matchesId) return false;
@@ -173,6 +279,9 @@ export function Dashboard() {
         return true;
     });
 
+    const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
+    const paginatedQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
         <div className="space-y-6">
             <header className="flex items-center justify-between">
@@ -181,6 +290,15 @@ export function Dashboard() {
                     <p className="text-slate-500 mt-1">Manage all quiz questions and assessments</p>
                 </div>
                 <div className="flex gap-2">
+                    {selectedIds.size > 0 && (
+                        <button
+                            onClick={handleBulkDelete}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                            Delete ({selectedIds.size})
+                        </button>
+                    )}
                     <Link
                         to="/import"
                         className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
@@ -230,6 +348,7 @@ export function Dashboard() {
                             <option value="drag_drop">Drag & Drop</option>
                             <option value="sorting">Sorting</option>
                             <option value="4pics">4 Pics 1 Word</option>
+                            <option value="template">Template</option>
                         </select>
 
                         <select
@@ -253,7 +372,7 @@ export function Dashboard() {
                         className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
                     >
                         <option value="">Filter by Grade</option>
-                        {grades.map(g => <option key={g.id} value={g.id}>{g.name || g.level}</option>)}
+                        {grades.map(g => <option key={g.id || g._id} value={g.id || g._id}>{g.name || g.level}</option>)}
                     </select>
 
                     <select
@@ -263,7 +382,7 @@ export function Dashboard() {
                         className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
                     >
                         <option value="">Filter by Unit</option>
-                        {units.map(u => <option key={u.id} value={u.id}>{u.name || u.code}</option>)}
+                        {units.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name || u.code}</option>)}
                     </select>
 
                     <select
@@ -273,7 +392,7 @@ export function Dashboard() {
                         className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
                     >
                         <option value="">Filter by Skill</option>
-                        {microSkills.map(s => <option key={s.id} value={s.id}>{s.name || s.code}</option>)}
+                        {microSkills.map(s => <option key={s.id || s._id} value={s.id || s._id}>{s.name || s.code}</option>)}
                     </select>
                 </div>
             </div>
@@ -283,6 +402,14 @@ export function Dashboard() {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th className="px-6 py-4 font-semibold text-slate-700 w-12">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                    checked={filteredQuestions.length > 0 && selectedIds.size === filteredQuestions.length}
+                                    onChange={toggleSelectAll}
+                                />
+                            </th>
                             <th className="px-6 py-4 font-semibold text-slate-700">ID</th>
                             <th className="px-6 py-4 font-semibold text-slate-700">Question</th>
                             <th className="px-6 py-4 font-semibold text-slate-700">Type</th>
@@ -292,14 +419,27 @@ export function Dashboard() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {filteredQuestions.map((q) => {
+                        {paginatedQuestions.map((q) => {
+                            let parsedParts = q.parts;
+                            if (typeof parsedParts === 'string') {
+                                try { parsedParts = JSON.parse(parsedParts); } catch (e) { parsedParts = []; }
+                            }
+
                             // Helper to extract question text from parts
-                            const qText = q.parts && Array.isArray(q.parts)
-                                ? q.parts.find(p => p.type === 'text')?.content
+                            const qText = parsedParts && Array.isArray(parsedParts)
+                                ? parsedParts.find(p => p.type === 'text')?.content
                                 : (q.question_text || 'No Text');
 
                             return (
-                                <tr key={q.id} className="hover:bg-slate-50 transition-colors">
+                                <tr key={q.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.has(q.id) ? 'bg-slate-50' : ''}`}>
+                                    <td className="px-6 py-4">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                            checked={selectedIds.has(q.id)}
+                                            onChange={() => toggleSelect(q.id)}
+                                        />
+                                    </td>
                                     <td className="px-6 py-4 text-slate-500 text-xs font-mono">#{q.id.slice(0, 8)}</td>
                                     <td className="px-6 py-4">
                                         <div className="max-w-xs">
@@ -315,7 +455,8 @@ export function Dashboard() {
                                             q.type === 'fillInTheBlank' && "bg-teal-50 text-teal-700 border-teal-100",
                                             q.type === 'fourPicsOneWord' && "bg-pink-50 text-pink-700 border-pink-100",
                                             q.type === 'imageChoice' && "bg-indigo-50 text-indigo-700 border-indigo-100",
-                                            (!['mcq', 'dragAndDrop', 'sorting', 'fillInTheBlank', 'fourPicsOneWord', 'imageChoice'].includes(q.type)) && "bg-slate-100 text-slate-700 border-slate-200"
+                                            q.type === 'template' && "bg-emerald-50 text-emerald-700 border-emerald-100",
+                                            (!['mcq', 'dragAndDrop', 'sorting', 'fillInTheBlank', 'fourPicsOneWord', 'imageChoice', 'template'].includes(q.type)) && "bg-slate-100 text-slate-700 border-slate-200"
                                         )}>
                                             {q.type?.replace(/([A-Z])/g, ' $1').trim().toUpperCase() || 'UNKNOWN'}
                                         </span>
@@ -334,15 +475,22 @@ export function Dashboard() {
                                             {q.difficulty}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">
-                                        {q.micro_skills?.name || q.skill_id}
+                                    <td className="px-6 py-4 text-slate-500 font-medium text-xs">
+                                        {q.micro_skills?.name || skillNameMap[q.micro_skill_id || q.skill_id] || q.micro_skill_id || q.skill_id || '—'}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Link to={`/edit/${q.id}`} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-colors">
+                                            <Link to={`/edit/${q.id}`} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-colors" title="Edit">
                                                 <Edit className="w-4 h-4" />
                                             </Link>
-                                            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
+                                            <button onClick={() => handleClone(q.id)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-colors" title="Clone inline">
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(q.id)}
+                                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                                title="Delete"
+                                            >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
@@ -359,6 +507,50 @@ export function Dashboard() {
                         )}
                     </tbody>
                 </table>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
+                        <div className="text-sm text-slate-500">
+                            Showing <span className="font-medium text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, filteredQuestions.length)}</span> of <span className="font-medium text-slate-900">{filteredQuestions.length}</span> results
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 border border-slate-300 bg-white rounded-lg text-sm font-medium text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Previous
+                            </button>
+                            <div className="flex items-center gap-1 hidden sm:flex">
+                                {Array.from({ length: totalPages }).map((_, i) => {
+                                    if (totalPages > 7) {
+                                        if (i !== 0 && i !== totalPages - 1 && Math.abs(currentPage - 1 - i) > 1) {
+                                            if (Math.abs(currentPage - 1 - i) === 2) return <span key={i} className="px-1 text-slate-400">...</span>;
+                                            return null;
+                                        }
+                                    }
+                                    return (
+                                        <button
+                                            key={i}
+                                            onClick={() => setCurrentPage(i + 1)}
+                                            className={cn("px-3 py-1 border rounded-lg text-sm font-medium transition-colors shadow-sm", currentPage === i + 1 ? "bg-brand-600 text-white border-brand-600" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50")}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 border border-slate-300 bg-white rounded-lg text-sm font-medium text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

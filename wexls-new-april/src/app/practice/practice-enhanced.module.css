@@ -1,0 +1,184 @@
+.learningLab {
+  min-height: 100vh;
+  background: var(--bg-color);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.labHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  max-width: 1400px;
+  margin: 0 auto 3rem auto;
+  width: 100%;
+}
+
+.hudGroup {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.labMain {
+  flex: 1;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  gap: 2rem;
+  position: relative;
+}
+
+.questionSide {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.utilitySide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.questionPanel {
+  padding: 4rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.questionText {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 3rem;
+  color: var(--text-main);
+}
+
+.interactionContainer {
+  margin-bottom: 4rem;
+}
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.primaryBtn {
+  padding: 1.25rem 3rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1.125rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(var(--primary-h), var(--primary-s), var(--primary-l), 0.3);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 16px 40px rgba(var(--primary-h), var(--primary-s), var(--primary-l), 0.4);
+}
+
+.secondaryBtn {
+  padding: 1rem 1.5rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondaryBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+
+.feedbackOverlay {
+  margin-top: 2rem;
+  padding: 2.5rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.correctFeedback {
+  background: rgba(var(--success-h), var(--success-s), var(--success-l), 0.1);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.incorrectFeedback {
+  background: rgba(var(--error-h), var(--error-s), var(--error-l), 0.05);
+  border: 1px solid var(--error);
+  color: var(--error);
+}
+
+.feedbackHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.solutionTitle {
+  font-size: 1.125rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-top: 1rem;
+}
+
+.solutionSteps {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.step {
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+  border-left: 3px solid var(--primary);
+}
+
+.step b {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+@media (max-width: 1024px) {
+  .labMain {
+    flex-direction: column;
+  }
+}

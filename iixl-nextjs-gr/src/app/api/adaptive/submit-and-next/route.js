@@ -68,7 +68,27 @@ function buildBasicFeedback(question, selectedAnswer = null) {
             : [];
           return indices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
         }
-        const idx = Number(question.correctAnswerIndex);
+        let idx = Number(question.correctAnswerIndex);
+        
+        // Fallback for dynamic adaptive questions where index might be missing
+        if (!Number.isFinite(idx) || idx < 0) {
+          const parseMaybeJson = (val) => { 
+            try { return JSON.parse(val); } catch { return null; } 
+          };
+          const correctPayload = parseMaybeJson(question.correctAnswerText);
+          const expectedVal = (correctPayload && typeof correctPayload === 'object' && !Array.isArray(correctPayload))
+            ? (correctPayload.ans || correctPayload.value || correctPayload.correctAnswer || correctPayload.correct_answer)
+            : (correctPayload || question.correctAnswerText);
+            
+          if (expectedVal != null) {
+            const options = Array.isArray(question.options) ? question.options : [];
+            idx = options.findIndex(opt => {
+              const label = (typeof opt === 'object') ? (opt.label || opt.text || opt.content || '') : opt;
+              return String(label).trim().toLowerCase() === String(expectedVal).trim().toLowerCase();
+            });
+          }
+        }
+
         if (Number.isFinite(idx) && idx >= 0) {
           return getOptionLabel(question.options?.[idx], idx);
         }
@@ -83,6 +103,67 @@ function buildBasicFeedback(question, selectedAnswer = null) {
                  }).join(', ');
               }
           } catch { }
+      }
+      if (type === 'tokenselection') {
+          try {
+             let rawText = question.correctAnswerText || question.correct_answer_text;
+             let ids = [];
+
+             if (question.isMultiSelect && Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
+                 ids = question.correctAnswerIndices;
+             } else {
+                 if (Array.isArray(rawText)) {
+                     ids = rawText;
+                 } else {
+                     try {
+                         const parsed = JSON.parse(String(rawText || '[]'));
+                         ids = Array.isArray(parsed) ? parsed : [parsed];
+                     } catch {
+                         ids = rawText ? [rawText] : [];
+                     }
+                 }
+             }
+
+             const parts = Array.isArray(question.parts) ? question.parts : [];
+             const sentencePart = parts.find(p => p.type === 'token_sentence');
+             const tokenArr = (sentencePart && Array.isArray(sentencePart.tokens)) 
+                 ? sentencePart.tokens 
+                 : (Array.isArray(question.tokens) ? question.tokens : []);
+             
+             const texts = ids.map(id => {
+                const tk = tokenArr.find(t => String(t.id || t) === String(id));
+                return tk ? (tk.text || tk) : id;
+             }).filter(Boolean);
+
+             if (texts.length > 0) return texts.join(', ');
+          } catch (err) {
+              console.error("[buildFeedback] tokenSelection failure:", err);
+          }
+      }
+
+      if (type === 'draganddrop' || type === 'draganddropv2') {
+          try {
+              const dragItems = Array.isArray(question.dragItems || question.drag_items) ? (question.dragItems || question.drag_items) : [];
+              const dropGroups = Array.isArray(question.dropGroups || question.drop_groups) ? (question.dropGroups || question.drop_groups) : [];
+              const itemsByGroupId = {};
+              
+              dragItems.forEach(item => {
+                const targetId = String(item.targetGroupId || item.target_group_id || '');
+                if (targetId) {
+                  if (!itemsByGroupId[targetId]) itemsByGroupId[targetId] = [];
+                  itemsByGroupId[targetId].push(item.content || item.id);
+                }
+              });
+
+              const summaries = dropGroups.map(group => {
+                const items = itemsByGroupId[String(group.id)];
+                return items && items.length > 0 ? `${group.label || group.id}: ${items.join(', ')}` : null;
+              }).filter(Boolean);
+
+              if (summaries.length > 0) return summaries.join(' | ');
+          } catch (err) {
+              console.error("[buildFeedback] dragAndDrop failure:", err);
+          }
       }
       if (
         type === 'fillintheblank' ||
@@ -106,19 +187,39 @@ function buildBasicFeedback(question, selectedAnswer = null) {
           }
 
           if (parsed && typeof parsed === 'object') {
-            const arithmeticPart = (question.parts || []).find((part) => part?.type === 'arithmeticLayout');
+            const parts = Array.isArray(question.parts) ? question.parts : [];
+            const arithmeticPart = parts.find((part) => part?.type === 'arithmeticLayout');
+            const smartTablePart = parts.find((part) => part?.type === 'smartTable');
             
             // If it is an arithmetic cell Layout, join the cells properly
-            const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
-            const answerRow = rows.find((row) => String(row?.kind || '').toLowerCase() === 'answer');
-            const cells = Array.isArray(answerRow?.cells) ? answerRow.cells : [];
-            if (cells.length > 0) {
-              const prefix = String(answerRow?.prefix || '');
-              const joined = cells.map((cell, idx) => {
-                const value = parsed[cell?.id ?? `cell_${idx}`];
-                return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
-              }).join('');
-              return `${prefix}${joined}`.trim();
+            if (arithmeticPart) {
+              const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
+              const answerRow = rows.find((row) => String(row?.kind || '').toLowerCase() === 'answer');
+              const cells = Array.isArray(answerRow?.cells) ? answerRow.cells : [];
+              if (cells.length > 0) {
+                const prefix = String(answerRow?.prefix || '');
+                const joined = cells.map((cell, idx) => {
+                  const value = parsed[cell?.id ?? `cell_${idx}`];
+                  return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
+                }).join('');
+                return `${prefix}${joined}`.trim();
+              }
+            }
+
+            // Enhanced SmartTable Answer Reconstruction (for column addition etc)
+            if (smartTablePart && Array.isArray(smartTablePart.cells)) {
+                // Find input cells that are likely answer cells (not carries)
+                const answerCells = smartTablePart.cells
+                    .filter(c => c.type === 'input' && !c.id?.startsWith('c_'))
+                    .sort((a, b) => (a.r !== b.r ? a.r - b.r : a.c - b.c)); // Visual order: top-to-bottom, left-to-right
+
+                if (answerCells.length > 0) {
+                    const joined = answerCells.map(c => {
+                        const val = parsed[c.id];
+                        return Array.isArray(val) ? String(val[0] ?? '') : String(val ?? '');
+                    }).join('');
+                    if (joined) return joined;
+                }
             }
 
             if (Object.keys(parsed).length === 0) return String(rawText);
@@ -129,7 +230,8 @@ function buildBasicFeedback(question, selectedAnswer = null) {
           return String(rawText);
         } catch { }
       }
-      return String(question?.correctAnswerText ?? '');
+      const ultimateFallback = question?.validation?.answer ?? question?.correct_answer_text ?? question?.correctAnswerText;
+      return String(ultimateFallback ?? '');
     })(),
     correctOptionIndices: (() => {
       if (!question) return [];
@@ -296,7 +398,15 @@ export async function POST(req) {
     } else {
       const isMongoId = mongoose.Types.ObjectId.isValid(questionId);
       const query = isMongoId ? { _id: new mongoose.Types.ObjectId(questionId) } : { id: questionId };
-      currentQuestion = await db.collection('questions').findOne(query);
+      const raw = await db.collection('questions').findOne(query);
+      const { mapDbQuestion } = require('@/lib/practice/questionMapper');
+      currentQuestion = raw ? mapDbQuestion(raw) : null;
+    }
+    
+    // HYDRATE currentQuestion if it's a template!
+    if (currentQuestion && (currentQuestion.logic_type || currentQuestion.adaptiveConfig?.logic_type)) {
+       const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
+       currentQuestion = instantiateTemplate(currentQuestion, payload.adaptiveConfig?.variables || null);
     }
     if (!currentQuestion) {
       return NextResponse.json({ error: 'Question not found for this microskill.' }, { status: 404 });
@@ -320,22 +430,6 @@ export async function POST(req) {
       attemptsOnQuestion,
     });
 
-    const skillRow = await upsertStudentSkillState(db, {
-      student_id: studentId,
-      micro_skill_id: microskillId,
-      mastery_score: mastery.masteryScore,
-      confidence: mastery.confidence,
-      difficulty_band: mastery.difficulty_band,
-      streak: mastery.streak,
-      attempts_total: mastery.attemptsTotal,
-      correct_total: mastery.correctTotal,
-      avg_latency_ms: mastery.avgLatencyMs,
-      status: mastery.status,
-      last_attempt_at: new Date().toISOString(),
-      next_review_at: mastery.nextReviewAt,
-      updated_at: new Date().toISOString(),
-    });
-
     const smartScoreBreakdown = computeServerSmartScoreDelta({
       isCorrect,
       masteryScore: mastery.masteryScore,
@@ -352,7 +446,7 @@ export async function POST(req) {
       prevSession: { ...prevSession, smart_score: newSessionSmartScore },
       isCorrect,
       currentQuestionId: questionId,
-      activeDifficulty: skillRow?.difficulty_band ?? mastery.difficultyBand,
+      activeDifficulty: mastery.difficultyBand,
       misconceptionCode: misconceptionCodeForWrongAnswer,
       masteryScore: mastery.masteryScore,
       confidence: mastery.confidence,
@@ -368,33 +462,92 @@ export async function POST(req) {
     const inRecoveryNow = effectiveRemediationRemaining > 0;
     const effectivePhase = inRecoveryNow ? 'recovery' : sessionUpdate.phase;
 
+    // Determine the base ID for session tracking (e.g. map 'inst_tpl1_...' to 'tpl1')
+    const baseTrackingId = (() => {
+       const parts = String(questionId).split('_');
+       if (parts.length >= 4 && parts[0] === 'inst') {
+          return parts.slice(1, -2).join('_');
+       }
+       return questionId;
+    })();
+
     const cycleRecentQuestionIds = appendCycleRecentQuestionIds({
       prevRecentQuestionIds: prevSession?.recent_question_ids || [],
-      newQuestionId: questionId,
+      newQuestionId: baseTrackingId,
       availableQuestionIds: questions.map((q) => q.id),
     });
 
-    const sessionRow = await upsertSessionState(db, {
-      id: sessionId,
-      student_id: studentId,
-      micro_skill_id: microskillId,
-      phase: effectivePhase,
-      target_correct_streak: sessionUpdate.targetCorrectStreak,
-      current_streak: sessionUpdate.currentStreak,
-      asked_count: sessionUpdate.askedCount,
-      correct_count: sessionUpdate.correctCount,
-      active_difficulty: sessionUpdate.activeDifficulty,
-      smart_score: newSessionSmartScore,
-      last_question_id: questionId,
-      recent_question_ids: cycleRecentQuestionIds,
-      remediation_recent_question_ids: inRecoveryNow
-        ? [...((prevSession?.remediation_recent_question_ids || []).map(String)), String(questionId)]
-        : (prevSession?.remediation_recent_question_ids || []),
-      active_misconception_code: inRecoveryNow ? effectiveRemediationCode : null,
-      remediation_remaining: effectiveRemediationRemaining,
-      updated_at: new Date().toISOString(),
-      completed_at: effectivePhase === 'done' ? new Date().toISOString() : null,
-    });
+
+    const [skillRow, sessionRow, _attempt] = await Promise.all([
+      upsertStudentSkillState(db, {
+        student_id: studentId,
+        micro_skill_id: microskillId,
+        mastery_score: mastery.masteryScore,
+        confidence: mastery.confidence,
+        difficulty_band: mastery.difficulty_band,
+        streak: mastery.streak,
+        attempts_total: mastery.attemptsTotal,
+        correct_total: mastery.correctTotal,
+        avg_latency_ms: mastery.avgLatencyMs,
+        status: mastery.status,
+        last_attempt_at: new Date().toISOString(),
+        next_review_at: mastery.nextReviewAt,
+        updated_at: new Date().toISOString(),
+      }),
+      upsertSessionState(db, {
+        id: sessionId,
+        student_id: studentId,
+        micro_skill_id: microskillId,
+        phase: effectivePhase,
+        target_correct_streak: sessionUpdate.targetCorrectStreak,
+        current_streak: sessionUpdate.currentStreak,
+        asked_count: sessionUpdate.askedCount,
+        correct_count: sessionUpdate.correctCount,
+        active_difficulty: sessionUpdate.activeDifficulty,
+        smart_score: newSessionSmartScore,
+        last_question_id: questionId,
+        recent_question_ids: cycleRecentQuestionIds,
+        remediation_recent_question_ids: inRecoveryNow
+          ? [...((prevSession?.remediation_recent_question_ids || []).map(String)), String(questionId)]
+          : (prevSession?.remediation_recent_question_ids || []),
+        active_misconception_code: inRecoveryNow ? effectiveRemediationCode : null,
+        remediation_remaining: effectiveRemediationRemaining,
+        updated_at: new Date().toISOString(),
+        completed_at: effectivePhase === 'done' ? new Date().toISOString() : null,
+      }),
+      insertAttemptEvent(db, {
+        session_id: sessionId,
+        student_id: studentId,
+        micro_skill_id: microskillId,
+        question_id: questionId,
+        is_correct: isCorrect,
+        response_ms: Math.max(0, responseMs),
+        attempts_on_question: Math.max(1, attemptsOnQuestion),
+        hint_used: hintUsed,
+        answer_payload: answer,
+        correct_payload: {
+          correctAnswerText: currentQuestion.correctAnswerText,
+          masteryUpdate: {
+            prevScore: mastery.prevScore,
+            newScore: mastery.masteryScore,
+            confidence: mastery.confidence,
+            difficultyBand: mastery.difficultyBand,
+          },
+          sessionUpdate: {
+            phase: effectivePhase,
+            currentStreak: sessionUpdate.currentStreak,
+            askedCount: sessionUpdate.askedCount,
+            correctCount: sessionUpdate.correctCount,
+          },
+          idempotency: {
+            attemptId: attemptId || null,
+          }
+        },
+        selected_difficulty: currentQuestion.difficulty ?? 'easy',
+        concept_tags: currentQuestion.adaptiveConfig?.conceptTags || [],
+        misconception_code: misconceptionCodeForWrongAnswer ?? null,
+      })
+    ]);
 
     const misconception = !isCorrect ? getPlaceValueMisconception(currentQuestion, answer) : null;
     const triggerScaffold = misconception === 'place_name_error' && currentQuestion.adaptiveConfig?.scaffold;
@@ -432,8 +585,6 @@ export async function POST(req) {
       nextResult.question = instantiateTemplate(nextResult.question);
     }
 
-    // We already calculated smartScoreBreakdown above to determine the band
-
     const responsePayload = {
       result: {
         isCorrect,
@@ -443,7 +594,6 @@ export async function POST(req) {
           message: 'You identified the place correctly! Now let\'s find its value.',
           scaffold: {
             ...currentQuestion.adaptiveConfig.scaffold,
-            // Pre-hydrate steps for the frontend if variables are available
             steps: (currentQuestion.adaptiveConfig.scaffold.steps || []).map(step => {
               const { hydrateTemplate } = require('@/components/practice/contentUtils');
               return hydrateTemplate(step, currentQuestion.adaptiveConfig.variables);
