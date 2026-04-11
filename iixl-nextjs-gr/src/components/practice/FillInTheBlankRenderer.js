@@ -15,6 +15,7 @@ import FractionModelVisual from './FractionModelVisual';
 import ArithmeticBlock from './ArithmeticBlock';
 import BaseTenBlocks from './BaseTenBlocks';
 import NumberLineRounding from './NumberLineRounding';
+import DotsGroupingVisual from './DotsGroupingVisual';
 
 function InlineLatexBlanks({
     part,
@@ -414,7 +415,7 @@ export default function FillInTheBlankRenderer({
         );
     };
 
-    const renderTextWithBlanks = (text, keyPrefix = '') => {
+    const renderTextWithBlanks = (text, keyPrefix = '', options = {}) => {
         const normalized = String(text ?? '');
         const tokens = normalized.split(/(\[\[.*?\]\]|\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)/g).filter(Boolean);
 
@@ -431,7 +432,7 @@ export default function FillInTheBlankRenderer({
                     blankId = token.slice(1, -1).trim();
                 }
                 return (
-                    <span key={`blank-${idx}`} className={styles.inlineBlankWrap}>
+                    <span key={`blank-${kp}-${idx}`} className={styles.inlineBlankWrap}>
                         {renderInput(blankId || `md_p_${kp}_${idx}`, { placeholder: '' })}
                     </span>
                 );
@@ -450,7 +451,7 @@ export default function FillInTheBlankRenderer({
                     const html = renderLatexToHtml(latexHoles, isDisplay);
                     
                     return (
-                        <div key={`latex-int-${idx}`} className={isDisplay ? styles.mathLatexDisplay : styles.mathLatexInteractive}>
+                        <div key={`latex-int-${kp}-${idx}`} className={isDisplay ? styles.mathLatexDisplay : styles.mathLatexInteractive}>
                             <InlineLatexBlanks
                                 part={{ content: latexContent }}
                                 html={html}
@@ -469,13 +470,23 @@ export default function FillInTheBlankRenderer({
                 }
 
                 return (
-                    <span
-                        key={`latex-${idx}`}
-                        className={isDisplay ? styles.mathLatexDisplay : ''}
+                    <span 
+                        key={`latex-${kp}-${idx}`} 
+                        className={isDisplay ? styles.mathLatexDisplay : styles.mathLatexInline}
                         dangerouslySetInnerHTML={{ __html: renderLatexToHtml(latexContent, isDisplay) }}
                     />
                 );
             }
+
+            if (options.allowHtml) {
+                return (
+                    <span 
+                        key={`html-${kp}-${idx}`}
+                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(token) }}
+                    />
+                );
+            }
+
             const subTokens = token.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g).filter(Boolean);
             return subTokens.map((st, sidx) => {
                 if (st.startsWith('**') && st.endsWith('**')) return <strong key={sidx}>{st.slice(2, -2)}</strong>;
@@ -1421,13 +1432,31 @@ export default function FillInTheBlankRenderer({
             const showBorders = part.config.showBorders !== false;
 
             const grid = Array.from({ length: rowCount }).map(() => Array.from({ length: colCount }).fill(null));
-            part.cells.forEach(cell => {
-                if (cell.r < rowCount && cell.c < colCount) grid[cell.r][cell.c] = cell;
-            });
+            const focusFlow = [];
+
+            // Calculate focus flow: rows top-to-bottom
+            // within each row: if right-aligned, go Right-to-Left
+            for (let r = 0; r < rowCount; r++) {
+                const rowInputs = [];
+                part.cells.forEach(cell => {
+                    if (Number(cell.r) === r && cell.type === 'input') {
+                        rowInputs.push(cell);
+                    }
+                    if (cell.r < rowCount && cell.c < colCount) grid[cell.r][cell.c] = cell;
+                });
+                
+                // Sort by column
+                rowInputs.sort((a, b) => Number(a.c) - Number(b.c));
+                if (alignment === 'right' || part.className?.includes('arithmeticWork')) {
+                   rowInputs.reverse(); // Ones -> Tens -> Hundreds (Pedagogical math flow)
+                }
+                rowInputs.forEach(ri => focusFlow.push(ri.id));
+            }
 
             return (
-                <div className={styles.smartTableOuter}>
+                <div className={`${styles.smartTableOuter} ${part.className || ''}`}>
                     <div className={styles.smartTableContainer} style={{ border: showBorders ? undefined : 'none' }}>
+
                         <div className={styles.smartTableScroll}>
                             <table className={`${styles.smartTable} ${alignment === 'right' ? styles.smartTableRightAlign : ''}`} style={{ border: showBorders ? undefined : 'none' }}>
                                 <tbody>
@@ -1457,6 +1486,17 @@ export default function FillInTheBlankRenderer({
                                                                     let val = e.target.value.replace(/[^0-9]/g, '');
                                                                     if (maxLen) val = val.slice(0, maxLen);
                                                                     handleInputChange(cell.id, val);
+                                                                    
+                                                                    // Auto-advance logic
+                                                                    if (val.length >= maxLen && maxLen === 1 && !isAnswered) {
+                                                                        const currentIdx = focusFlow.indexOf(cell.id);
+                                                                        if (currentIdx !== -1 && currentIdx < focusFlow.length - 1) {
+                                                                            const nextId = focusFlow[currentIdx + 1];
+                                                                            setTimeout(() => {
+                                                                                arithmeticCellRefs.current[nextId]?.focus();
+                                                                            }, 10);
+                                                                        }
+                                                                    }
                                                                 }}
                                                                 onFocus={() => setLastFocusedId(cell.id)}
                                                                 maxLength={maxLen}
@@ -1811,13 +1851,23 @@ export default function FillInTheBlankRenderer({
                 ));
 
             case 'svg':
-            case 'html':
+            case 'html': {
+                const content = String(part.content || '');
+                if (content.includes('[') && content.includes(']')) {
+                    // Use renderTextWithBlanks to handle markers inside HTML
+                    return wrapPart(part, index, (
+                        <div className={styles.htmlWithBlanks}>
+                            {renderTextWithBlanks(content, `html_${index}`, { allowHtml: true })}
+                        </div>
+                    ));
+                }
                 return wrapPart(part, index, (
                     <div
                         className={styles.svgContainer}
-                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(content) }}
                     />
                 ));
+            }
 
             case 'box_display': {
                 const values = Array.isArray(part.content) ? part.content : [];
@@ -2082,6 +2132,10 @@ export default function FillInTheBlankRenderer({
                         distMid={Number(part.distMid || 0)}
                     />
                 ));
+
+            case 'dotsGrouping':
+            case 'dots_grouping':
+                return wrapPart(part, index, <DotsGroupingVisual part={part} />);
 
             case 'shadeGrid':
             case 'fractionModel':

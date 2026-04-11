@@ -16,6 +16,9 @@ export function isImageUrl(value) {
 
 export function getImageSrc(value) {
   if (typeof value === 'string') return value;
+  if (Array.isArray(value) && value.length > 0) {
+    return getImageSrc(value[0]);
+  }
   if (value && typeof value === 'object') {
     return value.imageUrl || value.url || value.src || '';
   }

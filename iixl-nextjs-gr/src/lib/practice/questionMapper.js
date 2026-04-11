@@ -208,5 +208,6 @@ export function mapDbQuestion(row) {
     template_id: row.template_id ?? row.templateId ?? null,
     scaffold: parseMaybeJson(row.scaffold, null),
     tokens: parseMaybeJson(row.tokens, []),
+    concepts: parseMaybeJson(row.concepts, []),
   };
 }

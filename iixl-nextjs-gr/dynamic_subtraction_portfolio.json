@@ -1,0 +1,101 @@
+[
+  {
+    "concepts": ["2-Digit Subtraction (No Borrowing)"],
+    "type": "template",
+    "template_id": "sub_2digit_basic",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "range": [20, 99],
+      "trap_mode": "none"
+    },
+    "difficulty": "easy",
+    "question_text": "Subtract the numbers below:",
+    "show_submit_button": true,
+    "marks": 1
+  },
+  {
+    "concepts": ["2-Digit Subtraction with Borrowing"],
+    "type": "template",
+    "template_id": "sub_2digit_borrow",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "range": [20, 99],
+      "trap_mode": "borrowing_required"
+    },
+    "difficulty": "easy",
+    "question_text": "Subtract the numbers below (Hint: You may need to borrow):",
+    "show_submit_button": true,
+    "marks": 1
+  },
+  {
+    "concepts": ["3-Digit Subtraction (No Borrowing)"],
+    "type": "template",
+    "template_id": "sub_3digit_basic",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "range": [100, 999],
+      "trap_mode": "none"
+    },
+    "difficulty": "medium",
+    "question_text": "Subtract the following 3-digit numbers:",
+    "show_submit_button": true,
+    "marks": 1
+  },
+  {
+    "concepts": ["3-Digit Subtraction with Borrowing"],
+    "type": "template",
+    "template_id": "sub_3digit_borrow",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "range": [100, 999],
+      "trap_mode": "borrowing_required"
+    },
+    "difficulty": "medium",
+    "question_text": "Solve this 3-digit subtraction problem:",
+    "show_submit_button": true,
+    "marks": 2
+  },
+  {
+    "concepts": ["4-Digit Subtraction with Multiple Borrowing"],
+    "type": "template",
+    "template_id": "sub_4digit_multi",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "range": [1000, 9999],
+      "trap_mode": "multi_borrowing"
+    },
+    "difficulty": "hard",
+    "question_text": "Find the final answer using regrouping:",
+    "show_submit_button": true,
+    "marks": 3
+  },
+  {
+    "concepts": ["5-Digit Subtraction with Regrouping"],
+    "type": "template",
+    "template_id": "sub_5digit_notebook",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "range": [10000, 99999],
+      "trap_mode": "multi_borrowing"
+    },
+    "difficulty": "hard",
+    "question_text": "Solve the 5-digit subtraction problem below:",
+    "show_submit_button": true,
+    "marks": 5
+  },
+  {
+    "concepts": ["Subtraction Across Zeros"],
+    "type": "template",
+    "template_id": "sub_across_zeros",
+    "logic_type": "subtraction_notebook_v1",
+    "data_source": {
+      "n1": 1000,
+      "range": [100, 999],
+      "trap_mode": "multi_borrowing"
+    },
+    "difficulty": "hard",
+    "question_text": "Borrow across zeros to find the answer:",
+    "show_submit_button": true,
+    "marks": 4
+  }
+]

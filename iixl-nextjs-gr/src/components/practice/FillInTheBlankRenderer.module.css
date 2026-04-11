@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+
 .container {
     width: 100%;
     max-width: 100%;
@@ -548,15 +550,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem;
-    font-size: 1.25rem;
+    padding: 0.2rem;
+    font-size: 1.05rem;
     font-weight: 700;
     text-align: center;
-    border: 2px solid #cbd5e1;
-    border-radius: 8px; /* Slightly rounded for premium look */
+    border: 2px solid #114c95;
+    /* border-radius: 8px; */
     background: #ffffff;
-    color: #1e293b;
-    caret-color: #3b82f6;
+    color: #1f54a9;
+    caret-color: #516b96;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
     max-width: 100%;
@@ -567,8 +569,8 @@
     outline: none;
     border-color: #3b82f6;
     background: #ffffff;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
+    /* box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1); */
+    /* transform: translateY(-1px); */
 }
 
 .input:disabled {
@@ -587,8 +589,8 @@
 }
 
 .inlineBlankWrap .input {
-    width: 52px !important;
-    height: 52px !important;
+    width: 65px !important;
+    height: 32px !important;
     aspect-ratio: 1 / 1;
     padding: 0;
     font-size: 1.4rem;
@@ -847,61 +849,176 @@
     background: #f5fbff;
 }
 
-.pictureEq {
+:global(.pictureEq) {
     width: 100%;
-    display: grid;
-    grid-template-columns: auto auto auto auto auto;
-    align-items: end;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 0.6rem;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
 }
 
-.pictureTerm {
-    min-width: 90px;
+
+:global(.pictureTerm) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.8rem;
 }
 
-.pictureEmoji {
-    min-height: 42px;
-    font-size: 2rem;
-    line-height: 1.05;
-    letter-spacing: 0.03em;
-    text-align: center;
+:global(.pictureBox) {
+    min-width: 80px;
+    min-height: 80px;
+    padding: 0.75rem 1rem;
+    border: 2.5px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
 }
 
-.pictureOp {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #18283d;
+:global(.pictureBox span) {
+    font-size: 2.2rem;
     line-height: 1;
-    align-self: center;
 }
 
-.pictureBox {
-    width: 86px;
-    height: 44px;
-    border: 2px solid #8d8d8d;
-    border-radius: 2px;
-    font-size: 1.35rem;
+:global(.pictureImage) {
+    width: auto;
+    height: 48px;
+    object-fit: contain;
+}
+
+:global(.pictureLabel) {
+    font-size: 2.5rem;
     font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+}
+
+/* --- Notebook Subtraction Styles --- */
+/* --- Premium STATED OF THE ART Notebook Subtraction Styles --- */
+:global(.notebookPaper) {
+    background: #fffdf5;
+    background-image: linear-gradient(#f1f5f9 1.1px, transparent 1.1px), 
+                      linear-gradient(90deg, #f1f5f9 1.1px, transparent 1.1px);
+    background-size: 25px 25px;
+    padding: 3rem;
+    border-radius: 4px;
+    box-shadow: 
+        1px 1px 1px rgba(0,0,0,0.05),
+        2px 2px 2px rgba(0,0,0,0.05),
+        4px 4px 4px rgba(0,0,0,0.05),
+        8px 8px 8px rgba(0,0,0,0.05),
+        16px 16px 16px rgba(0,0,0,0.05);
+    border-left: 24px solid #94a3b8;
+    max-width: 440px;
+    margin: 2.5rem auto;
+    font-family: 'Patrick Hand', 'Chalkboard SE', cursive;
+    position: relative;
+    transform: rotate(-0.5deg);
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+:global(.notebookPaper::before) {
+    content: "";
+    position: absolute;
+    top: 5%;
+    left: -18px;
+    height: 90%;
+    width: 12px;
+    background: repeating-linear-gradient(
+        #64748b,
+        #64748b 15px,
+        #475569 15px,
+        #475569 18px
+    );
+    border-radius: 10px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+:global(.notebookTable) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 3rem;
+    color: #334155;
+    letter-spacing: 0.25rem;
+}
+
+:global(.nbCarryRow td) {
+    font-size: 1.2rem;
+    color: #f43f5e;
+    padding-bottom: 0px;
+    height: 1.6rem;
+    vertical-align: bottom;
     text-align: center;
+    font-weight: 700;
+    line-height: 1;
 }
 
-.pictureBox:focus {
-    outline: none;
-    border-color: #0f6ea8;
-    box-shadow: 0 0 0 2px rgba(15, 110, 168, 0.14);
+
+:global(.nbMainRow td) {
+    text-align: center;
+    position: relative;
+    padding: 0.15rem 0.3rem;
 }
 
-.pictureFooter {
-    grid-column: 1 / -1;
+:global(.nbStrike) {
+    position: relative;
+    display: inline-block;
+}
+
+:global(.nbStrike::after) {
+    content: "";
+    position: absolute;
+    left: -10%;
+    top: 50%;
+    width: 120%;
+    height: 4px;
+    background: rgba(244, 63, 94, 0.6);
+    transform: rotate(-15deg);
+    border-radius: 100%;
+    pointer-events: none;
+}
+
+:global(.nbOperator) {
+    width: 65px;
     text-align: left;
-    font-size: 1.4rem;
-    margin-top: 0.15rem;
+    padding-right: 1.5rem;
+    opacity: 0.6;
+    font-weight: 300;
 }
+
+:global(.nbResultRow) {
+    border-top: 4px solid #475569;
+}
+
+:global(.nbResultRow td) {
+    padding-top: 0.8rem;
+    text-align: center;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+:global(.nbDigitInput) {
+    width: 38px !important;
+    height: 48px !important;
+    font-size: 2.4rem !important;
+    text-align: center !important;
+    padding: 0 !important;
+    border: 2px solid #cbd5e1 !important;
+    background: rgba(255,255,255,0.8) !important;
+    border-radius: 4px !important;
+    font-family: 'Patrick Hand', cursive !important;
+    color: #0f172a !important;
+}
+
+
+
 
 .gridArithmeticWrap {
     width: 100%;
@@ -1156,7 +1273,7 @@
 
 .smartTableOuter {
     width: 100%;
-    padding: 1rem 0.5rem;
+    padding: 0.2rem 0.5rem;
     display: flex;
     justify-content: left;
 }
@@ -1221,7 +1338,7 @@
 }
 
 .smartTableCell {
-    padding: 0.75rem 1rem;
+    padding: 0.95rem 1rem;
     text-align: center;
     font-size: 1.2rem;
     font-weight: 600;
@@ -1434,21 +1551,38 @@
 
     .smartTableOuter {
         padding: 0.4rem 0.1rem;
+        width: 100%;
+        display: flex;
+        justify-content: center;
     }
 
     .smartTableContainer {
+        width: auto !important;
+        max-width: 100%;
+        margin: 0.2rem auto;
         border-radius: 6px;
-        margin: 0.2rem 0;
+    }
+
+    .smartTableScroll {
+        width: auto !important;
+        display: flex;
+        justify-content: center;
+    }
+
+    .smartTable {
+        width: auto !important;
+        table-layout: auto !important;
     }
 
     .smartTableHeaderCell {
-        padding: 0.25rem 0.35rem !important;
-        font-size: 0.65rem !important;
+        padding: 0.15rem 0px !important;
+        font-size: 0.6rem !important;
     }
 
     .smartTableCell {
-        padding: 0.25rem 0.35rem !important;
-        font-size: 0.9rem !important;
+        padding: 0.15rem 0px !important;
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
     }
 
     .smartTableLabelCell {
@@ -1457,11 +1591,14 @@
     }
 
     .smartTableInput {
-        width: 100% !important;
-        min-width: 32px !important;
-        height: 36px !important;
-        font-size: 1.1rem !important;
-        border-radius: 6px !important;
+        width: 34px !important;
+        min-width: 34px !important;
+        height: 42px !important;
+        font-size: 1.6rem !important;
+        font-weight: 700 !important;
+        border-radius: 4px !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
     }
 
     .smartTableCarryInput {
@@ -1499,20 +1636,22 @@
     }
 
     .smartTableHeaderCell {
-        padding: 0.2rem 0.25rem !important;
+        padding: 0.1rem 0px !important;
         font-size: 0.6rem !important;
     }
 
     .smartTableCell {
-        padding: 0.2rem 0.25rem !important;
+        padding: 0.1rem 0px !important;
         font-size: 0.85rem !important;
     }
 
     .smartTableInput {
-        width: 100% !important;
-        min-width: 28px !important;
-        height: 32px !important;
-        font-size: 1rem !important;
+        width: 30px !important;
+        min-width: 30px !important;
+        height: 38px !important;
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+        padding: 0 !important;
     }
 
     .keypadButton {
@@ -1755,3 +1894,97 @@
     pointer-events: none;
     opacity: 0.9;
 }
+
+
+/* Arithmetic Work Layout */
+:global(.arithmeticWork) {
+    background: transparent;
+    padding: 2rem 1rem;
+    position: relative;
+    margin: 1rem 0; /* Fully justify left */
+    max-width: fit-content;
+    font-family: 'Patrick Hand', cursive;
+    overflow: visible;
+}
+
+:global(.arithmeticWork .smartTable) {
+    border-collapse: separate;
+    border-spacing: 0.8rem 0.2rem;
+    margin: 0;
+    border: none !important;
+}
+
+:global(.arithmeticWork .smartTableCell) {
+    font-size: 2.4rem;
+    color: #1a202c;
+    padding: 0.2rem;
+    text-align: center;
+    position: relative;
+    width: 3.6rem; /* Fixed width for perfect alignment */
+    height: 3.6rem;
+    line-height: 1;
+    border: none !important;
+    background: transparent !important;
+}
+
+/* Operator Column (Minus sign) should be narrower */
+:global(.arithmeticWork .smartTableCell:first-child) {
+    width: 2rem;
+    min-width: 2rem;
+    color: #4a5568;
+}
+
+/* Carry Row Styling */
+:global(.arithmeticWork tr:nth-child(1) .smartTableCell) {
+    font-size: 1.4rem;
+    color: #1a202c; /* Carry is dark in image */
+    font-weight: 800;
+    padding-bottom: 0.4rem;
+    vertical-align: bottom;
+}
+
+/* Blue Box for Struck Digits */
+:global(.arithmeticWork .smartTableCellHighlighted) {
+    background-color: #eff6ff !important; /* Light blue */
+    border: 2px solid #3b82f6 !important; /* Blue border */
+    border-radius: 4px;
+}
+
+/* Strike-through effect */
+:global(.arithmeticWork .smartTableCellHighlighted)::after {
+    content: '';
+    position: absolute;
+    top: 45%;
+    left: 15%;
+    width: 70%;
+    height: 3px;
+    background: #ef4444; /* Bright red strike */
+    transform: rotate(-35deg);
+    border-radius: 4px;
+    z-index: 5;
+}
+
+/* Result Line */
+:global(.arithmeticWork tr:nth-child(3)) {
+    border-bottom: 3px solid #1a202c !important;
+}
+
+:global(.arithmeticWork .smartTableInput) {
+    width: 3.2rem !important;
+    height: 3.2rem !important;
+    border: 2px solid #3b82f6 !important;
+    background: #fff !important;
+    font-size: 2.2rem !important;
+    text-align: center;
+    border-radius: 8px;
+    margin: 0 auto; /* Center in cell */
+    display: block;
+    font-family: 'Patrick Hand', cursive !important;
+}
+
+/* Result Line */
+:global(.arithmeticWork tr:nth-child(3)) {
+    border-bottom: 2px solid #333;
+}
+
+

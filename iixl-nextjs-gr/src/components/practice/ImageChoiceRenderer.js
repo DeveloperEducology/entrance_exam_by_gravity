@@ -46,13 +46,16 @@ export default function ImageChoiceRenderer({
                     {/* Image Options */}
                     <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''}`}>
                         {question.options.map((optionValue, index) => {
-                            const src = getImageSrc(optionValue);
+                            const actualOption = Array.isArray(optionValue) && optionValue.length > 0 
+                                ? optionValue[0] 
+                                : optionValue;
+                            const src = getImageSrc(actualOption);
                             const optionText =
-                                typeof optionValue === 'string'
-                                    ? optionValue
-                                    : optionValue?.label || optionValue?.text || '';
-                            const inlineSvgMarkup = isInlineSvg(optionValue)
-                                ? optionValue
+                                typeof actualOption === 'string'
+                                    ? actualOption
+                                    : actualOption?.label || actualOption?.text || '';
+                            const inlineSvgMarkup = isInlineSvg(actualOption)
+                                ? actualOption
                                 : isInlineSvg(src)
                                     ? src
                                     : null;

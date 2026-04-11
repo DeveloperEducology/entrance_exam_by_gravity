@@ -101,8 +101,10 @@ function normalizeDifficulty(value) {
 
 function getOptionLabel(option, index) {
   if (typeof option === 'object' && option !== null) {
-    const label = option.label ?? option.text ?? '';
+    const label = option.label ?? option.text ?? option.content ?? '';
     if (label) return String(label);
+  } else if (typeof option === 'string') {
+    return option;
   }
   return `Option ${index + 1}`;
 }
@@ -143,29 +145,36 @@ function validateAnswer(question, answer) {
         return JSON.stringify(selected) === JSON.stringify(correct);
       }
 
-      // 1. Try by Index
-      const hasValidIndex = Number.isFinite(Number(question.correctAnswerIndex)) && Number(question.correctAnswerIndex) >= 0;
-      if (hasValidIndex && Number(answer) === Number(question.correctAnswerIndex)) {
-        return true;
-      }
-
-      // 2. Fallback: Validate by value if index mismatch (common in dynamically generated adaptive questions)
+      // 1. Primary: Validate by Value (Resilient to shuffle desync)
       const correctText = question.correctAnswerText;
       const parsedCorrect = parseMaybeJson(correctText, null);
       const expectedValue = (parsedCorrect && typeof parsedCorrect === 'object' && !Array.isArray(parsedCorrect))
         ? (parsedCorrect.ans || parsedCorrect.value || parsedCorrect.correctAnswer || parsedCorrect.correct_answer)
         : (parsedCorrect || correctText);
 
-      if (expectedValue != null) {
-        const options = Array.isArray(question.options) ? question.options : [];
+      const options = Array.isArray(question.options) ? question.options : [];
+      if (expectedValue != null && options.length > 0) {
         const selectedOption = options[Number(answer)];
-        if (!selectedOption) return false;
-        
-        const selectedLabel = (typeof selectedOption === 'object')
-          ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
-          : selectedOption;
-          
-        return String(selectedLabel).trim().toLowerCase() === String(expectedValue).trim().toLowerCase();
+        if (selectedOption) {
+            const selectedLabel = (typeof selectedOption === 'object')
+              ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
+              : selectedOption;
+              
+            // If the text definitely matches, it's correct
+            if (normalizeMathSentence(selectedLabel) === normalizeMathSentence(expectedValue)) {
+                return true;
+            }
+            
+            // If the text definitely DOES NOT match, it's wrong (even if index was coincidentally 'correct')
+            // This prevents "Wrong Answer Getting Right" bugs
+            return false; 
+        }
+      }
+
+      // 2. Secondary: Fallback to Index if value comparison is impossible
+      const hasValidIndex = Number.isFinite(Number(question.correctAnswerIndex)) && Number(question.correctAnswerIndex) >= 0;
+      if (hasValidIndex && Number(answer) === Number(question.correctAnswerIndex)) {
+        return true;
       }
 
       return false;
@@ -269,7 +278,13 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
       feedback.correctAnswerDisplay = feedback.correctOptionIndices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
     } else {
       feedback.correctOptionIndices = [Number(question.correctAnswerIndex)].filter(Number.isFinite);
-      feedback.correctAnswerDisplay = feedback.correctOptionIndices.length > 0 ? getOptionLabel(question.options?.[feedback.correctOptionIndices[0]], feedback.correctOptionIndices[0]) : '';
+      const resLabel = feedback.correctOptionIndices.length > 0 ? getOptionLabel(question.options?.[feedback.correctOptionIndices[0]], feedback.correctOptionIndices[0]) : '';
+      // Failsafe: if we get 'Option X' but have a raw math string, prefer the math string
+      if ((resLabel.startsWith('Option ') || !resLabel) && question.correctAnswerText && !question.correctAnswerText.startsWith('{')) {
+          feedback.correctAnswerDisplay = question.correctAnswerText;
+      } else {
+          feedback.correctAnswerDisplay = resLabel;
+      }
     }
   } else if (type === 'fillintheblank' || type === 'gridarithmetic' || type === 'table' || type === 'smarttable') {
     const parsed = parseMaybeJson(question.correctAnswerText, {});
@@ -346,6 +361,8 @@ async function insertLog(db, payload) {
   });
 }
 
+import { instantiateTemplate } from '@/lib/practice/generators/templateInstantiator';
+
 export async function POST(req, { params }) {
   const { microskillId: microskillKey } = await params;
   const microskillId = await resolveMicroskillIdByKey(microskillKey);
@@ -368,17 +385,23 @@ export async function POST(req, { params }) {
     const db = mongoose.connection.db;
 
     const rawQuestions = await fetchQuestionsByMicroskill(db, microskillId);
-    const mappedQuestions = rawQuestions.map(mapDbQuestion);
-    const snapshotQuestion =
-      questionSnapshot &&
-      typeof questionSnapshot === 'object' &&
-      String(questionSnapshot.id || '') === String(questionId)
-        ? questionSnapshot
-        : null;
+    
+    // 1. Resolve the "Current" Question using snapshot or database lookup
+    let currentQuestion = (questionSnapshot && typeof questionSnapshot === 'object' && String(questionSnapshot.id || '') === String(questionId))
+      ? questionSnapshot
+      : rawQuestions.map(mapDbQuestion).find((q) => String(q.id) === String(questionId));
 
-    const currentQuestion = snapshotQuestion || mappedQuestions.find((q) => String(q.id) === String(questionId));
     if (!currentQuestion) return NextResponse.json({ error: 'Question not found.' }, { status: 404 });
 
+    // 2. CRITICAL: Re-instantiate the question on the server to reveal the "Correct" state
+    // We MUST pass the variables from the snapshot to avoid re-randomization desync
+    const logic = currentQuestion.logic_type || currentQuestion.adaptiveConfig?.logic_type;
+    if (logic) {
+        const snapVars = currentQuestion.adaptiveConfig?.variables || null;
+        currentQuestion = instantiateTemplate(currentQuestion, snapVars);
+    }
+
+    // 3. Perform Validation against the instantiated question
     const isCorrect = validateAnswer(currentQuestion, answer);
     const feedback = buildFeedback(currentQuestion, isCorrect, answer);
 
@@ -387,12 +410,13 @@ export async function POST(req, { params }) {
     const attemptedIds = await fetchAttemptedIds(db, studentId, microskillId);
     const clientSeenIds = new Set(Array.isArray(seenQuestionIds) ? seenQuestionIds.map((id) => String(id)) : []);
     const excludedIds = new Set([...attemptedIds, ...clientSeenIds, String(questionId)]);
-    const unseen = mappedQuestions.filter((q) => !excludedIds.has(String(q.id)));
+    const unseen = rawQuestions.map(mapDbQuestion).filter((q) => !excludedIds.has(String(q.id)));
 
-    const nextQuestion = chooseAdaptiveQuestion(unseen.length > 0 ? unseen : mappedQuestions, questionId, isCorrect);
+    const nextQuestion = chooseAdaptiveQuestion(unseen.length > 0 ? unseen : rawQuestions.map(mapDbQuestion), questionId, isCorrect);
 
-    return NextResponse.json({ source: 'mongodb_fallback', isCorrect, feedback, nextQuestion: toPublicQuestion(nextQuestion) });
+    return NextResponse.json({ source: 'mongodb_hydrated', isCorrect, feedback, nextQuestion: toPublicQuestion(nextQuestion) });
   } catch (err) {
+    console.error('SUBMIT ERROR:', err);
     return NextResponse.json({ error: err.message ?? 'Failed to submit.' }, { status: 500 });
   }
 }

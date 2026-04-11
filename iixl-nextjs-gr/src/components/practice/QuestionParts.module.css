@@ -710,8 +710,8 @@
 
     .smartTableHeaderCell,
     .smartTableCell {
-        padding: 0.4rem 0.5rem;
-        font-size: 1rem;
+        padding: 0.25rem 0.1rem;
+        font-size: 0.95rem;
     }
 
     .smartTableLabelCell {
@@ -734,8 +734,9 @@
 
     .smartTableHeaderCell,
     .smartTableCell {
-        padding: 0.35rem 0.5rem;
-        font-size: 0.9rem;
+        padding: 0.2rem 1px;
+        font-size: 1.5rem;
+        font-weight: 700;
     }
 
     .smartTableLabelCell {

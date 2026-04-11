@@ -213,9 +213,30 @@ export const MOCK_QUESTIONS = [
     sortOrder: 15
   },
   {
-    id: 'q16_even_odd',
-    logic_type: 'even_odd_multi_v1',
-    difficulty: 'medium',
-    sortOrder: 16
+    id: 'q17_uniq_mcq',
+    type: 'mcq',
+    sortOrder: 17,
+    hasAudio: true,
+    audioText: "Which of these numbers is exactly fifty more than four hundred?",
+    layoutConfig: {
+      accentColor: "#ec4899", // Pink theme
+      fontSize: "1.25rem",
+      columns: 2,
+      gap: "24px"
+    },
+    parts: [
+      { "type": "text", "content": "Identify the number that is **50 more** than:" },
+      { "type": "latex", "content": "400" }
+    ],
+    options: [
+      { "content": "450", "label": "450" },
+      { "content": "405", "label": "405" },
+      { "content": "540", "label": "540" },
+      { "content": "350", "label": "350" }
+    ],
+    correctAnswerIndex: 0,
+    solution: [
+      { "type": "text", "content": "To find 50 more than 400, adding 5 to the tens place: 400 + 50 = 450." }
+    ]
   }
 ];

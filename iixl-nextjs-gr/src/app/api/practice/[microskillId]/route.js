@@ -79,6 +79,7 @@ function toPublicQuestion(question) {
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
     tokens: question.tokens ?? [],
+    concepts: question.concepts ?? [],
   };
 }
 
@@ -113,12 +114,64 @@ export async function GET(_req, { params }) {
     const db = mongoose.connection.db;
 
     let data = null;
+    const { ObjectId } = require('mongodb');
+    
+    // Attempt to parse as ObjectId for safer querying if possible
+    let mIdQuery = microskillId;
+    try {
+        if (typeof microskillId === 'string' && microskillId.length === 24) {
+            mIdQuery = new ObjectId(microskillId);
+        }
+    } catch(e) {}
+
+    // 1. Search in 'questions' collection
     for (const skillColumn of SKILL_COLUMNS) {
-      data = await db.collection('questions')
-        .find({ [skillColumn]: microskillId })
+      const q = await db.collection('questions')
+        .find({ 
+          $or: [
+            { [skillColumn]: microskillId },
+            { [skillColumn]: mIdQuery }
+          ]
+        })
         .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
         .toArray();
-      if (data && data.length > 0) break;
+      
+      if (q && q.length > 0) {
+          data = q;
+          break;
+      }
+    }
+
+    // 2. If not found, search in 'templates' collection
+    if (!data || data.length === 0) {
+        for (const skillColumn of SKILL_COLUMNS) {
+            const t = await db.collection('templates')
+                .find({ 
+                    $or: [
+                        { [skillColumn]: microskillId },
+                        { [skillColumn]: mIdQuery }
+                    ]
+                })
+                .toArray();
+            
+            if (t && t.length > 0) {
+                data = t;
+                break;
+            }
+        }
+    }
+
+    // 3. Fallback: Search by template_id (useful for direct testing)
+    if (!data || data.length === 0) {
+        data = await db.collection('questions')
+            .find({ template_id: microskillId })
+            .toArray();
+        
+        if (!data || data.length === 0) {
+            data = await db.collection('templates')
+                .find({ template_id: microskillId })
+                .toArray();
+        }
     }
 
     const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
@@ -129,7 +182,7 @@ export async function GET(_req, { params }) {
     serverLog('api.practice.get', 'request success', {
       microskillId,
       hasQuestion: Boolean(selectedQuestion),
-      questionCount: data.length,
+      questionCount: data ? data.length : 0,
       durationMs: Date.now() - startedAt,
     });
 

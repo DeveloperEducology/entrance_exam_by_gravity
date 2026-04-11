@@ -134,6 +134,12 @@ function normalizeMathSentence(value) {
     .trim();
 }
 
+function stripHtml(text) {
+  return String(text || '')
+    .replace(/<[^>]*>?/gm, '')
+    .trim();
+}
+
 function isMissingTableError(error) {
   const message = String(error?.message ?? '').toLowerCase();
   return (
@@ -263,6 +269,7 @@ export function toPublicQuestion(question) {
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
     tokens: question.tokens ?? [],
+    concepts: question.concepts ?? [],
     correctAnswerText: question.correctAnswerText,
     correctAnswerIndex: question.correctAnswerIndex,
     validation: question.validation,
@@ -329,7 +336,8 @@ export function validateAnswer(question, answer) {
         ? (parsedCorrect.ans || parsedCorrect.value || parsedCorrect.correctAnswer || parsedCorrect.correct_answer)
         : (parsedCorrect || correctText);
 
-      if (expectedValue != null) {
+      // Only proceed with value comparison if we have a non-empty expected value
+      if (expectedValue != null && String(expectedValue).trim() !== '') {
         const options = Array.isArray(question.options) ? question.options : [];
         const selectedOption = options[Number(answer)];
         if (!selectedOption) return false;
@@ -338,7 +346,7 @@ export function validateAnswer(question, answer) {
           ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
           : selectedOption;
           
-        return String(selectedLabel).trim().toLowerCase() === String(expectedValue).trim().toLowerCase();
+        return stripHtml(selectedLabel).toLowerCase() === stripHtml(expectedValue).toLowerCase();
       }
 
       return false;

@@ -14,21 +14,34 @@
     box-sizing: border-box;
 }
 
-.questionContent {
+.questionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
     margin-bottom: 2rem;
-    font-size: 1.05rem;
+    width: 100%;
+}
+
+.questionContent {
+    flex: 1;
+    font-size: var(--mcq-font-size, 1.05rem);
     line-height: 1.6;
     color: var(--text-primary);
-    width: 100%;
     min-width: 0;
     overflow-wrap: break-word;
+}
+
+.mainSpeaker {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
 }
 
 .optionsGrid {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
-    gap: 1rem;
+    gap: var(--mcq-gap, 1rem);
     margin-bottom: 1.5rem;
 }
 
@@ -39,7 +52,7 @@
 
 .optionsGrid.gridMode {
     display: grid;
-    grid-template-columns: repeat(2, minmax(100px, 240px));
+    grid-template-columns: repeat(var(--mcq-columns, 2), minmax(100px, 1fr));
     justify-content: center;
     width: 100%;
 }
@@ -55,7 +68,7 @@
     border: 3px solid #9fdcf8;
     border-radius: var(--border-radius-lg);
     padding: 0.8rem 1.2rem;
-    font-size: 1.1rem;
+    font-size: var(--mcq-font-size, 1.1rem);
     font-weight: 600;
     color: var(--text-primary);
     cursor: pointer;
@@ -70,6 +83,25 @@
     white-space: normal;
     word-break: break-word;
     flex: 1 1 auto;
+}
+
+.option.selected {
+    background: #e9f8ef;
+    border-color: var(--mcq-accent, #22c55e);
+    font-weight: 600;
+}
+
+.checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--mcq-accent, #22c55e);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.96rem;
+    color: var(--mcq-accent, #22c55e);
+    flex-shrink: 0;
 }
 
 .option:hover:not(.disabled) {
@@ -142,7 +174,7 @@
 
 .submitButton {
     width: min(220px, 100%);
-    background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+    background: var(--mcq-accent, #22c55e);
     color: white;
     border: none;
     padding: 0.62rem 1rem;
@@ -157,7 +189,7 @@
 
 .submitButton:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 768px) {

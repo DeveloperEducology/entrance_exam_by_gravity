@@ -4,7 +4,16 @@ import QuestionParts from './QuestionParts';
 import styles from './MCQRenderer.module.css';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SafeImage from './SafeImage';
+import SpeakerButton from './SpeakerButton';
 
+/**
+ * MCQRenderer - Optimized for the "Unique MCQ" Schema
+ * Supports:
+ * - layoutConfig (JSON-driven styles)
+ * - hasAudio & audioText
+ * - Multi-select
+ * - Rich options (JSON objects vs Strings)
+ */
 export default function MCQRenderer({
     question,
     userAnswer,
@@ -12,6 +21,15 @@ export default function MCQRenderer({
     onSubmit,
     isAnswered
 }) {
+    // 1. Dynamic Unique Style Mapping (CSS-in-JSON)
+    const layout = question.layoutConfig || {};
+    const dynamicStyle = {
+        '--mcq-accent': layout.accentColor || layout.theme || '#22c55e',
+        '--mcq-font-size': layout.fontSize || '1.1rem',
+        '--mcq-gap': layout.gap || '1rem',
+        '--mcq-columns': layout.columns || (question.isGrid ? 2 : 1),
+    };
+
     const handleOptionClick = (index) => {
         if (isAnswered) return;
 
@@ -34,24 +52,39 @@ export default function MCQRenderer({
     };
 
     return (
-        <div className={styles.container}>
+        <div className={styles.container} style={dynamicStyle}>
             <div className={styles.questionCard}>
-                {/* Question Parts */}
-                <div className={styles.questionContent}>
-                    <QuestionParts parts={question.parts} isVertical={question.isVertical} />
+                
+                {/* 2. Top-Level Content Wrapper with Audio Support */}
+                <div className={styles.questionHeader}>
+                    <div className={styles.questionContent}>
+                        <QuestionParts parts={question.parts} isVertical={question.isVertical} />
+                    </div>
+                    {question.hasAudio && (
+                        <SpeakerButton 
+                            text={question.audioText || question.parts?.[0]?.content || ''} 
+                            className={styles.mainSpeaker} 
+                        />
+                    )}
                 </div>
 
-                {/* Options */}
-                <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''} ${question.isGrid ? styles.gridMode : ''}`}>
+                {/* 3. Options Grid Wrapper */}
+                <div className={`
+                    ${styles.optionsGrid} 
+                    ${question.isVertical ? styles.vertical : ''} 
+                    ${question.isGrid || layout.columns > 1 ? styles.gridMode : ''}
+                `}>
                     {question.options.map((option, index) => (
                         (() => {
-                            // Support for complex parts in options
+                            // Standardize Option detection for Unique MC schema
                             const isComplexParts = Array.isArray(option) || (option && typeof option === 'object' && Array.isArray(option.parts));
                             const optionParts = Array.isArray(option) ? option : (option?.parts || []);
-                            const optionImageSrc = !isComplexParts ? getImageSrc(option) : '';
-                            const optionText = typeof option === 'string' 
-                                ? option 
-                                : (!isComplexParts ? (option?.label || option?.text || option?.content || '') : (option?.label || ''));
+                            
+                            // Check for content/label vs raw string
+                            const rawContent = typeof option === 'string' ? option : (option?.content || option?.value || '');
+                            const labelText = typeof option === 'string' ? option : (option?.label || option?.text || rawContent);
+                            
+                            const optionImageSrc = !isComplexParts ? getImageSrc(rawContent) : '';
 
                             return (
                                 <div
@@ -61,54 +94,47 @@ export default function MCQRenderer({
                                     role="button"
                                     tabIndex={isAnswered ? -1 : 0}
                                     aria-pressed={isSelected(index)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault();
-                                            handleOptionClick(index);
-                                        }
-                                    }}
                                 >
                                     {question.isMultiSelect && (
                                         <div className={styles.checkbox}>
                                             {isSelected(index) && '✓'}
                                         </div>
                                     )}
+
+                                    {/* Sub-Renderer logic for option content */}
                                     {isComplexParts ? (
                                         <div className={styles.optionParts}>
                                             <QuestionParts parts={optionParts} className={styles.partsInOption} />
                                         </div>
-                                    ) : isInlineSvg(option) ? (
+                                    ) : isInlineSvg(rawContent) ? (
                                         <div
                                             className={styles.optionMedia}
-                                            dangerouslySetInnerHTML={{ __html: option }}
+                                            dangerouslySetInnerHTML={{ __html: rawContent }}
                                         />
                                     ) : isImageUrl(optionImageSrc) ? (
                                         <SafeImage
                                             src={optionImageSrc}
-                                            alt={`Option ${index + 1}`}
+                                            alt={labelText || `Option ${index + 1}`}
                                             className={styles.optionImage}
                                             width={220}
                                             height={140}
-                                            sizes="(max-width: 768px) 40vw, 220px"
                                         />
                                     ) : (
-                                        hasInlineHtml(optionText) ? (
-                                            <span
-                                                className={styles.optionText}
-                                                dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(optionText) }}
-                                            />
-                                        ) : (
-                                            <span className={styles.optionText}>{optionText}</span>
-                                        )
+                                        <span className={styles.optionText}>
+                                            {hasInlineHtml(labelText) ? (
+                                                <span dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(labelText) }} />
+                                            ) : (
+                                                labelText
+                                            )}
+                                        </span>
                                     )}
                                 </div>
                             );
-
                         })()
                     ))}
                 </div>
 
-                {/* Submit Button (if needed) */}
+                {/* Submit Button Logic */}
                 {question.showSubmitButton && userAnswer !== null && !isAnswered && (
                     <button className={styles.submitButton} onClick={() => onSubmit()}>
                         Submit Answer
@@ -118,3 +144,4 @@ export default function MCQRenderer({
         </div>
     );
 }
+

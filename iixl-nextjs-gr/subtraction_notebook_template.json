@@ -1,0 +1,26 @@
+{
+  "concepts": ["Subtraction with Regrouping"],
+  "type": "template",
+  "template_id": "math_subtraction_notebook_v1",
+  "logic_type": "subtraction_notebook_v1",
+  "data_source": {
+    "range": [1000, 9999],
+    "trap_mode": "borrowing_required"
+  },
+  "difficulty": "medium",
+  "question_text": "Look at the work below and find the final answer:",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Look at the work below and find the final answer:",
+      "hasAudio": true
+    }
+  ],
+  "options": [],
+  "correct_answer_index": -1,
+  "correct_answer_text": null,
+  "marks": 1,
+  "is_multi_select": false,
+  "show_submit_button": true,
+  "solution": []
+}

@@ -186,6 +186,15 @@ function getCorrectAnswerDisplay(question) {
     case 'smarttable': {
       const parsed = parseMaybeJson(question.correctAnswerText, {});
       if (!parsed || typeof parsed !== 'object') return String(question.correctAnswerText || '');
+      const keys = Object.keys(parsed);
+      const digitKeys = keys.filter(k => k.startsWith('digit_'));
+      if (digitKeys.length > 0) {
+        return digitKeys.sort((a,b) => {
+           const valA = parseInt(a.split('_')[1]) || 0;
+           const valB = parseInt(b.split('_')[1]) || 0;
+           return valA - valB;
+        }).map(k => parsed[k]).join('');
+      }
       const entries = Object.entries(parsed);
       if (entries.length === 0) return String(question.correctAnswerText || '');
       return entries.map(([k, v]) => `${k}: ${v}`).join(', ');
@@ -452,16 +461,22 @@ function getSelectedAnswerDisplay(question, answer) {
   ) {
     if (!answer || typeof answer !== 'object') return 'No answer';
     
-    // Find arithmetic IDs (prefixed with a_ for addition, d_ for subtraction)
+    // Find arithmetic IDs (prefixed with a_ for addition, d_ for subtraction, or digit_ for new templates)
     const keys = Object.keys(answer);
-    const answerKeys = keys.filter(k => k.startsWith('a_') || k.startsWith('d_'));
+    const answerKeys = keys.filter(k => k.startsWith('a_') || k.startsWith('d_') || k.startsWith('digit_'));
     
     if (answerKeys.length > 0) {
-      // Sort by place value descending (1000, 100, 10, 1)
+      // Sort by suffix number
       const sorted = answerKeys.sort((a, b) => {
-        const valA = parseInt(a.split('_')[1]) || 0;
-        const valB = parseInt(b.split('_')[1]) || 0;
-        return valB - valA;
+        const partsA = a.split('_');
+        const partsB = b.split('_');
+        const valA = parseInt(partsA[partsA.length - 1]) || 0;
+        const valB = parseInt(partsB[partsB.length - 1]) || 0;
+        
+        // Reverse sort for place-value (a_100, a_10, a_1)
+        if (a.startsWith('a_') || a.startsWith('d_')) return valB - valA;
+        // Forward sort for visual order (digit_0, digit_1, digit_2)
+        return valA - valB;
       });
       const joined = sorted.map(k => String(answer[k] ?? '')).join('');
       return joined || 'No answer';
@@ -1070,9 +1085,13 @@ export default function PracticePage() {
         ...prev,
         {
           id: currentQuestion.id,
-          text: currentQuestion.questionText || (currentQuestion.parts?.[0]?.content) || 'N/A',
+          text: (currentQuestion.adaptiveConfig?.variables?.num_groups && currentQuestion.adaptiveConfig?.variables?.dots_per_group)
+            ? `${currentQuestion.questionText || 'Question'} (${currentQuestion.adaptiveConfig.variables.num_groups}x${currentQuestion.adaptiveConfig.variables.dots_per_group})`
+            : (currentQuestion.questionText || (currentQuestion.parts?.[0]?.content) || 'N/A'),
           difficulty: currentQuestion.difficulty,
           isCorrect: correct,
+          selectedAnswer: getSelectedAnswerDisplay(currentQuestion, answer),
+          correctAnswer: payload?.result?.feedback?.correctAnswerDisplay || payload?.feedback?.correctAnswerDisplay || String(currentQuestion.correctAnswerText || ''),
           smartScore: Math.max(0, Math.min(100, (smartScore + Number(effectiveScore.delta || 0)))),
           delta: Number(effectiveScore.delta || 0),
           phase: returnedPhase,
@@ -1414,6 +1433,16 @@ export default function PracticePage() {
                 </div>
               </div>
 
+              {/* Concepts Section */}
+              {(feedbackData?.concepts || currentQuestion?.concepts) && (
+                <div className={styles.conceptsSection}>
+                  <h3 className={styles.explanationHeading}>Key Concepts</h3>
+                  <div className={styles.conceptsCard}>
+                    <QuestionParts parts={feedbackData?.concepts || currentQuestion?.concepts || []} />
+                  </div>
+                </div>
+              )}
+
               {/* Step 3: Explanation */}
               <h3 className={styles.explanationHeading}>Explanation</h3>
               {hasStructuredSolution ? (
@@ -1511,8 +1540,10 @@ export default function PracticePage() {
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>#</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Question ID</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Text Preview</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Difficulty</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Correct?</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Selected</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Correct Ans</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Diff</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Status</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Phase</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Delta</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>SmartScore</th>
@@ -1525,27 +1556,33 @@ export default function PracticePage() {
                   <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: entry.isCorrect ? 'transparent' : '#fff1f2' }}>
                     <td style={{ padding: '0.75rem' }}>{idx + 1}</td>
                     <td style={{ padding: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>{String(entry.id).slice(-8)}...</td>
-                    <td style={{ padding: '0.75rem', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.text}</td>
+                    <td style={{ padding: '0.75rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.text}</td>
+                    <td style={{ padding: '0.75rem', color: entry.isCorrect ? '#166534' : '#991b1b', fontWeight: '600' }}>
+                      {entry.selectedAnswer ? String(entry.selectedAnswer).replace(/<[^>]*>?/gm, '') : '—'}
+                    </td>
+                    <td style={{ padding: '0.75rem', color: '#166534', fontWeight: '600' }}>
+                      {entry.correctAnswer ? String(entry.correctAnswer).replace(/<[^>]*>?/gm, '') : '—'}
+                    </td>
                     <td style={{ padding: '0.75rem' }}>
                       <span style={{ 
                         padding: '0.2rem 0.5rem', 
                         borderRadius: '999px', 
                         background: entry.difficulty === 'hard' ? '#fee2e2' : entry.difficulty === 'medium' ? '#fef3c7' : '#f0fdf4',
                         color: entry.difficulty === 'hard' ? '#991b1b' : entry.difficulty === 'medium' ? '#92400e' : '#166534',
-                        fontSize: '0.75rem',
+                        fontSize: '0.7rem',
                         fontWeight: '700'
                       }}>
                         {entry.difficulty}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{entry.isCorrect ? '✅' : '❌'}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>{entry.isCorrect ? '✅' : '❌'}</td>
                     <td style={{ padding: '0.75rem' }}>{entry.phase}</td>
                     <td style={{ padding: '0.75rem', fontWeight: '700', color: entry.delta >= 0 ? '#166534' : '#991b1b' }}>
                       {entry.delta >= 0 ? `+${entry.delta}` : entry.delta}
                     </td>
                     <td style={{ padding: '0.75rem', fontWeight: '800' }}>{entry.smartScore}</td>
                     <td style={{ padding: '0.75rem' }}>{entry.time}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.7rem', color: '#64748b' }}>
+                    <td style={{ padding: '0.75rem', fontSize: '0.65rem', color: '#64748b' }}>
                       {entry.meta ? JSON.stringify(entry.meta) : 'N/A'}
                     </td>
                   </tr>
@@ -1596,6 +1633,13 @@ export default function PracticePage() {
                       />
                     </div>
                     <div className={styles.exampleSolutionBox}>
+                      <h4 className={styles.exampleSolutionHeading}>Key Concepts</h4>
+                      {exampleQuestion.concepts ? (
+                        <div className={styles.conceptsCard} style={{ marginBottom: '1.5rem' }}>
+                          <QuestionParts parts={exampleQuestion.concepts} />
+                        </div>
+                      ) : null}
+                      
                       <h4 className={styles.exampleSolutionHeading}>Explanation</h4>
                       {(() => {
                         const solParts = parseSolutionParts(exampleQuestion.solution);
