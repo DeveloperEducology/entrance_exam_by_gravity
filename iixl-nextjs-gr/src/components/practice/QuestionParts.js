@@ -14,6 +14,7 @@ import CountingVisual from './CountingVisual';
 import NumberPairs from './NumberPairs';
 import NumberLineJumps from './NumberLineJumps';
 import DotsGroupingVisual from './DotsGroupingVisual';
+import DotArrayVisual from './DotArrayVisual';
 
 /**
  * @typedef {Object} QuestionPart
@@ -794,12 +795,11 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 );
             case 'dotsGrouping':
             case 'dots_grouping':
-                return (
-                    <DotsGroupingVisual
-                        key={index}
-                        part={part}
-                    />
-                );
+                return <DotsGroupingVisual key={index} part={part} />;
+
+            case 'dotArray':
+            case 'dot_array':
+                return <DotArrayVisual key={index} part={part} />;
 
             default:
                 return null;

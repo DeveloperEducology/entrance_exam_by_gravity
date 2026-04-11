@@ -3665,6 +3665,205 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.type = 'fillInTheBlank';
   }
 
+  if (logic === 'dot_array_multiplication_mcq_v1') {
+    let rows, cols;
+    const existingVars = (question.adaptiveConfig?.variables || {});
+    if (existingVars.rows && existingVars.cols) {
+        rows = Number(existingVars.rows);
+        cols = Number(existingVars.cols);
+    } else if (overrideVariables) {
+        rows = Number(overrideVariables.rows);
+        cols = Number(overrideVariables.cols);
+    } else {
+        rows = Math.floor(Math.random() * 3) + 2; 
+        cols = Math.floor(Math.random() * 3) + 2;
+    }
+
+    const correct_raw = `${rows} × ${cols}`;
+    let dist_rows = cols;
+    let dist_cols = rows;
+    if (dist_rows === rows && dist_cols === cols) {
+        dist_cols = cols + 1;
+    }
+    const distractor_raw = `${dist_rows} × ${dist_cols}`;
+
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      rows,
+      cols,
+      total_dots: rows * cols,
+      correct_val: correct_raw,
+      distractor_val: distractor_raw,
+      color: '#818CF8'
+    };
+    inst.adaptiveConfig.variables = customVars;
+
+    const seedValue = (Number(rows) + Number(cols));
+    let shuffledOrder = (seedValue % 2 === 0) ? [0, 1] : [1, 0];
+    if (inst.adaptiveConfig?.shuffled_order && Array.isArray(inst.adaptiveConfig.shuffled_order)) {
+        shuffledOrder = inst.adaptiveConfig.shuffled_order;
+    }
+    inst.adaptiveConfig.shuffled_order = shuffledOrder;
+    inst.adaptiveConfig.shuffleOptions = false;
+    
+    const optionsRaw = [
+      { type: "text", content: "{correct_val}" },
+      { type: "text", content: "{distractor_val}" }
+    ];
+    
+    const hydratedOptions = optionsRaw.map(opt => {
+        const hyd = hydrateNode(opt, customVars);
+        if (hyd && typeof hyd === 'object') {
+            hyd.label = hyd.content || hyd.text || '';
+        }
+        return hyd;
+    });
+    inst.options = [hydratedOptions[shuffledOrder[0]], hydratedOptions[shuffledOrder[1]]];
+    
+    inst.correctAnswerIndex = shuffledOrder.indexOf(0);
+    inst.correctAnswerText = correct_raw;
+
+    // Logic to prevent double-rendering if template already has a dotArray
+    const hasExistingArray = (question.parts || []).some(p => p.type === 'dotArray' || p.type === 'dot_array');
+    
+    let finalParts = [];
+    if (question.parts && question.parts.length > 0) {
+        // Hydrate and specifically update the dotArray part inside the template
+        finalParts = hydrateNode(question.parts, customVars).map(p => {
+            if (p.type === 'dotArray' || p.type === 'dot_array') {
+                return {
+                    ...p,
+                    rows: rows,
+                    cols: cols,
+                    color: p.color || customVars.color,
+                    gap: p.gap || 12,
+                    dotSize: p.dotSize || 35
+                };
+            }
+            return p;
+        });
+    } else {
+        // Default parts if template has nothing
+        finalParts = [
+            { type: "text", content: "Which expression describes this array?", hasAudio: true },
+            {
+                type: "dotArray",
+                rows: rows,
+                cols: cols,
+                color: customVars.color,
+                gap: 12,
+                dotSize: 35
+            }
+        ];
+    }
+    inst.parts = finalParts;
+
+    inst.solution = [
+        { type: "text", content: "### Identifying the Array" },
+        { type: "dotArray", rows: rows, cols: cols, color: customVars.color, showLabels: true },
+        { type: "text", content: `This array has **${rows} rows** and **${cols} columns**.` },
+        { type: "text", content: `The multiplication expression is: **${rows} × ${cols}**` }
+    ];
+    inst.type = 'mcq';
+  }
+
+  if (logic === 'dot_array_fib_groups_v1' || logic === 'dot_array_fib_cols_v1' || logic === 'dot_array_fib_total_v1') {
+    let rows, cols;
+    const existingVars = (question.adaptiveConfig?.variables || {});
+    if (existingVars.rows && existingVars.cols) {
+        rows = Number(existingVars.rows);
+        cols = Number(existingVars.cols);
+    } else if (overrideVariables) {
+        rows = Number(overrideVariables.rows);
+        cols = Number(overrideVariables.cols);
+    } else {
+        rows = Math.floor(Math.random() * 3) + 2; 
+        cols = Math.floor(Math.random() * 3) + 2;
+    }
+
+    const total = rows * cols;
+    const target = logic.includes('groups') ? 'rows' : (logic.includes('cols') ? 'cols' : 'total');
+    
+    const customVars = {
+      ...(inst.adaptiveConfig?.variables || {}),
+      rows,
+      cols,
+      total_dots: total,
+      target,
+      color: '#FB923C'
+    };
+    inst.adaptiveConfig.variables = customVars;
+
+    let correct = 0;
+    const sentenceParts = [];
+    const mathTextStyle = { fontSize: '2.5rem', fontWeight: '600', padding: '0 0.5rem' };
+    const inputStyle = { width: '80px', height: '80px', fontSize: '1.8rem', textAlign: 'center' };
+
+    if (target === 'rows') {
+        sentenceParts.push(
+            { type: "blank", id: "ans", ...inputStyle },
+            { type: "text", content: ` × ${cols} = ${total}`, ...mathTextStyle }
+        );
+        correct = rows;
+    } else if (target === 'cols') {
+        sentenceParts.push(
+            { type: "text", content: `${rows} × `, ...mathTextStyle },
+            { type: "blank", id: "ans", ...inputStyle },
+            { type: "text", content: ` = ${total}`, ...mathTextStyle }
+        );
+        correct = cols;
+    } else {
+        sentenceParts.push(
+            { type: "text", content: `${rows} × ${cols} = `, ...mathTextStyle },
+            { type: "blank", id: "ans", ...inputStyle }
+        );
+        correct = total;
+    }
+
+    // Smart merge dotArray parts and ensure text
+    let finalParts = [];
+    if (question.parts && question.parts.length > 0) {
+        finalParts = hydrateNode(question.parts, customVars).map(p => {
+            if (p.type === 'dotArray' || p.type === 'dot_array') {
+                return {
+                    ...p,
+                    rows: rows,
+                    cols: cols,
+                    color: p.color || customVars.color,
+                    gap: p.gap || 12,
+                    dotSize: p.dotSize || 45
+                };
+            }
+            return p;
+        });
+    } else {
+        finalParts = [
+            { type: "text", content: "Complete the multiplication number sentence that describes the array.", hasAudio: true },
+            { type: "dotArray", rows, cols, color: customVars.color, gap: 12, dotSize: 45 }
+        ];
+    }
+    
+    inst.parts = [
+      ...finalParts,
+      {
+        type: "sequence",
+        children: sentenceParts,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '2.5rem'
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ ans: correct });
+    inst.solution = [
+        { type: "text", content: `### ${target === 'rows' ? 'Counting rows' : target === 'cols' ? 'Counting columns' : 'Finding the total'}` },
+        { type: "dotArray", rows: rows, cols: cols, color: customVars.color, showLabels: true, imageUrl: inst.parts.find(p => p.type === 'dotArray')?.imageUrl },
+        { type: "text", content: `The array has **${rows} rows** and **${cols} columns**.` },
+        { type: "text", content: `The multiplication sentence is: **${rows} × ${cols} = ${total}**` }
+    ];
+    inst.type = 'fillInTheBlank';
+  }
+
   if (logic === 'vertical_addition_v1' || logic === 'vertical_addition_with_regrouping_v1') {
     let n1, n2, sum;
     let digits1 = [], digits2 = [], sums = [], resDigits = [], finalCarries = [];
@@ -6089,8 +6288,10 @@ function numberToWords(n) {
   }
 
   if (logic === 'sorting_numbers_v1') {
-    const range = question.data_source?.range || [1, 100];
-    const count = Math.min(6, Math.max(3, Number(question.data_source?.count || 4)));
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [1, 100];
+    const count = Math.min(6, Math.max(3, Number(dataSource.count || 4)));
+    const order = dataSource.order || inst.adaptiveConfig?.order || 'ascending';
     
     let nums = [];
     if (overrideVariables && Array.isArray(overrideVariables.nums)) {
@@ -6103,7 +6304,11 @@ function numberToWords(n) {
         nums = Array.from(set);
     }
 
-    const sortedNums = [...nums].sort((a,b) => a - b);
+    // Determine correct sort order
+    const sortedNums = [...nums].sort((a,b) => (order === 'descending' ? b - a : a - b));
+    const sorted_desc = [...nums].sort((a,b) => b - a);
+    const sorted_asc = [...nums].sort((a,b) => a - b);
+
     const itemObjects = nums.map((n, i) => ({ id: `item_${i}`, content: String(n), value: n }));
     const correctIds = sortedNums.map(sn => itemObjects.find(io => io.value === sn).id);
 
@@ -6111,9 +6316,12 @@ function numberToWords(n) {
     const templateVars = { 
         nums: nums, 
         sorted: sortedNums, 
+        sorted_asc,
+        sorted_desc,
         sorted_list: sortedList,
-        smallest: sortedNums[0],
-        largest: sortedNums[sortedNums.length - 1]
+        smallest: sorted_asc[0],
+        largest: sorted_asc[sorted_asc.length - 1],
+        order: order
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
@@ -6123,17 +6331,22 @@ function numberToWords(n) {
     inst.correctAnswerIndex = -1;
     inst.correctAnswerText = JSON.stringify(correctIds);
 
-    inst.parts = hydrateNode(question.parts && question.parts.length > 0 ? question.parts : [
+    const defaultSmallestToLargestParts = [
       { type: 'text', content: 'Put these numbers in order from **smallest** to **largest**.', hasAudio: true }
-    ], templateVars);
+    ];
+    const defaultLargestToSmallestParts = [
+      { type: 'text', content: 'Put these numbers in order from **largest** to **smallest**.', hasAudio: true }
+    ];
+
+    inst.parts = hydrateNode(question.parts && question.parts.length > 0 ? question.parts : (order === 'descending' ? defaultLargestToSmallestParts : defaultSmallestToLargestParts), templateVars);
 
     inst.solution = hydrateNode(question.solution || [
         {
             type: "section",
             label: "strategy",
             parts: [
-                { type: "text", content: "To sort numbers from smallest to largest, always start by looking for the **smallest** number in the group.", isVertical: true },
-                { type: "text", content: "\n1. Find the smallest number: **{smallest}**.\n2. Look at the remaining numbers and find the next smallest.\n3. Keep going until all numbers are sorted!", isVertical: true },
+                { type: "text", content: `To sort numbers from ${order === 'descending' ? 'largest to smallest' : 'smallest to largest'}, always start by looking for the **${order === 'descending' ? 'greatest' : 'smallest'}** number in the group.`, isVertical: true },
+                { type: "text", content: `\n1. Find the ${order === 'descending' ? 'largest' : 'smallest'} number: **${order === 'descending' ? '{largest}' : '{smallest}'}**.\n2. Look at the remaining numbers and find the next ${order === 'descending' ? 'largest' : 'smallest'}.\n3. Keep going until all numbers are sorted!`, isVertical: true },
                 { type: "text", content: "\n**The correct order is:**", isVertical: true },
                 { type: "text", content: "### **{sorted_list}**", isVertical: true }
             ]

@@ -255,38 +255,41 @@
 
 /* Footer / Actions */
 .footer {
-  margin-top: 1rem;
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
 }
 
 .submitButton {
-  width: 100%;
-  background: #2563eb;
+  width: auto;
+  min-width: 200px;
+  background: #22c55e;
   color: white;
-  padding: 1.5rem;
-  border-radius: 24px;
-  font-size: 1.25rem;
-  font-weight: 900;
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  font-size: 1.15rem;
+  font-weight: 700;
   border: none;
   cursor: pointer;
-  box-shadow: 0 8px 0 #1e40af;
+  box-shadow: 0 4px 0 #15803d;
   transition: all 0.2s ease;
 }
 
 .submitButton:not(:disabled):hover {
-  background: #1d4ed8;
+  background: #16a34a;
   transform: translateY(-2px);
-  box-shadow: 0 10px 0 #1e40af;
+  box-shadow: 0 6px 0 #15803d;
 }
 
 .submitButton:not(:disabled):active {
-  transform: translateY(4px);
-  box-shadow: 0 4px 0 #1e40af;
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #15803d;
 }
 
 .submitButton:disabled {
-  background: #cbd5e1;
-  box-shadow: 0 8px 0 #94a3b8;
-  opacity: 0.7;
+  background: #e2e8f0;
+  color: #94a3b8;
+  box-shadow: 0 4px 0 #cbd5e1;
   cursor: not-allowed;
 }
 

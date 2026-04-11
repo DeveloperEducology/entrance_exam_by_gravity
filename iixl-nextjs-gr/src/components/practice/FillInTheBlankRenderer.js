@@ -16,6 +16,7 @@ import ArithmeticBlock from './ArithmeticBlock';
 import BaseTenBlocks from './BaseTenBlocks';
 import NumberLineRounding from './NumberLineRounding';
 import DotsGroupingVisual from './DotsGroupingVisual';
+import DotArrayVisual from './DotArrayVisual';
 
 function InlineLatexBlanks({
     part,
@@ -2136,6 +2137,10 @@ export default function FillInTheBlankRenderer({
             case 'dotsGrouping':
             case 'dots_grouping':
                 return wrapPart(part, index, <DotsGroupingVisual part={part} />);
+
+            case 'dotArray':
+            case 'dot_array':
+                return wrapPart(part, index, <DotArrayVisual part={part} />);
 
             case 'shadeGrid':
             case 'fractionModel':
