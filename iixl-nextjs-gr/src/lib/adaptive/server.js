@@ -5,6 +5,8 @@ const ORDER_COLUMNS = ['sort_order', 'idx', 'created_at', 'id'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 const REMEDIATION_SEQUENCE_LENGTH = 2;
 const DEFAULT_POLICY_VERSION = process.env.ADAPTIVE_POLICY_VERSION || 'misconception_v2';
+const QUESTION_POOL_CACHE_TTL_MS = 60 * 1000;
+const questionPoolCache = new Map();
 
 function parseNumber(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -278,6 +280,11 @@ export function toPublicQuestion(question) {
 
 export async function fetchQuestionsByMicroskill(db, microskillId) {
   if (!microskillId) return [];
+  const cacheKey = String(microskillId);
+  const cached = questionPoolCache.get(cacheKey);
+  if (cached && (Date.now() - cached.ts) < QUESTION_POOL_CACHE_TTL_MS) {
+    return cached.rows;
+  }
   const query = {
     $or: SKILL_COLUMNS.map(col => ({ [col]: microskillId }))
   };
@@ -285,8 +292,9 @@ export async function fetchQuestionsByMicroskill(db, microskillId) {
     .find(query)
     .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
     .toArray();
-
-  return rows.map(mapDbQuestion);
+  const mapped = rows.map(mapDbQuestion);
+  questionPoolCache.set(cacheKey, { ts: Date.now(), rows: mapped });
+  return mapped;
 }
 
 export function validateAnswer(question, answer) {
@@ -298,10 +306,59 @@ export function validateAnswer(question, answer) {
     case 'imagechoice':
     case 'tokenselection': {
       const isToken = type === 'tokenselection';
+      
+      const getTokens = (q) => {
+        const parts = Array.isArray(q.parts) ? q.parts : [];
+        const sentencePart = parts.find(p => p.type === 'token_sentence');
+        if (sentencePart && Array.isArray(sentencePart.tokens)) return sentencePart.tokens;
+        if (parts.some(p => p.type === 'token')) return parts.filter(p => p.type === 'token');
+        return Array.isArray(q.tokens) ? q.tokens : [];
+      };
+
+      const tokens = getTokens(question);
+      const idToText = Object.fromEntries(tokens.map(t => [String(t.id), String(t.text || t)]));
+      const textToIds = {};
+      tokens.forEach(t => {
+        const txt = String(t.text || t).trim().toLowerCase();
+        if (!textToIds[txt]) textToIds[txt] = [];
+        textToIds[txt].push(String(t.id));
+      });
+
+      // Helper to normalize any answer format into a sorted array of trimmed strings
+      const normalizeSelection = (val) => {
+        if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
+        if (!val) return [];
+        let parsed = val;
+        if (typeof val === 'string') {
+          try {
+            parsed = JSON.parse(val);
+          } catch {
+            parsed = val.split(',').map(s => s.trim()).filter(Boolean);
+          }
+        }
+        if (Array.isArray(parsed)) return parsed.map(v => String(v).trim()).filter(Boolean);
+        return [String(parsed).trim()].filter(Boolean);
+      };
+
+      const resolveToIds = (vals) => {
+        const items = normalizeSelection(vals);
+        const resolved = new Set();
+        items.forEach(item => {
+          const itemLower = item.toLowerCase();
+          if (idToText[item]) {
+            resolved.add(item);
+          } else if (textToIds[itemLower]) {
+            // If it's pure text, map to all possible IDs for that text
+            textToIds[itemLower].forEach(id => resolved.add(id));
+          } else {
+            resolved.add(item); // Fallback
+          }
+        });
+        return Array.from(resolved).sort();
+      };
+
       if (question.isMultiSelect) {
-        const selected = Array.isArray(answer) 
-          ? [...answer].sort() 
-          : (isToken ? parseMaybeJson(answer, []) : []).sort();
+        const selectedIds = resolveToIds(answer);
         
         const indices = Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
           ? question.correctAnswerIndices
@@ -311,16 +368,18 @@ export function validateAnswer(question, answer) {
           ? (indices || parseMaybeJson(question.correctAnswerText, []))
           : (indices || []);
         
-        const correct = Array.isArray(correctSource) ? [...correctSource].sort() : [];
-        return JSON.stringify(selected) === JSON.stringify(correct);
+        const correctIds = resolveToIds(correctSource);
+        return JSON.stringify(selectedIds) === JSON.stringify(correctIds);
       }
+      
       if (isToken) {
-        const rawAnswer = parseMaybeJson(answer, answer);
-        const normalizedAnswer = Array.isArray(rawAnswer) ? rawAnswer[0] : rawAnswer;
-        const expectedRaw = question.correctAnswerIndex || question.correctAnswerText;
-        const expectedParsed = parseMaybeJson(expectedRaw, expectedRaw);
-        const expected = Array.isArray(expectedParsed) ? expectedParsed[0] : expectedParsed;
-        return String(normalizedAnswer ?? '') === String(expected ?? '');
+        const selectedIds = resolveToIds(answer);
+        const expectedSource = question.correctAnswerIndex ?? question.correctAnswerText;
+        const expectedIds = resolveToIds(expectedSource);
+        
+        if (selectedIds.length === 0 || expectedIds.length === 0) return false;
+        // For single select, check if the selected ID is among the expected IDs (usually just one)
+        return expectedIds.includes(selectedIds[0]);
       }
 
       // 1. Try by Index
@@ -399,11 +458,23 @@ export function validateAnswer(question, answer) {
 
       if (!allCorrect) return false;
 
+      const ignoredExtraPrefixes = [
+        ...(Array.isArray(question.validation?.ignoreExtraAnswerPrefixes)
+          ? question.validation.ignoreExtraAnswerPrefixes
+          : []),
+        ...(Array.isArray(question.adaptiveConfig?.validation?.ignoreExtraAnswerPrefixes)
+          ? question.adaptiveConfig.validation.ignoreExtraAnswerPrefixes
+          : [])
+      ]
+        .map((prefix) => String(prefix || '').trim())
+        .filter(Boolean);
+
       // Anti-guessing check: Ensure NO extra incorrect values were entered in non-mapped inputs
-      // (e.g. putting a carry "1" where none is needed)
+      // unless the question explicitly marks them as scaffold/work-area fields.
       return Object.keys(answer || {}).every((key) => {
           // If the key is in parsed, we already checked it
           if (parsed[key] !== undefined) return true;
+          if (ignoredExtraPrefixes.some((prefix) => String(key).startsWith(prefix))) return true;
           
           // If not in parsed, it SHOULD be empty or "0"
           const actual = String(answer[key] ?? '').trim().toLowerCase();

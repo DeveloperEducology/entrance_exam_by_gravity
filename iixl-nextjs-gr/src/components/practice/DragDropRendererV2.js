@@ -1,28 +1,26 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
   useDraggable,
   useDroppable,
+  KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
-  DragOverlay,
-  closestCenter,
+  rectIntersection,
   MeasuringStrategy,
-  defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import styles from './DragDropRendererV2.module.css';
 import QuestionParts from './QuestionParts';
 import { getImageSrc, isImageUrl, isInlineSvg } from './contentUtils';
 import SafeImage from './SafeImage';
 
 const POOL_ID = '__pool__';
-
-// --- Sub-Components ---
 
 function DraggableItem({ 
   id, 
@@ -41,11 +39,11 @@ function DraggableItem({
 
   const style = { 
     transform: CSS.Translate.toString(transform),
-    touchAction: 'none'
+    touchAction: 'none',
+    zIndex: isDragging ? 40 : undefined
   };
 
   const imageSource = getImageSrc(item.imageUrl || item.content);
-  const hasImage = isImageUrl(imageSource) || isInlineSvg(imageSource);
 
   return (
     <div
@@ -61,8 +59,7 @@ function DraggableItem({
       }}
       className={`
         ${styles.dragItem}
-        ${isOverlay ? styles.isOverlay : ''}
-        ${isDragging && !isOverlay ? styles.hidden : ''}
+        ${isDragging ? styles.dragging : ''}
         ${isSelected ? styles.selected : ''}
         ${isAnswered && isCorrect ? styles.correct : ''}
         ${isAnswered && !isCorrect ? styles.incorrect : ''}
@@ -73,7 +70,7 @@ function DraggableItem({
           {isCorrect ? '✓' : '✕'}
         </div>
       )}
-      
+
       {isInlineSvg(imageSource) ? (
         <div className={styles.itemImage} dangerouslySetInnerHTML={{ __html: imageSource }} />
       ) : isImageUrl(imageSource) ? (
@@ -153,9 +150,15 @@ export default function DragDropRendererV2({
     }));
   }, [question]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { 
-    activationConstraint: { distance: 5 } 
-  }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 }
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 6 }
+    }),
+    useSensor(KeyboardSensor)
+  );
 
   // Map placements: { itemId: groupId }
   const placements = useMemo(() => {
@@ -166,10 +169,19 @@ export default function DragDropRendererV2({
   const getUnplacedItems = () => dragItems.filter(item => !placements[item.id]);
   const getItemsInGroup = (groupId) => dragItems.filter(item => placements[item.id] === String(groupId));
 
+  useEffect(() => {
+    if (selectedId && !dragItems.some((item) => item.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [dragItems, selectedId]);
+
   const handleDragStart = (e) => {
     if (isAnswered) return;
     setActiveId(String(e.active.id));
     setSelectedId(null);
+    if (typeof window !== 'undefined' && window.navigator?.vibrate) {
+      window.navigator.vibrate(20);
+    }
   };
 
   const handleDragEnd = (e) => {
@@ -180,6 +192,7 @@ export default function DragDropRendererV2({
 
     const itemId = String(active.id);
     const targetId = String(over.id);
+    const isKnownBucket = dropGroups.some((group) => group.id === targetId);
 
     if (targetId === POOL_ID || targetId.startsWith('slot-')) {
       // Remove from bucket
@@ -188,7 +201,7 @@ export default function DragDropRendererV2({
         delete next[itemId];
         onAnswer(next);
       }
-    } else {
+    } else if (isKnownBucket) {
       // Move to bucket
       onAnswer({ ...placements, [itemId]: targetId });
     }
@@ -245,15 +258,18 @@ export default function DragDropRendererV2({
         </div>
 
         <DndContext 
-          sensors={sensors} 
-          collisionDetection={closestCenter} 
+          sensors={sensors}
+          collisionDetection={rectIntersection}
           onDragStart={handleDragStart} 
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         >
           {/* Item Bank Slots */}
-          <div className={styles.itemsPool}>
+          <div
+            className={styles.itemsPool}
+            onClick={(e) => e.stopPropagation()}
+          >
             {dragItems.map((item, idx) => {
               const isPlaced = !!placements[item.id];
               return (
@@ -313,22 +329,12 @@ export default function DragDropRendererV2({
             ))}
           </div>
 
-          <DragOverlay dropAnimation={{
-            sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
-            duration: 250,
-            easing: 'cubic-bezier(0.18, 0.89, 0.32, 1.28)'
-          }}>
-            {activeId && activeItem ? (
-              <div className={styles.overlayWrapper}>
-                <DraggableItem 
-                  id={activeId} 
-                  item={activeItem} 
-                  isOverlay 
-                  disabled={false}
-                />
-              </div>
-            ) : null}
-          </DragOverlay>
+          {!isAnswered ? (
+            <div className={styles.instructionPill}>
+              Drag items or tap an item, then tap a group.
+            </div>
+          ) : null}
+
         </DndContext>
 
         <div className={styles.footer}>

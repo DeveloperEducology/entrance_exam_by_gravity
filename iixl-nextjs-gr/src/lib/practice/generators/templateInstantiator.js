@@ -7533,13 +7533,55 @@ function numberToWords(n) {
     const range1 = dataSource.range1 || [10, 99];
     const range2 = dataSource.range2 || [10, 99];
     
+    const allowCarry = dataSource.allow_carry !== false;
+    
     let n1, n2;
     if (overrideVariables) {
       n1 = Number(overrideVariables.n1);
       n2 = Number(overrideVariables.n2);
     } else {
-      n1 = Math.floor(Math.random() * (range1[1] - range1[0] + 1)) + range1[0];
-      n2 = Math.floor(Math.random() * (range2[1] - range2[0] + 1)) + range2[0];
+      let attempts = 0;
+      do {
+        n2 = Math.floor(Math.random() * (range2[1] - range2[0] + 1)) + range2[0];
+        
+        if (!allowCarry && n2 < 10) {
+           // Constructive bias: pick digits that are less likely to carry
+           const dMax = Math.floor(9 / n2);
+           const len = String(range1[1]).length;
+           let res = "";
+           for (let i = 0; i < len; i++) {
+             res += Math.floor(Math.random() * (dMax + 1));
+           }
+           n1 = Number(res);
+        } else {
+           n1 = Math.floor(Math.random() * (range1[1] - range1[0] + 1)) + range1[0];
+        }
+        
+        // Range check
+        if (n1 < range1[0] || n1 > range1[1]) {
+           attempts++;
+           continue;
+        }
+
+        if (allowCarry) break;
+        
+        // Strict Validation check
+        if (n2 < 10) {
+          let hasCarry = false;
+          let carry = 0;
+          const digits = String(n1).split('').reverse();
+          for (let d of digits) {
+            const prod = (Number(d) * n2) + carry;
+            if (prod >= 10) { hasCarry = true; break; }
+            carry = Math.floor(prod / 10);
+          }
+          if (!hasCarry) break;
+        } else {
+          // Multi-digit multiplier: just accept if allowed, or keep trying
+          break;
+        }
+        attempts++;
+      } while (attempts < 200);
     }
 
     const prod = n1 * n2;
@@ -8144,6 +8186,228 @@ function numberToWords(n) {
     ];
 
     inst.adaptiveConfig.variables = { category, mode, resultVal };
+  }
+
+  if (logic === 'math_multiplication_area_model_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const difficulty = (inst.difficulty || 'medium').toLowerCase();
+    
+    let range1, range2;
+    if (difficulty === 'easy') {
+      range1 = dataSource.easy_range1 || dataSource.range1 || [10, 99];
+      range2 = dataSource.easy_range2 || dataSource.range2 || [10, 19];
+    } else if (difficulty === 'hard') {
+      range1 = dataSource.hard_range1 || dataSource.range1 || [100, 999];
+      range2 = dataSource.hard_range2 || dataSource.range2 || [20, 99];
+    } else {
+      range1 = dataSource.med_range1 || dataSource.range1 || [10, 99];
+      range2 = dataSource.med_range2 || dataSource.range2 || [10, 99];
+    }
+
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      n1 = Math.floor(Math.random() * (range1[1] - range1[0] + 1)) + range1[0];
+      n2 = Math.floor(Math.random() * (range2[1] - range2[0] + 1)) + range2[0];
+    }
+
+    const decompose = (num) => {
+      const parts = [];
+      const s = String(num);
+      for (let i = 0; i < s.length; i++) {
+        const digit = Number(s[i]);
+        if (digit > 0 || s.length === 1) {
+          parts.push(digit * Math.pow(10, s.length - 1 - i));
+        }
+      }
+      return parts;
+    };
+
+    const p1 = decompose(n1);
+    const p2 = decompose(n2);
+
+    const maxDigits = 4; // Support up to thousands for partial sums
+    const rowCount = p1.length + 2; 
+    const areaCols = p2.length + 1;
+    const spacerCols = 1;
+    const colCount = areaCols + spacerCols + maxDigits;
+    
+    const cells = [];
+    const solutionCells = [];
+    const ansMap = {};
+
+    // --- AREA MODEL PART (Left side) ---
+    cells.push({ r: 0, c: 0, content: "×", style: { fontWeight: "bold", borderRight: '1px solid #ccc', borderBottom: '1px solid #ccc' } });
+    solutionCells.push({ r: 0, c: 0, content: "×", fontWeight: "bold" });
+
+    p2.forEach((val, cIdx) => {
+      cells.push({ r: 0, c: cIdx + 1, content: String(val), style: { fontWeight: "bold", textAlign: "center", borderBottom: '1px solid #ccc' } });
+      solutionCells.push({ r: 0, c: cIdx + 1, content: String(val), fontWeight: "bold" });
+    });
+    
+    p1.forEach((v1, rIdx) => {
+      cells.push({ r: rIdx + 1, c: 0, content: String(v1), style: { fontWeight: "bold", textAlign: "center", borderRight: '1px solid #ccc' } });
+      solutionCells.push({ r: rIdx + 1, c: 0, content: String(v1), fontWeight: "bold" });
+      
+      p2.forEach((v2, cIdx) => {
+        const partialProd = v1 * v2;
+        const id = `scaffold_p_${rIdx}_${cIdx}`;
+        cells.push({ 
+          r: rIdx + 1, 
+          c: cIdx + 1, 
+          type: "input", 
+          id,
+          maxLength: 6,
+          style: { textAlign: 'center', width: '70px', height: '44px', fontWeight: 'bold' }
+        });
+        ansMap[id] = String(partialProd);
+        solutionCells.push({
+          r: rIdx + 1,
+          c: cIdx + 1,
+          content: String(partialProd),
+          renderAsInput: true,
+          color: '#15803d',
+          fontWeight: 'bold',
+          highlight: true
+        });
+      });
+    });
+
+    // --- ADDITION GRID PART (Right side) ---
+    let totalValue = 0;
+    p1.forEach((v1, rIdx) => {
+      let rowSum = 0;
+      p2.forEach((v2) => { rowSum += (v1 * v2); });
+      totalValue += rowSum;
+
+      // Only show boxes needed for this specific sum
+      const rowSumStr = String(rowSum);
+      const rowSumDigits = rowSumStr.length;
+      
+      for (let d = 0; d < rowSumDigits; d++) {
+        const char = rowSumStr[d];
+        // Right-align by shifting col start
+        const colShift = 4 - rowSumDigits; 
+        const col = areaCols + spacerCols + colShift + d;
+        const id = `scaffold_row_sum_${rIdx}_d${d}`;
+        
+        cells.push({
+          r: rIdx + 1,
+          c: col,
+          type: "input",
+          id,
+          maxLength: 1,
+          style: { 
+            textAlign: 'center', 
+            width: '32px', 
+            height: '32px',
+            border: '1px solid #000',
+            borderRadius: '0px',
+            margin: '0',
+            backgroundColor: '#fff',
+            color: '#000'
+          }
+        });
+        solutionCells.push({
+          r: rIdx + 1,
+          c: col,
+          content: char,
+          renderAsInput: true,
+          color: '#15803d',
+          fontWeight: 'bold'
+        });
+      }
+    });
+
+    // --- FINAL TOTAL PART (Bottom right) ---
+    const totalStr = String(totalValue);
+    const totalDigits = totalStr.length;
+    for (let d = 0; d < totalDigits; d++) {
+      const char = totalStr[d];
+      const colShift = 4 - totalDigits;
+      const col = areaCols + spacerCols + colShift + d;
+      const id = `scaffold_total_sum_d${d}`;
+      
+      cells.push({
+        r: rowCount - 1,
+        c: col,
+        type: "input",
+        id,
+        maxLength: 1,
+        style: { 
+          textAlign: 'center', 
+          width: '32px', 
+          height: '32px', 
+          fontWeight: 'bold',
+          border: '1px solid #000',
+          borderRadius: '0px',
+          margin: '0',
+          backgroundColor: '#fff',
+          color: '#000'
+        }
+      });
+      solutionCells.push({
+        r: rowCount - 1,
+        c: col,
+        content: char,
+        renderAsInput: true,
+        color: '#15803d',
+        fontWeight: 'bold',
+        highlight: true
+      });
+    }
+
+    inst.parts = [
+      { type: "text", content: `Break apart the numbers and multiply to fill the area model representing **${n1} × ${n2}**. Then, add by place value.`, isVertical: true },
+      { 
+        id: "area_table", 
+        type: "smartTable", 
+        config: { 
+          rows: rowCount, 
+          cols: areaCols + spacerCols + 4, 
+          cellPadding: '8px',
+          borderType: 'none'
+        }, 
+        cells 
+      },
+      { type: "text", content: `What is the final product of **${n1}** and **${n2}**?`, isVertical: true },
+      { type: "text", content: "[[total]]", isVertical: true }
+    ];
+    
+    // Only validate the final total, the rest is "Work Area" scaffolding
+    const validationMap = { 
+      "total": String(n1 * n2) 
+    };
+
+    inst.solution = [
+      { type: 'text', content: `Break apart **${n1}** into ${p1.join(' + ')} and **${n2}** into ${p2.join(' + ')}.`, isVertical: true },
+      { type: 'text', content: `Multiply each row part by each column part, then add the partial sums to get the product.`, isVertical: true },
+      {
+        id: 'area_table_solution',
+        type: 'smartTable',
+        config: {
+          rows: rowCount,
+          cols: areaCols + spacerCols + 4,
+          cellPadding: '8px',
+          borderType: 'none'
+        },
+        cells: solutionCells
+      },
+      { type: 'text', content: `The final product is **${n1 * n2}**.`, isVertical: true }
+    ];
+
+    inst.correctAnswerText = JSON.stringify(validationMap);
+    inst.correct_answer_text = String(n1 * n2);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    inst.adaptiveConfig.variables = { n1, n2, total: n1 * n2 };
+    inst.validation = {
+      ...(inst.validation || {}),
+      ignoreExtraAnswerPrefixes: ['scaffold_']
+    };
+    inst.correctAnswer = n1 * n2;
+    inst.type = 'fillInTheBlank';
   }
 
   // Always provide a unique instance ID if it was hydrated from a template

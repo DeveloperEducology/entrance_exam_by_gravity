@@ -1500,6 +1500,7 @@ export default function FillInTheBlankRenderer({
                                                                     }
                                                                 }}
                                                                 onFocus={() => setLastFocusedId(cell.id)}
+                                                                style={cell.style}
                                                                 maxLength={maxLen}
                                                                 disabled={isAnswered}
                                                             />

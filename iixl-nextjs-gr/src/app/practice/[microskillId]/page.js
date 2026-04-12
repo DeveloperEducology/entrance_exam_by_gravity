@@ -245,12 +245,21 @@ function getCorrectAnswerDisplay(question) {
         }
       }
 
-      const sentencePart = (question.parts || []).find(p => p.type === 'token_sentence');
-      const tokenArr = sentencePart ? (sentencePart.tokens || []) : (question.tokens || []);
+      const parts = Array.isArray(question.parts) ? question.parts : [];
+      const sentencePart = parts.find(p => p.type === 'token_sentence');
+      let tokenArr = [];
+      
+      if (sentencePart && Array.isArray(sentencePart.tokens)) {
+        tokenArr = sentencePart.tokens;
+      } else if (parts.some(p => p.type === 'token')) {
+        tokenArr = parts.filter(p => p.type === 'token');
+      } else {
+        tokenArr = Array.isArray(question.tokens) ? question.tokens : [];
+      }
       
       const labels = ids.map(id => {
         const token = tokenArr.find(t => String(t.id) === String(id));
-        return token ? token.text : id;
+        return token ? (token.text || token.content || token) : id;
       });
 
       return labels.length > 0 ? labels.join(', ') : 'No answer';
@@ -411,12 +420,21 @@ function getSelectedAnswerDisplay(question, answer) {
       }
     }
 
-    const sentencePart = (question.parts || []).find(p => p.type === 'token_sentence');
-    const tokenArr = sentencePart ? (sentencePart.tokens || []) : (question.tokens || []);
+    const parts = Array.isArray(question.parts) ? question.parts : [];
+    const sentencePart = parts.find(p => p.type === 'token_sentence');
+    let tokenArr = [];
+    
+    if (sentencePart && Array.isArray(sentencePart.tokens)) {
+      tokenArr = sentencePart.tokens;
+    } else if (parts.some(p => p.type === 'token')) {
+      tokenArr = parts.filter(p => p.type === 'token');
+    } else {
+      tokenArr = Array.isArray(question.tokens) ? question.tokens : [];
+    }
     
     const labels = ids.map(id => {
       const token = tokenArr.find(t => String(t.id) === String(id));
-      return token ? token.text : id;
+      return token ? (token.text || token.content || token) : id;
     });
 
     return labels.length > 0 ? labels.join(', ') : 'No selection';
@@ -462,8 +480,9 @@ function getSelectedAnswerDisplay(question, answer) {
     if (!answer || typeof answer !== 'object') return 'No answer';
     
     // Find arithmetic IDs (prefixed with a_ for addition, d_ for subtraction, or digit_ for new templates)
+    // Filter out scaffolding work keys (prefixed with scaffold_)
     const keys = Object.keys(answer);
-    const answerKeys = keys.filter(k => k.startsWith('a_') || k.startsWith('d_') || k.startsWith('digit_'));
+    const answerKeys = keys.filter(k => !k.startsWith('scaffold_') && (k.startsWith('a_') || k.startsWith('d_') || k.startsWith('digit_')));
     
     if (answerKeys.length > 0) {
       // Sort by suffix number
@@ -482,7 +501,7 @@ function getSelectedAnswerDisplay(question, answer) {
       return joined || 'No answer';
     }
 
-    const entries = Object.entries(answer);
+    const entries = Object.entries(answer).filter(([k]) => !k.startsWith('scaffold_'));
     if (entries.length === 0) return 'No answer';
     return entries.map(([k, v]) => `${v}`).join(', ');
   }
@@ -843,6 +862,7 @@ export default function PracticePage() {
                 studentId,
                 microSkillId: actualMicroSkillId,
                 sessionId: getStoredAdaptiveSessionId(actualMicroSkillId),
+                includeFirstQuestion: true,
               }),
             });
             const sessionPayload = await sessionRes.json();
@@ -857,26 +877,14 @@ export default function PracticePage() {
             setStoredAdaptiveSessionId(actualMicroSkillId, sessionPayload.sessionId);
             setAdaptivePhase(sessionPayload.phase || 'warmup');
 
-            const nextRes = await fetch('/api/adaptive/next-question', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sessionId: sessionPayload.sessionId,
-                studentId,
-                microSkillId: actualMicroSkillId,
-              }),
-            });
-            const nextPayload = await nextRes.json();
-            if (!active) return;
-
-            if (!nextRes.ok || !nextPayload.question) {
-              const reason = nextPayload?.error || 'Adaptive question selection failed.';
+            if (!sessionPayload.question) {
+              const reason = sessionPayload?.error || 'Adaptive question selection failed.';
               throw new Error(reason);
             }
 
-            firstQuestion = nextPayload.question;
+            firstQuestion = sessionPayload.question;
             setUsingAdaptiveApi(true);
-            setAdaptiveMeta(nextPayload.selectionMeta || null);
+            setAdaptiveMeta(sessionPayload.selectionMeta || null);
             console.log('Loaded first adaptive question:', firstQuestion.id, firstQuestion.difficulty);
           } catch (adaptiveError) {
             setUsingAdaptiveApi(false);

@@ -126,9 +126,15 @@ function buildBasicFeedback(question, selectedAnswer = null) {
 
              const parts = Array.isArray(question.parts) ? question.parts : [];
              const sentencePart = parts.find(p => p.type === 'token_sentence');
-             const tokenArr = (sentencePart && Array.isArray(sentencePart.tokens)) 
-                 ? sentencePart.tokens 
-                 : (Array.isArray(question.tokens) ? question.tokens : []);
+             let tokenArr = [];
+             
+             if (sentencePart && Array.isArray(sentencePart.tokens)) {
+               tokenArr = sentencePart.tokens;
+             } else if (parts.some(p => p.type === 'token')) {
+               tokenArr = parts.filter(p => p.type === 'token');
+             } else {
+               tokenArr = Array.isArray(question.tokens) ? question.tokens : [];
+             }
              
              const texts = ids.map(id => {
                 const tk = tokenArr.find(t => String(t.id || t) === String(id));
@@ -255,25 +261,13 @@ function extractIdempotencyResponse(correctPayload) {
 
 async function findIdempotentReplay(db, { sessionId, studentId, microskillId, questionId, attemptId }) {
   if (!attemptId) return null;
-
-  const data = await db.collection('attempt_events')
-    .find({
-      session_id: sessionId,
-      student_id: studentId,
-      micro_skill_id: microskillId,
-      question_id: questionId,
-    })
-    .sort({ created_at: -1 })
-    .limit(40)
-    .toArray();
-
-  if (!Array.isArray(data)) return null;
-
-  const matched = data.find((row) => {
-    const candidate = row?.correct_payload?.idempotency?.attemptId;
-    return String(candidate || '') === String(attemptId);
+  const matched = await db.collection('attempt_events').findOne({
+    session_id: sessionId,
+    student_id: studentId,
+    micro_skill_id: microskillId,
+    question_id: questionId,
+    'correct_payload.idempotency.attemptId': attemptId,
   });
-
   return extractIdempotencyResponse(matched?.correct_payload);
 }
 
@@ -369,6 +363,7 @@ export async function POST(req) {
     ]);
 
     let currentQuestion = null;
+    let alreadyHydrated = false;
     if (questionId && (String(questionId).startsWith('generated_pv_') || String(questionId).startsWith('inst_'))) {
       
       // Default fake payload for validation
@@ -383,7 +378,6 @@ export async function POST(req) {
       const instParts = String(questionId).split('_');
       if (instParts.length >= 4 && instParts[0] === 'inst') {
          // The inst ID format is inst_{templateId}_{timestamp}_{random}
-         // templateId might contain underscores, so we join the parts between.
          const templateId = instParts.slice(1, -2).join('_');
          const dbTemplate = questions.find(q => String(q.id) === templateId || String(q.template_id) === templateId || String(q.adaptiveConfig?.template_id) === templateId);
          
@@ -392,7 +386,21 @@ export async function POST(req) {
             const reconstructed = instantiateTemplate(dbTemplate, payload.adaptiveConfig.variables);
             reconstructed.id = questionId; // ensure ID matches the submitted ID perfectly
             currentQuestion = reconstructed;
+            alreadyHydrated = true;
+         } else if (payload.questionSnapshot) {
+            // Fallback: If DB template for this specific instance isn't in the current microskill's pool, 
+            // use the snapshot provided by the client (which has the tokens)
+            currentQuestion = {
+              ...payload.questionSnapshot,
+              id: questionId // force trust the ID
+            };
          }
+      } else if (payload.questionSnapshot) {
+         // Fallback for generated_pv_ or other dynamic types
+         currentQuestion = {
+           ...payload.questionSnapshot,
+           id: questionId
+         };
       }
       
     } else {
@@ -404,7 +412,7 @@ export async function POST(req) {
     }
     
     // HYDRATE currentQuestion if it's a template!
-    if (currentQuestion && (currentQuestion.logic_type || currentQuestion.adaptiveConfig?.logic_type)) {
+    if (!alreadyHydrated && currentQuestion && (currentQuestion.logic_type || currentQuestion.adaptiveConfig?.logic_type)) {
        const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
        currentQuestion = instantiateTemplate(currentQuestion, payload.adaptiveConfig?.variables || null);
     }
@@ -541,7 +549,7 @@ export async function POST(req) {
           },
           idempotency: {
             attemptId: attemptId || null,
-          }
+          },
         },
         selected_difficulty: currentQuestion.difficulty ?? 'easy',
         concept_tags: currentQuestion.adaptiveConfig?.conceptTags || [],
@@ -628,39 +636,22 @@ export async function POST(req) {
       },
     };
 
-    await insertAttemptEvent(db, {
-      session_id: sessionId,
-      student_id: studentId,
-      micro_skill_id: microskillId,
-      question_id: questionId,
-      is_correct: isCorrect,
-      response_ms: Math.max(0, responseMs),
-      attempts_on_question: Math.max(1, attemptsOnQuestion),
-      hint_used: hintUsed,
-      answer_payload: answer,
-      correct_payload: {
-        correctAnswerText: currentQuestion.correctAnswerText,
-        masteryUpdate: {
-          prevScore: mastery.prevScore,
-          newScore: mastery.masteryScore,
-          confidence: mastery.confidence,
-          difficultyBand: mastery.difficultyBand,
+    if (attemptId) {
+      await db.collection('attempt_events').updateOne(
+        {
+          session_id: sessionId,
+          student_id: studentId,
+          micro_skill_id: microskillId,
+          question_id: questionId,
+          'correct_payload.idempotency.attemptId': attemptId,
         },
-        sessionUpdate: {
-          phase: effectivePhase,
-          currentStreak: sessionUpdate.currentStreak,
-          askedCount: sessionUpdate.askedCount,
-          correctCount: sessionUpdate.correctCount,
-        },
-        idempotency: {
-          attemptId: attemptId || null,
-          responsePayload,
-        },
-      },
-      selected_difficulty: currentQuestion.difficulty ?? 'easy',
-      concept_tags: currentQuestion.adaptiveConfig?.conceptTags || [],
-      misconception_code: misconceptionCodeForWrongAnswer ?? null,
-    });
+        {
+          $set: {
+            'correct_payload.idempotency.responsePayload': responsePayload,
+          },
+        }
+      );
+    }
 
     if (!isCorrect && misconceptionCodeForWrongAnswer) {
       try {

@@ -196,7 +196,7 @@ function validateAnswer(question, answer) {
           ? (parsed.ans || parsed.value || parsed.correctAnswer || Object.values(parsed)[0])
           : rawText;
 
-        if (String(answer).trim().toLowerCase() === String(expectedVal ?? '').trim().toLowerCase()) {
+        if (normalizeMathSentence(answer) === normalizeMathSentence(expectedVal)) {
           return true;
         }
       }
@@ -205,16 +205,28 @@ function validateAnswer(question, answer) {
       if (!parsed || typeof parsed !== 'object') {
         if (!answer) return false;
         const answerVal = (typeof answer === 'object') ? Object.values(answer)[0] : answer;
-        return String(answerVal ?? '').trim().toLowerCase() === String(rawText ?? '').trim().toLowerCase();
+        return normalizeMathSentence(answerVal) === normalizeMathSentence(rawText);
       }
       
-      return Object.keys(parsed).every((key) => {
+      const allCorrect = Object.keys(parsed).every((key) => {
         const actual = String(answer?.[key] ?? '').trim().toLowerCase();
         const expected = parsed[key];
+        
         if (Array.isArray(expected)) {
-          return expected.map((value) => String(value).trim().toLowerCase()).includes(actual);
+          return expected.map((value) => String(value ?? '').trim().toLowerCase()).includes(actual);
         }
-        return actual === String(expected).trim().toLowerCase();
+        return normalizeMathSentence(actual) === normalizeMathSentence(expected);
+      });
+
+      if (!allCorrect) return false;
+
+      // Anti-guessing check: Ensure NO extra incorrect values were entered in non-mapped inputs
+      // IGNORE scaffold_ keys as they are works-in-progress
+      return Object.keys(answer || {}).every((key) => {
+          if (key.startsWith('scaffold_')) return true;
+          if (parsed[key] !== undefined) return true;
+          const actual = String(answer[key] ?? '').trim().toLowerCase();
+          return actual === "" || actual === "0";
       });
     }
     case 'draganddrop':
@@ -244,9 +256,67 @@ function validateAnswer(question, answer) {
       if (expected == null || actual == null) return false;
       return Math.abs(actual - expected) < 0.0001;
     }
+    case 'tokenselection': {
+      const getTokens = (q) => {
+        const parts = Array.isArray(q.parts) ? q.parts : [];
+        const sentencePart = parts.find(p => p.type === 'token_sentence');
+        if (sentencePart && Array.isArray(sentencePart.tokens)) return sentencePart.tokens;
+        if (parts.some(p => p.type === 'token')) return parts.filter(p => p.type === 'token');
+        return Array.isArray(q.tokens) ? q.tokens : [];
+      };
+
+      const normalizeSelection = (val) => {
+        if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
+        if (!val) return [];
+        let parsed = val;
+        if (typeof val === 'string') {
+          try {
+            parsed = JSON.parse(val);
+          } catch {
+            parsed = val.split(',').map(s => s.trim()).filter(Boolean);
+          }
+        }
+        if (Array.isArray(parsed)) return parsed.map(v => String(v).trim()).filter(Boolean);
+        return [String(parsed).trim()].filter(Boolean);
+      };
+
+      const tokens = getTokens(question);
+      const idToText = Object.fromEntries(tokens.map(t => [String(t.id), String(t.text || t)]));
+      const textToIds = {};
+      tokens.forEach(t => {
+        const txt = String(t.text || t).trim().toLowerCase();
+        if (!textToIds[txt]) textToIds[txt] = [];
+        textToIds[txt].push(String(t.id));
+      });
+
+      const resolveToIds = (vals) => {
+        const items = normalizeSelection(vals);
+        const resolved = new Set();
+        items.forEach(item => {
+          const itemLower = item.toLowerCase();
+          if (idToText[item]) {
+            resolved.add(item);
+          } else if (textToIds[itemLower]) {
+            textToIds[itemLower].forEach(id => resolved.add(id));
+          } else {
+            resolved.add(item);
+          }
+        });
+        return Array.from(resolved).sort();
+      };
+
+      const selectedIds = resolveToIds(answer);
+      const expectedSource = question.correctAnswerIndex ?? question.correctAnswerText;
+      const expectedIds = resolveToIds(expectedSource);
+      
+      if (question.isMultiSelect) {
+        return JSON.stringify(selectedIds) === JSON.stringify(expectedIds);
+      }
+      return selectedIds.length > 0 && expectedIds.includes(selectedIds[0]);
+    }
     default:
       return false;
-  }
+    }
 }
 
 function buildFeedback(question, isCorrect, selectedAnswer = null) {
@@ -314,6 +384,27 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       feedback.correctAnswerDisplay = formatDragDropAnswerDisplay(question, parsed) || feedback.correctAnswerDisplay;
     }
+  } else if (type === 'tokenselection') {
+    const rawText = question.correctAnswerText;
+    let ids = [];
+    try {
+      const parsed = JSON.parse(String(rawText || '[]'));
+      ids = Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      ids = rawText ? [rawText] : [];
+    }
+
+    const parts = Array.isArray(question.parts) ? question.parts : [];
+    const sentencePart = parts.find(p => p.type === 'token_sentence');
+    const tokenArr = (sentencePart && Array.isArray(sentencePart.tokens))
+      ? sentencePart.tokens
+      : (parts.filter(p => p.type === 'token').length > 0 ? parts.filter(p => p.type === 'token') : (Array.isArray(question.tokens) ? question.tokens : []));
+    
+    const labels = ids.map(id => {
+      const tk = tokenArr.find(t => String(t.id || t) === String(id));
+      return tk ? (tk.text || tk) : id;
+    });
+    if (labels.length > 0) feedback.correctAnswerDisplay = labels.join(', ');
   }
   return feedback;
 }
@@ -374,7 +465,16 @@ export async function POST(req, { params }) {
   let payload;
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 }); }
 
-  const { studentId = null, questionId, answer = null, responseMs = 0, seenQuestionIds = [], questionSnapshot = null } = payload ?? {};
+  const { studentId = null, questionId, answer: rawAnswer = null, responseMs = 0, seenQuestionIds = [], questionSnapshot = null } = payload ?? {};
+  
+  // Scaffolding Filter: Remove "practice-only" inputs from the official submission payload
+  let answer = rawAnswer;
+  if (rawAnswer && typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
+      answer = Object.fromEntries(
+          Object.entries(rawAnswer).filter(([key]) => !key.startsWith('scaffold_'))
+      );
+  }
+
   if (!questionId) {
     serverLog('api.practice.submit', 'validation failed: questionId missing');
     return NextResponse.json({ error: 'questionId is required.' }, { status: 400 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { resolveMicroskillIdByKey } from '@/lib/curriculum/server';
 import {
+  fetchQuestionsByMicroskill,
   getAdaptivePolicyVersion,
   getSessionState,
   getStudentSkillState,
@@ -9,6 +10,7 @@ import {
   upsertStudentSkillState,
 } from '@/lib/adaptive/server';
 import { serverError, serverLog } from '@/lib/debug/logger';
+import { selectAndInstantiateNextQuestion } from '@/app/api/adaptive/next-question/route';
 
 export async function POST(req) {
   const startedAt = Date.now();
@@ -22,6 +24,7 @@ export async function POST(req) {
   const studentId = String(payload?.studentId ?? '').trim();
   const microskillKey = String(payload?.microSkillId ?? payload?.microskillId ?? '').trim();
   const sessionId = String(payload?.sessionId ?? '').trim() || null;
+  const includeFirstQuestion = Boolean(payload?.includeFirstQuestion ?? false);
   serverLog('api.adaptive.session.start', 'request start', {
     studentId: studentId ? 'present' : 'missing',
     microskillKey,
@@ -88,6 +91,17 @@ export async function POST(req) {
       });
     }
 
+    let firstQuestionPayload = null;
+    if (includeFirstQuestion) {
+      firstQuestionPayload = await selectAndInstantiateNextQuestion({
+        db,
+        microskillId,
+        sessionState,
+        studentId,
+        sessionId: sessionState?.id ?? sessionId,
+      });
+    }
+
     serverLog('api.adaptive.session.start', 'request success', {
       microskillId,
       sessionId: sessionState?.id ?? sessionId ?? null,
@@ -100,6 +114,10 @@ export async function POST(req) {
       phase: sessionState?.phase ?? 'warmup',
       activeDifficulty: sessionState?.active_difficulty ?? skillState?.difficulty_band ?? 'easy',
       policyVersion: getAdaptivePolicyVersion(),
+      ...(firstQuestionPayload ? {
+        question: firstQuestionPayload.question,
+        selectionMeta: firstQuestionPayload.selectionMeta,
+      } : {}),
       mastery: {
         score: Number(skillState?.mastery_score ?? 0.2),
         confidence: Number(skillState?.confidence ?? 0.1),

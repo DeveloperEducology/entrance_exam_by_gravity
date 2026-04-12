@@ -1,0 +1,145 @@
+.page {
+  min-height: 100vh;
+  padding: 32px 20px 56px;
+  background:
+    radial-gradient(circle at top, rgba(255, 244, 214, 0.6), transparent 38%),
+    linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
+  color: #10233f;
+}
+
+.hero {
+  max-width: 1240px;
+  margin: 0 auto 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.heroCopy,
+.guideCard,
+.noteCard {
+  border: 1px solid rgba(162, 189, 227, 0.7);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 48px rgba(16, 35, 63, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.heroCopy {
+  padding: 28px;
+}
+
+.kicker {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e4efff;
+  color: #315f9d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin: 12px 0 10px;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 0.98;
+}
+
+.lead {
+  margin: 0;
+  max-width: 64ch;
+  color: #4f5f78;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.actions {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.primaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: #1f6feb;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.routePill {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #edf4ff;
+  color: #26456f;
+  font-size: 0.95rem;
+}
+
+.guideCard {
+  padding: 24px;
+}
+
+.guideCard h2,
+.noteCard h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.guideList {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #4f5f78;
+  line-height: 1.7;
+}
+
+.simSection {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.notesGrid {
+  max-width: 1240px;
+  margin: 24px auto 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.noteCard {
+  padding: 22px;
+}
+
+.noteCard p {
+  margin: 0;
+  color: #4f5f78;
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .notesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 14px 40px;
+  }
+
+  .heroCopy,
+  .guideCard,
+  .noteCard {
+    border-radius: 22px;
+  }
+}

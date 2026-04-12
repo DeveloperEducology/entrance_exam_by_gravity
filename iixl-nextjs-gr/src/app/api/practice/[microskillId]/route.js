@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { mapDbQuestion } from '@/lib/practice/questionMapper';
 import { resolveMicroskillIdByKey } from '@/lib/curriculum/server';
+import { fetchQuestionsByMicroskill } from '@/lib/adaptive/server';
 import { serverError, serverLog } from '@/lib/debug/logger';
 
 const SKILL_COLUMNS = ['microSkillId', 'micro_skill_id', 'microskill_id'];
@@ -124,41 +125,26 @@ export async function GET(_req, { params }) {
         }
     } catch(e) {}
 
-    // 1. Search in 'questions' collection
-    for (const skillColumn of SKILL_COLUMNS) {
-      const q = await db.collection('questions')
-        .find({ 
-          $or: [
-            { [skillColumn]: microskillId },
-            { [skillColumn]: mIdQuery }
-          ]
-        })
-        .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
-        .toArray();
-      
-      if (q && q.length > 0) {
-          data = q;
-          break;
-      }
+    // 1. Search in 'questions' collection with cached helper first
+    const cachedQuestions = await fetchQuestionsByMicroskill(db, microskillId);
+    if (cachedQuestions.length > 0) {
+      data = cachedQuestions;
     }
 
     // 2. If not found, search in 'templates' collection
     if (!data || data.length === 0) {
-        for (const skillColumn of SKILL_COLUMNS) {
-            const t = await db.collection('templates')
-                .find({ 
-                    $or: [
-                        { [skillColumn]: microskillId },
-                        { [skillColumn]: mIdQuery }
-                    ]
-                })
-                .toArray();
-            
-            if (t && t.length > 0) {
-                data = t;
-                break;
-            }
-        }
+        const templateQueries = SKILL_COLUMNS.map((skillColumn) =>
+          db.collection('templates')
+            .find({
+              $or: [
+                { [skillColumn]: microskillId },
+                { [skillColumn]: mIdQuery }
+              ]
+            })
+            .toArray()
+        );
+        const templateResults = await Promise.all(templateQueries);
+        data = templateResults.find((rows) => Array.isArray(rows) && rows.length > 0) || [];
     }
 
     // 3. Fallback: Search by template_id (useful for direct testing)
@@ -177,7 +163,9 @@ export async function GET(_req, { params }) {
     const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
     // Pick a random question from the results to provide variety
     const randomIndex = data && data.length > 0 ? Math.floor(Math.random() * data.length) : 0;
-    const selectedQuestion = Array.isArray(data) && data.length > 0 ? toPublicQuestion(instantiateTemplate(mapDbQuestion(data[randomIndex]))) : null;
+    const selectedQuestion = Array.isArray(data) && data.length > 0
+      ? toPublicQuestion(instantiateTemplate(typeof data[randomIndex]?.type === 'string' ? data[randomIndex] : mapDbQuestion(data[randomIndex])))
+      : null;
 
     serverLog('api.practice.get', 'request success', {
       microskillId,

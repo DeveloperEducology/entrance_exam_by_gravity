@@ -417,6 +417,7 @@ function renderSmartTable(part, index, styles) {
                                         {row.map((cell, cIdx) => {
                                             if (!cell) return <td key={cIdx} className={styles.smartTableCell} />;
                                             const hasHighlight = cell.highlight === true;
+                                            const renderAsInput = cell.renderAsInput === true || cell.type === 'input';
 
                                             return (
                                                 <td 
@@ -424,10 +425,21 @@ function renderSmartTable(part, index, styles) {
                                                     className={`${styles.smartTableCell} ${hasHighlight ? styles.smartTableCellHighlighted : ''}`}
                                                     style={{ color: cell.color || undefined, fontWeight: cell.fontWeight || undefined }}
                                                 >
-                                                    <span className={cell.prefix ? styles.smartTablePrefixWrap : ''}>
-                                                        {cell.prefix && <span className={styles.smartTablePrefix}>{cell.prefix}</span>}
-                                                        {cell.content}
-                                                    </span>
+                                                    {renderAsInput ? (
+                                                        <input
+                                                            type="text"
+                                                            readOnly
+                                                            tabIndex={-1}
+                                                            value={cell.content ?? ''}
+                                                            className={styles.smartTableSolvedInput}
+                                                            style={cell.style}
+                                                        />
+                                                    ) : (
+                                                        <span className={cell.prefix ? styles.smartTablePrefixWrap : ''}>
+                                                            {cell.prefix && <span className={styles.smartTablePrefix}>{cell.prefix}</span>}
+                                                            {cell.content}
+                                                        </span>
+                                                    )}
                                                 </td>
                                             );
                                         })}
