@@ -178,7 +178,7 @@ export function generateSubtractionJourney(v1, v2) {
       
       d1 += 10;
       workingTop[i] = String(d1);
-      regroups[i] = { val: String(d1), slash: false };
+      regroups[i] = { val: String(d1), slash: true }; // Slash the original digit in Row 2
       
       steps.push({
         instruction: `Regroup: ${d1-10} < ${d2}, so borrow from the next place.`,
