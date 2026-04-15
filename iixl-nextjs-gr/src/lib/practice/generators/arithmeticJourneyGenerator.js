@@ -237,9 +237,9 @@ export function generateMultiplicationJourney(v1, v2) {
             subRows[subRows.length - 1].val = [...currentRowDigits];
         }
 
-        // The carry produced by d1 * mDigit should be shown above the NEXT digit (i-1)
-        if (currentCarry > 0 && i > 0) {
-            carries[i - 1] = String(currentCarry);
+        // The carry resulting from the PREVIOUS step should be shown above the CURRENT digit i
+        if (currentCarry > 0) {
+            carries[i] = String(currentCarry);
         }
 
         steps.push({
@@ -256,15 +256,18 @@ export function generateMultiplicationJourney(v1, v2) {
     }
 
     if (currentCarry > 0) {
-        // Find leftmost digit pos
         let leftmost = -1;
         for(let k=0; k<maxWidth; k++) if(padded1[k] !== ' ' && padded1[k] !== ',') { leftmost = k; break; }
-        if (leftmost - mIdx - 1 >= 0) {
-            currentRowDigits[leftmost - mIdx - 1] = String(currentCarry);
+        
+        const carryTarget = leftmost - 1;
+        if (carryTarget >= 0) {
+            carries[carryTarget] = String(currentCarry);
+            currentRowDigits[carryTarget - mIdx] = String(currentCarry);
             subRows[subRows.length - 1].val = [...currentRowDigits];
+            
             steps.push({
                 instruction: `Finally, bring down the carried ${currentCarry}.`,
-                highlights: [leftmost - mIdx - 1],
+                highlights: [carryTarget],
                 carries: { ...carries },
                 subRows: subRows.map(r => ({ ...r, val: [...r.val] })),
                 result: Array(maxWidth).fill(" ")
