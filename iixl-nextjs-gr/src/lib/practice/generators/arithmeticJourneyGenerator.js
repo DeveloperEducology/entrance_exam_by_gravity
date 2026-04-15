@@ -209,10 +209,13 @@ export function generateMultiplicationJourney(v1, v2) {
     subRows.push({ val: Array(maxWidth).fill(" "), active: true });
     for(let p=0; p < subRows.length - 1; p++) subRows[p].active = false;
 
-    // Placeholders for shifts
-    for(let s=0; s<mIdx; s++) {
-        const resetPos = maxWidth - 1 - s;
-        currentRowDigits[resetPos] = "0";
+    // Placeholders for shifts and copy commas from top row for alignment
+    for(let s=0; s<maxWidth; s++) {
+        if (padded1[s] === ',') currentRowDigits[s] = ',';
+        const shiftPos = maxWidth - 1 - s;
+        if (s < mIdx && currentRowDigits[maxWidth - 1 - s] !== ',') {
+            currentRowDigits[maxWidth - 1 - s] = "0";
+        }
     }
     subRows[subRows.length-1].val = [...currentRowDigits];
 
@@ -226,18 +229,14 @@ export function generateMultiplicationJourney(v1, v2) {
         const resDigit = res % 10;
         const nextCarry = Math.floor(res / 10);
 
-        // Find correct placement for digit in subrow
-        // It's i - mIdx (with adjustment for commas)
-        // Simplified approach: use the same column i but shift it visually
-        // For standard grid, partial products align their right side with the multiplier digit
+        // Alignment: Multiply n1[i] by mDigit. The result digit belongs at column i - mIdx
         const targetPos = i - mIdx; 
-        // Note: Real alignment requires complex comma-aware math, but for now we follow the d1 column
         if (targetPos >= 0) {
             currentRowDigits[targetPos] = String(resDigit);
             subRows[subRows.length - 1].val = [...currentRowDigits];
         }
 
-        // The carry resulting from the PREVIOUS step should be shown above the CURRENT digit i
+        // Display the carry produced by the PREVIOUS digit multiplication above the CURRENT digit i
         if (currentCarry > 0) {
             carries[i] = String(currentCarry);
         }
