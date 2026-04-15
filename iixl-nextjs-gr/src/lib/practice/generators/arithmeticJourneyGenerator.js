@@ -237,7 +237,10 @@ export function generateMultiplicationJourney(v1, v2) {
             subRows[subRows.length - 1].val = [...currentRowDigits];
         }
 
-        if (currentCarry > 0) carries[i] = String(currentCarry);
+        // The carry produced by d1 * mDigit should be shown above the NEXT digit (i-1)
+        if (currentCarry > 0 && i > 0) {
+            carries[i - 1] = String(currentCarry);
+        }
 
         steps.push({
             instruction: currentCarry > 0 
