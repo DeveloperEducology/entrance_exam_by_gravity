@@ -131,6 +131,7 @@ function parseMaybeJson(value, fallback = null) {
 function normalizeMathSentence(value) {
   return String(value ?? '')
     .toLowerCase()
+    .replace(/,/g, '') // Remove commas for consistent comparison
     .replace(/×/g, 'x')
     .replace(/\s+/g, '')
     .trim();
@@ -262,7 +263,9 @@ export function toPublicQuestion(question) {
     items: publicItems,
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
+    problem: question.problem ?? null,
     adaptiveConfig: question.adaptiveConfig ?? null,
+    ui_config: question.ui_config ?? null,
     measureTarget: getMeasureTarget(question),
     wordLength: fourPics.wordLength,
     letterBank: fourPics.letterBank,
@@ -275,6 +278,12 @@ export function toPublicQuestion(question) {
     correctAnswerText: question.correctAnswerText,
     correctAnswerIndex: question.correctAnswerIndex,
     validation: question.validation,
+    operands: question.operands ?? [],
+    title: question.title ?? '',
+    footer: question.footer ?? '',
+    steps: (question.steps ?? []).map(step => {
+        return step;
+    }),
   };
 }
 
@@ -412,6 +421,7 @@ export function validateAnswer(question, answer) {
     }
 
     case 'textinput':
+    case 'arithmetic_journey':
       return normalizeMathSentence(answer) === normalizeMathSentence(question.correctAnswerText);
 
     case 'fillintheblank':

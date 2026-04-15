@@ -24,9 +24,9 @@ export function instantiateTemplate(question, overrideVariables = null) {
   const logic = question.logic_type || question.adaptiveConfig?.logic_type || question.adaptiveConfig?.logic;
   if (!logic) return question;
 
-  const inst = JSON.parse(JSON.stringify(question));
+  let inst = JSON.parse(JSON.stringify(question));
   inst.adaptiveConfig = inst.adaptiveConfig || {};
-  
+
   // Merge override variables if provided (critical for server-side validation desync)
   if (overrideVariables && typeof overrideVariables === 'object') {
     inst.adaptiveConfig.variables = {
@@ -39,7 +39,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const config = inst.adaptiveConfig || {};
     const taskType = config.taskType || 'prime_composite';
     const itemCount = Number(config.itemCount || 4);
-    
+
     let dragItems = [];
     let dropGroups = [];
     let solutionText = "";
@@ -103,6 +103,434 @@ export function instantiateTemplate(question, overrideVariables = null) {
   const isExplicitlyCorrect = (value) =>
     value === true || value === 1 || String(value).toLowerCase() === 'true';
 
+
+  if (logic === 'estimate_products_rounding_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [11, 99];
+
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      // Generate two numbers, avoiding perfect tens to make the rounding meaningful
+      do {
+        n1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      } while (n1 % 10 === 0 || n2 % 10 === 0);
+    }
+
+    const round = (num) => Math.round(num / 10) * 10;
+    const r1 = round(n1);
+    const r2 = round(n2);
+    const estimatedProd = r1 * r2;
+    const exactProd = n1 * n2;
+
+    const estimated_prod_fmt = estimatedProd.toLocaleString('en-IN');
+    const exact_prod_fmt = exactProd.toLocaleString('en-IN');
+
+    const templateVars = {
+      n1, n2, r1, r2,
+      estimated_prod: estimatedProd,
+      estimated_prod_fmt,
+      exact_prod: exactProd,
+      exact_prod_fmt
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: 'Estimate the product. Round each factor to the nearest ten, then multiply.',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `### ${n1} × ${n2}`,
+        isVertical: true,
+        style: { margin: '20px 0' }
+      },
+      {
+        type: 'pair',
+        parts: [
+          { type: 'text', content: 'The product is approximately ' },
+          { type: 'input', id: 'ans', size: 'medium' },
+          { type: 'text', content: '.' }
+        ]
+      }
+    ];
+
+    inst.solution = [
+      { type: 'text', content: '### Round the first factor to the nearest ten.', isVertical: true },
+      { type: 'text', content: `${n1} × ${n2} = ?\n↓\n**${r1}** × ${n2} = ?`, isVertical: true },
+
+      { type: 'text', content: '### Round the second factor to the nearest ten.', isVertical: true },
+      { type: 'text', content: `${r1} × ${n2} = ?\n↓\n${r1} × **${r2}** = ?`, isVertical: true },
+
+      { type: 'text', content: '### Now multiply:', isVertical: true },
+      { type: 'text', content: `${r1} × ${r2} = **${estimated_prod_fmt}**`, isVertical: true },
+
+      { type: 'text', content: `The product is approximately **${estimated_prod_fmt}**.`, isVertical: true },
+
+      { type: 'text', content: '### Compare your estimate to the exact answer:', isVertical: true },
+      { type: 'text', content: `${n1} × ${n2} = **${exact_prod_fmt}**`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ ans: String(estimatedProd) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    return inst;
+  }
+
+
+  if (logic === 'estimate_products_rounding_v2') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [11, 99];
+
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      // Logic: Ensure we don't pick perfect tens (e.g., 50) to make rounding educational
+      do {
+        n1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      } while (n1 % 10 === 0 || n2 % 10 === 0);
+    }
+
+    const round = (num) => Math.round(num / 10) * 10;
+    const r1 = round(n1);
+    const r2 = round(n2);
+    const estimatedProd = r1 * r2;
+    const exactProd = n1 * n2;
+
+    const templateVars = {
+      n1, n2, r1, r2,
+      n1_fmt: n1.toLocaleString('en-IN'),
+      n2_fmt: n2.toLocaleString('en-IN'),
+      r1_fmt: r1.toLocaleString('en-IN'),
+      r2_fmt: r2.toLocaleString('en-IN'),
+      estimated_prod: estimatedProd,
+      estimated_prod_fmt: estimatedProd.toLocaleString('en-IN'),
+      exact_prod: exactProd,
+      exact_prod_fmt: exactProd.toLocaleString('en-IN')
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    // Matches the "Question" section of your screenshot
+    inst.parts = [
+      { type: 'text', content: 'Estimate the product. Round each factor to the nearest ten, then multiply.', isVertical: true },
+      { type: 'text', content: `### ${n1} × ${n2}`, isVertical: true, style: { margin: '20px 0', fontSize: '24px' } },
+      {
+        type: 'pair',
+        parts: [
+          { type: 'text', content: 'The product is approximately ' },
+          { type: 'input', id: 'ans', size: 'medium' },
+          { type: 'text', content: '.' }
+        ]
+      }
+    ];
+
+    // Matches the "Solution" section of your screenshot with arrows and bolded steps
+    inst.solution = [
+      { type: 'text', content: '### Round the first factor to the nearest ten.', isVertical: true },
+      { type: 'text', content: `**${n1}** × ${n2} = ?\n↓\n**${r1}** × ${n2} = ?`, isVertical: true },
+
+      { type: 'text', content: '### Round the second factor to the nearest ten.', isVertical: true },
+      { type: 'text', content: `${r1} × **${n2}** = ?\n↓\n${r1} × **${r2}** = ?`, isVertical: true },
+
+      { type: 'text', content: '### Now multiply:', isVertical: true },
+      { type: 'text', content: `${r1} × ${r2} = **${templateVars.estimated_prod_fmt}**`, isVertical: true },
+
+      { type: 'text', content: `The product is approximately **${templateVars.estimated_prod_fmt}**.`, isVertical: true },
+
+      { type: 'text', content: '### Compare your estimate to the exact answer:', isVertical: true },
+      { type: 'text', content: `${n1} × ${n2} = **${templateVars.exact_prod_fmt}**`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ ans: String(estimatedProd) });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    return inst;
+  }
+
+
+  if (logic === 'sum_difference_pairs_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const diffRange = dataSource.diff_range || [2, 10];
+
+    let targetSum, targetDiff, n1, n2;
+
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+      targetSum = n1 + n2;
+      targetDiff = n1 - n2;
+    } else {
+      // Pick difference first
+      targetDiff = Math.floor(Math.random() * (diffRange[1] - diffRange[0] + 1)) + diffRange[0];
+
+      // Ensure Sum > Diff and shares same parity to result in whole numbers
+      const minSum = targetDiff + 2;
+      const maxSum = minSum + 16;
+      do {
+        targetSum = Math.floor(Math.random() * (maxSum - minSum + 1)) + minSum;
+      } while ((targetSum + targetDiff) % 2 !== 0);
+
+      n1 = (targetSum + targetDiff) / 2;
+      n2 = (targetSum - targetDiff) / 2;
+    }
+
+    const templateVars = {
+      n1, n2, targetSum, targetDiff,
+      sum_fmt: targetSum.toLocaleString('en-IN'),
+      diff_fmt: targetDiff.toLocaleString('en-IN')
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: `The difference of two numbers is **${targetDiff}**. The sum of the two numbers is **${targetSum}**. What are the two numbers?`,
+        isVertical: true
+      },
+      {
+        type: 'pair',
+        parts: [
+          { type: 'input', id: 'ans_1', size: 'small' },
+          { type: 'text', content: ' and ' },
+          { type: 'input', id: 'ans_2', size: 'small' }
+        ]
+      }
+    ];
+
+    // Build the Solution Table Rows
+    const tableRows = [];
+    // Show 4 rows, with the correct answer being the 3rd one
+    const startN1 = n1 - 2;
+
+    for (let i = 0; i < 4; i++) {
+      const curN1 = startN1 + i;
+      const curN2 = curN1 - targetDiff;
+      const curSum = curN1 + curN2;
+      const isCorrect = (curSum === targetSum);
+
+      // We push an array of cells, each with a 'content' string
+      tableRows.push([
+        {
+          content: `${curN1} − ${curN2} = ${targetDiff}`,
+          style: { color: isCorrect ? '#3b82f6' : 'inherit', fontWeight: isCorrect ? '700' : '400' }
+        },
+        {
+          content: `${curN1} + ${curN2} = ${curSum}`,
+          style: { color: isCorrect ? '#3b82f6' : 'inherit', fontWeight: isCorrect ? '700' : '400' }
+        }
+      ]);
+    }
+
+    inst.solution = [
+      { type: 'text', content: `Think of pairs of numbers whose difference is **${targetDiff}**. Then find the sum of each pair.`, isVertical: true },
+      {
+        type: 'smartTable',
+        headers: ['DIFFERENCE', 'SUM'],
+        rows: tableRows,
+        config: {
+          showBorders: true,
+          alignment: 'center',
+          headerBackground: '#f8fafc'
+        },
+        isVertical: true
+      },
+      { type: 'text', content: `The numbers are **${n1}** and **${n2}**.`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    // Accepts inputs in any order
+    inst.correctAnswerText = JSON.stringify({
+      ans_1: [String(n1), String(n2)],
+      ans_2: [String(n2), String(n1)]
+    });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+  }
+
+if (logic === 'read_table_generic_comparison_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    // Context Retrieval
+    const instruction = ds.instruction || "Look at the table to answer the question.";
+    const headers = ds.headers || ["PLAYER", "MATCH 1", "MATCH 2"];
+    const entities = ds.entities || ["Virat", "Rohit", "Gill", "Rahul"];
+    const unit = ds.unit || "runs";
+    
+    let tableData, targetEntity;
+
+    if (overrideVariables) {
+      tableData = overrideVariables.tableData;
+      targetEntity = overrideVariables.targetEntity;
+    } else {
+      const range = ds.value_range || [10, 99];
+      tableData = {};
+      entities.forEach(ent => {
+        tableData[ent] = [
+          Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0],
+          Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]
+        ];
+      });
+      targetEntity = entities[Math.floor(Math.random() * entities.length)];
+    }
+
+    const val1 = tableData[targetEntity][0];
+    const val2 = tableData[targetEntity][1];
+    
+    // Adaptive Wording Logic
+    const isMore = val1 > val2;
+    const comparisonWord = isMore ? "more" : "fewer";
+    const difference = Math.abs(val1 - val2);
+
+    inst.adaptiveConfig.variables = { 
+        ...(inst.adaptiveConfig.variables || {}), 
+        tableData, targetEntity, val1, val2, difference, comparisonWord 
+    };
+
+    // Construct Markdown Table manually
+    let markdownTable = `| ${headers[0]} | ${headers[1]} | ${headers[2]} |\n| :--- | :---: | :---: |\n`;
+    entities.forEach(ent => {
+      const isTarget = ent === targetEntity;
+      const row = isTarget 
+        ? `| **${ent}** | **${tableData[ent][0]}** | **${tableData[ent][1]}** |` 
+        : `| ${ent} | ${tableData[ent][0]} | ${tableData[ent][1]} |`;
+      markdownTable += row + "\n";
+    });
+
+    inst.parts = [
+      { type: 'text', content: instruction, isVertical: true },
+      // Direct Markdown injection
+      { type: 'text', content: markdownTable, isVertical: true, style: { margin: '20px 0' } },
+      { 
+        type: 'text', 
+        content: `How many **${comparisonWord}** ${unit} did **${targetEntity}** have in the ${headers[1]} than in the ${headers[2]}?`, 
+        isVertical: true
+      },
+      { 
+        type: 'pair', 
+        parts: [
+          { type: 'input', id: 'ans', size: 'small' },
+          { type: 'text', content: ` ${unit}` }
+        ]
+      }
+    ];
+
+    inst.solution = [
+      { type: 'text', content: `### Step 1: Find the data`, isVertical: true },
+      { type: 'text', content: `Locate **${targetEntity}** in the table. Compare the values:`, isVertical: true },
+      { type: 'text', content: `- ${headers[1]}: **${val1}**\n- ${headers[2]}: **${val2}**`, isVertical: true },
+      { type: 'text', content: `### Step 2: Calculate`, isVertical: true },
+      { type: 'text', content: `Subtract the smaller number from the larger number to find the difference:`, isVertical: true },
+      { type: 'text', content: `**${Math.max(val1, val2)} − ${Math.min(val1, val2)} = ${difference}**`, isVertical: true },
+      { type: 'text', content: `### Conclusion`, isVertical: true },
+      { type: 'text', content: `${targetEntity} had **${difference} ${comparisonWord}** ${unit} in ${headers[1]}.`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ ans: String(difference) });
+    
+    return inst;
+  }
+
+
+  if (logic === 'read_table_concept_mcq_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    // Context Retrieval (Defaults to Cricket if not in JSON)
+    const instruction = ds.instruction || "Look at the table to answer the question.";
+    const headers = ds.headers || ["PLAYER", "MATCH 1", "MATCH 2"];
+    const entities = ds.entities || ["Virat", "Rohit", "Gill", "Rahul"];
+    const unit = ds.unit || "runs";
+    
+    let tableData, targetEntity;
+
+    if (overrideVariables) {
+      tableData = overrideVariables.tableData;
+      targetEntity = overrideVariables.targetEntity;
+    } else {
+      const range = ds.value_range || [10, 99];
+      tableData = {};
+      entities.forEach(ent => {
+        // Ensure values are NOT equal so there is always a clear more/fewer answer
+        let v1, v2;
+        do {
+          v1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+          v2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        } while (v1 === v2);
+        tableData[ent] = [v1, v2];
+      });
+      targetEntity = entities[Math.floor(Math.random() * entities.length)];
+    }
+
+    const val1 = tableData[targetEntity][0];
+    const val2 = tableData[targetEntity][1];
+    
+    // Logic: Identify the correct concept
+    const isMore = val1 > val2;
+    const correctAnswer = isMore ? "more" : "fewer";
+
+    inst.adaptiveConfig.variables = { 
+        ...(inst.adaptiveConfig.variables || {}), 
+        tableData, targetEntity, val1, val2, correctAnswer 
+    };
+
+    // Construct Markdown Table
+    let markdownTable = `| ${headers[0]} | ${headers[1]} | ${headers[2]} |\n| :--- | :---: | :---: |\n`;
+    entities.forEach(ent => {
+      const isTarget = ent === targetEntity;
+      markdownTable += isTarget 
+        ? `| **${ent}** | **${tableData[ent][0]}** | **${tableData[ent][1]}** |\n` 
+        : `| ${ent} | ${tableData[ent][0]} | ${tableData[ent][1]} |\n`;
+    });
+
+    inst.parts = [
+      { type: 'text', content: instruction, isVertical: true },
+      { type: 'text', content: markdownTable, isVertical: true, style: { margin: '20px 0' } },
+      { 
+        type: 'text', 
+        content: `Did **${targetEntity}** have **more** or **fewer** ${unit} in the ${headers[1]} than in the ${headers[2]}?`, 
+        isVertical: true
+      }
+    ];
+
+    // MCQ Choices
+    inst.options = [
+      { label: "more", content: "more" },
+      { label: "fewer", content: "fewer" }
+    ];
+
+    inst.solution = [
+      { type: 'text', content: `### Step 1: Compare the numbers`, isVertical: true },
+      { type: 'text', content: `Look at the row for **${targetEntity}**:`, isVertical: true },
+      { type: 'text', content: `- ${headers[1]}: **${val1}**\n- ${headers[2]}: **${val2}**`, isVertical: true },
+      { type: 'text', content: `### Step 2: Determine the word`, isVertical: true },
+      { 
+        type: 'text', 
+        content: isMore 
+          ? `Since **${val1}** is a larger number than **${val2}**, ${targetEntity} had **more** ${unit}.` 
+          : `Since **${val1}** is a smaller number than **${val2}**, ${targetEntity} had **fewer** ${unit}.`, 
+        isVertical: true 
+      }
+    ];
+
+    inst.type = 'mcq';
+    inst.correctAnswerIndex = isMore ? 0 : 1;
+    inst.correctAnswerText = correctAnswer;
+    
+    return inst;
+  }
+
   if (logic === 'place_value_template_v1' || logic === 'random_digit_selection' || logic === 'indian_system_generator') {
     let number, targetDigit, placeName, multiplier, correctValue, pos, uniqueInstantiatedAskTypeForGenerator;
 
@@ -113,6 +541,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
       placeName = overrideVariables.place_name;
       multiplier = overrideVariables.place_multiplier;
       correctValue = overrideVariables.value || (targetDigit * multiplier);
+      // Force correctValue to be a number if possible, to avoid template loop
+      if (typeof correctValue === 'string' && correctValue.includes('{')) {
+        correctValue = Number(targetDigit) * Number(multiplier);
+      }
       uniqueInstantiatedAskTypeForGenerator = overrideVariables.ask_type;
 
       // Guess pos for underlining if not saved (works since digits are currently unique)
@@ -148,7 +580,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
         number = Math.floor(Math.random() * ((max - min) / step + 1)) * step + min;
         const numStr = String(number);
         const uniqueChars = new Set(numStr.split('')).size;
-        
+
         if (!uniqueDigits || uniqueChars === numStr.length) break;
         attempt++;
       } while (attempt < maxAttempts);
@@ -156,10 +588,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const numStr = String(number);
       const digitsArr = numStr.split('').map(Number);
       const targetLength = numStr.length;
-      
+
       const placeMultipliers = [1000000, 100000, 10000, 1000, 100, 10, 1].slice(-targetLength);
       const placeNamesMap = {
-        1000000: "Ten Lakhs", 100000: "Lakhs", 10000: "Ten Thousands", 
+        1000000: "Ten Lakhs", 100000: "Lakhs", 10000: "Ten Thousands",
         1000: "Thousands", 100: "Hundreds", 10: "Tens", 1: "Ones"
       };
 
@@ -174,9 +606,9 @@ export function instantiateTemplate(question, overrideVariables = null) {
           }
         }
       }
-      
+
       if (validIndices.length === 0) validIndices = digitsArr.map((_, i) => i);
-      
+
       pos = validIndices[Math.floor(Math.random() * validIndices.length)];
       targetDigit = digitsArr[pos];
       multiplier = placeMultipliers[pos];
@@ -194,16 +626,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
       value: correctValue,
       ask_type: uniqueInstantiatedAskTypeForGenerator
     };
-    
+
     // Add explicitly mapped formatted numbers using the Indian Numbering System ('en-IN')
-    const templateVars = { 
-      ...inst.adaptiveConfig.variables, 
+    const templateVars = {
+      ...inst.adaptiveConfig.variables,
       number: number,
       value: correctValue,
       number_formatted: Number(number).toLocaleString('en-IN'),
       value_formatted: Number(correctValue).toLocaleString('en-IN'),
       place_multiplier_formatted: Number(multiplier).toLocaleString('en-IN'),
-      
+
       // Helper aliases for better template readability
       target_place: placeName,
       correct_digit: targetDigit,
@@ -216,54 +648,60 @@ export function instantiateTemplate(question, overrideVariables = null) {
     // Calculate expanded form components (only non-zero digits)
     const expandedParts = [];
     const expandedWithInput = [];
-    
+
     // Iterate from biggest place to smallest
     const numDigits = String(number).length;
     const places = [1000000, 100000, 10000, 1000, 100, 10, 1].slice(-numDigits);
     const digitsInNum = String(number).split('').map(Number);
-    
+
     for (let i = 0; i < digitsInNum.length; i++) {
-        if (digitsInNum[i] !== 0) {
-            const val = digitsInNum[i] * places[i];
-            const fmtVal = val.toLocaleString('en-IN');
-            expandedParts.push(fmtVal);
-            
-            if (places[i] === multiplier) {
-                // This is the place we are asking for
-                expandedWithInput.push(`{ans}`); 
-            } else {
-                expandedWithInput.push(fmtVal);
-            }
+      if (digitsInNum[i] !== 0) {
+        const val = digitsInNum[i] * places[i];
+        const fmtVal = val.toLocaleString('en-IN');
+        expandedParts.push(fmtVal);
+
+        if (places[i] === multiplier) {
+          // This is the place we are asking for
+          expandedWithInput.push(`{ans}`);
+        } else {
+          expandedWithInput.push(fmtVal);
         }
+      }
     }
-    
+
     const expandedBefore = [];
     const expandedAfter = [];
     let foundInput = false;
-    
+
     for (let i = 0; i < digitsInNum.length; i++) {
-        if (digitsInNum[i] !== 0) {
-            const val = digitsInNum[i] * places[i];
-            const fmtVal = val.toLocaleString('en-IN');
-            
-            if (places[i] === multiplier) {
-                foundInput = true;
-            } else {
-                if (!foundInput) expandedBefore.push(fmtVal);
-                else expandedAfter.push(fmtVal);
-            }
+      if (digitsInNum[i] !== 0) {
+        const val = digitsInNum[i] * places[i];
+        const fmtVal = val.toLocaleString('en-IN');
+
+        if (places[i] === multiplier) {
+          foundInput = true;
+        } else {
+          if (!foundInput) expandedBefore.push(fmtVal);
+          else expandedAfter.push(fmtVal);
         }
+      }
     }
-    
+
     templateVars.expanded_form_before = expandedBefore.length > 0 ? expandedBefore.join(' + ') + ' + ' : '';
     templateVars.expanded_form_after = expandedAfter.length > 0 ? ' + ' + expandedAfter.join(' + ') : '';
     templateVars.expanded_form = expandedParts.join(' + ');
 
+    // Persist ALL generated variables to the question instance
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      ...templateVars
+    };
+
     // Automatically inject {digit_1} (Ones), {digit_2} (Tens), etc into templateVars
     const numStr = String(number);
     for (let i = 0; i < numStr.length; i++) {
-        const placeIndex = numStr.length - i; // length 5, i=0 -> digit_5
-        templateVars[`digit_${placeIndex}`] = numStr[i];
+      const placeIndex = numStr.length - i; // length 5, i=0 -> digit_5
+      templateVars[`digit_${placeIndex}`] = numStr[i];
     }
     // Fill in upper digits with blank if they are missing (to avoid {digit_4} showing up for 3-digit numbers)
     for (let i = numStr.length + 1; i <= 7; i++) {
@@ -277,7 +715,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const posInStr = pos; // pos is index in slice(-targetLength)
     underlinedArr[posInStr] = `\\underline{${underlinedArr[posInStr]}}`;
     templateVars.number_underlined = `\\(${underlinedArr.join('')}\\)`;
-    
+
     // Also provide a simple underline variant if requested
     templateVars.target_digit_underlined = `\\underline{${targetDigit}}`;
 
@@ -288,7 +726,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     // Hydrate Parts (the main prompt) if they haven't been hydrated yet on the frontend
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     // Hydrate Solution
     if (question.solution) {
       // Sometimes solution is passed as a stringified json
@@ -304,10 +742,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
     if (scaffoldSrc) {
       inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
       if (!inst.adaptiveConfig.scaffold.id) {
-         inst.adaptiveConfig.scaffold.id = (inst.template_id || inst.adaptiveConfig?.template_id || 'v1') + '_scaffold';
+        inst.adaptiveConfig.scaffold.id = (inst.template_id || inst.adaptiveConfig?.template_id || 'v1') + '_scaffold';
       }
       if (!inst.adaptiveConfig.scaffold.trigger_on) {
-         inst.adaptiveConfig.scaffold.trigger_on = ["place_name_error"];
+        inst.adaptiveConfig.scaffold.trigger_on = ["place_name_error"];
       }
     }
 
@@ -333,6 +771,17 @@ export function instantiateTemplate(question, overrideVariables = null) {
     } else {
       ansValue = String(correctValue);
     }
+
+    // FINAL SYNC before hydration: Ensure any variables added late are persisted
+    const allVars = {
+      ...(inst.adaptiveConfig.variables || {}),
+      ...templateVars,
+      ans_value_generated: ansValue
+    };
+    inst.adaptiveConfig.variables = allVars;
+
+    // Now use allVars for the hydration calls in this block
+    const finalTemplateVars = allVars;
     // Switch to MCQ if asking for place name (usually involves choosing from Thousands, Hundreds, etc)
     if (uniqueInstantiatedAskTypeForGenerator === 'place_name' || (question.options?.length > 0 && uniqueInstantiatedAskTypeForGenerator !== 'digits' && uniqueInstantiatedAskTypeForGenerator !== 'whole_number')) {
       inst.type = 'mcq';
@@ -362,16 +811,335 @@ export function instantiateTemplate(question, overrideVariables = null) {
       }
     }
 
-    if (question.correctAnswerText || question.correct_answer_text) {
-      // If a template exists, use it
-      const template = question.correctAnswerText || question.correct_answer_text;
-      inst.correctAnswerText = hydrateNode(template, templateVars);
-      inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
-    } else {
-      const answerPayload = JSON.stringify({ ans_value: ansValue });
-      inst.correctAnswerText = answerPayload;
-      inst.adaptiveConfig.correctAnswerText = answerPayload;
+    const finalCorrectAnswer = (question.correctAnswerText || question.correct_answer_text)
+      ? hydrateNode(question.correctAnswerText || question.correct_answer_text, finalTemplateVars)
+      : JSON.stringify({ ans_value: ansValue });
+
+    inst.correctAnswerText = finalCorrectAnswer;
+    inst.correct_answer_text = finalCorrectAnswer;
+    inst.adaptiveConfig.correctAnswerText = finalCorrectAnswer;
+
+    // Redundant but safe: Ensure parts and solution are hydrated with the FINAL vars
+    inst.parts = hydrateNode(question.parts || [], finalTemplateVars);
+    if (question.solution) {
+      let parsedSol = question.solution;
+      if (typeof parsedSol === 'string') try { parsedSol = JSON.parse(parsedSol); } catch (e) { }
+      inst.solution = hydrateNode(parsedSol, finalTemplateVars);
     }
+  }
+
+  if (logic === 'lcm_journey_v1') {
+    let numA, numB;
+    if (overrideVariables) {
+      numA = overrideVariables.numA;
+      numB = overrideVariables.numB;
+    } else {
+      // Pick two numbers that have a common multiple in first five steps
+      const pairs = [[2, 3], [3, 4], [4, 6], [6, 8], [2, 5], [3, 5], [4, 5]];
+      const pair = pairs[Math.floor(Math.random() * pairs.length)];
+      numA = pair[0];
+      numB = pair[1];
+    }
+
+    const multiplesA = Array.from({ length: 5 }, (_, i) => numA * (i + 1));
+    const multiplesB = Array.from({ length: 5 }, (_, i) => numB * (i + 1));
+    const commonValues = multiplesA.filter(v => multiplesB.includes(v));
+    const lcm = commonValues[0] || (numA * numB); // Fallback to product if none in first 5
+
+    inst.type = 'stepwise';
+    inst.question_id = `lcm_step_listing_${Date.now()}`;
+    inst.title = "Finding LCM using the Listing Method";
+    inst.numbers = [numA, numB];
+
+    inst.steps = [
+      {
+        step_number: 1,
+        type: "input_array",
+        instruction: `List the first five multiples of **${numA}**.`,
+        placeholder: ["1st", "2nd", "3rd", "4th", "5th"],
+        expected_answer: multiplesA,
+        feedback: {
+          success: `Great! You've got the ${numA}-times table down.`,
+          fail: `Remember, multiples are like skip counting: ${numA}, ${numA}+${numA}, ${numA}+${numA}+${numA}...`
+        }
+      },
+      {
+        step_number: 2,
+        type: "input_array",
+        instruction: `Now, list the first five multiples of **${numB}**.`,
+        placeholder: ["1st", "2nd", "3rd", "4th", "5th"],
+        expected_answer: multiplesB,
+        feedback: {
+          success: "Perfect! Now let's compare the two lists.",
+          fail: `Try the ${numB}-times table: ${numB}, ${numB * 2}, ${numB * 3}...`
+        }
+      },
+      {
+        step_number: 3,
+        type: "multi_select",
+        instruction: "Identify the 'twins'! Which number appears in both lists?",
+        ui_layout: "side_by_side_lists",
+        // Providing structured data for the UI to render the side-by-side lists
+        data_source: {
+          list_1: { label: `M${numA}`, values: multiplesA },
+          list_2: { label: `M${numB}`, values: multiplesB }
+        },
+        // In the UI, the user will select from the tokens in the lists.
+        // We calculate which values are "twins"
+        expected_answer: commonValues,
+        feedback: {
+          success: `Exactly! ${lcm} is a 'Common Multiple' because it's in both lists.`,
+          fail: "Look closely for a number that is exactly the same in both rows."
+        }
+      },
+      {
+        step_number: 4,
+        type: "single_input",
+        instruction: `Since ${lcm} is the very first (smallest) common multiple, what is the LCM?`,
+        expected_answer: String(lcm),
+        feedback: {
+          success: "Boom! You found the Least Common Multiple (LCM)! 🌟",
+          fail: "The smallest common multiple you just found is the LCM."
+        }
+      }
+    ];
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      numA, numB, lcm, multiplesA, multiplesB, commonValues
+    };
+    inst.correctAnswerText = String(lcm);
+  }
+
+  if (logic === 'hcf_listing_factors_v1') {
+    let numA, numB;
+    if (overrideVariables) {
+      numA = Number(overrideVariables.numA);
+      numB = Number(overrideVariables.numB);
+    } else {
+      // Pick two numbers with a decent number of factors but not too many
+      const pairs = [[12, 18], [24, 36], [30, 42], [20, 30], [28, 42], [16, 24], [15, 25]];
+      const pair = pairs[Math.floor(Math.random() * pairs.length)];
+      numA = pair[0];
+      numB = pair[1];
+    }
+
+    const getFactors = (n) => {
+      const factors = [];
+      for (let i = 1; i <= n; i++) {
+        if (n % i === 0) factors.push(i);
+      }
+      return factors;
+    };
+
+    const factorsA = getFactors(numA);
+    const factorsB = getFactors(numB);
+    const commonValues = factorsA.filter(v => factorsB.includes(v));
+    const hcf = Math.max(...commonValues);
+
+    const templateVars = {
+      numA,
+      numB,
+      factorsA,
+      factorsB,
+      factorsA_joined: factorsA.join(', '),
+      factorsB_joined: factorsB.join(', '),
+      commonFactors: commonValues,
+      commonFactors_joined: commonValues.join(', '),
+      hcf: String(hcf)
+    };
+
+    inst.type = 'stepwise';
+    inst.question_id = `hcf_listing_${Date.now()}`;
+    inst.title = "Finding HCF using the Listing Method";
+    inst.numbers = [numA, numB];
+
+    const steps = [
+      {
+        step_number: 1,
+        type: "input_array",
+        instruction: `List all the factors of **${numA}** in ascending order.`,
+        placeholder: "Factor",
+        expected_answer: factorsA,
+        feedback: {
+          success: `Correct! Those are all the factors of ${numA}.`,
+          fail: `Remember, a factor is a number that divides ${numA} exactly without a remainder.`
+        }
+      },
+      {
+        step_number: 2,
+        type: "input_array",
+        instruction: `Now, list all the factors of **${numB}** in ascending order.`,
+        placeholder: "Factor",
+        expected_answer: factorsB,
+        feedback: {
+          success: `Great! You've listed all the factors of ${numB}.`,
+          fail: `Check if you missed any numbers that divide ${numB} evenly.`
+        }
+      },
+      {
+        step_number: 3,
+        type: "multi_select",
+        instruction: "Identify the **common factors** that appear in both lists.",
+        ui_layout: "side_by_side_lists",
+        data_source: {
+          list_1: { label: `Factors of ${numA}`, values: factorsA },
+          list_2: { label: `Factors of ${numB}`, values: factorsB }
+        },
+        expected_answer: commonValues,
+        feedback: {
+          success: `Exactly! ${commonValues.join(', ')} are the factors common to both numbers.`,
+          fail: `Look for numbers that are present in both the factor lists above.`
+        }
+      },
+      {
+        step_number: 4,
+        type: "single_input",
+        instruction: `The HCF is the largest of these common factors. What is the **HCF** of ${numA} and ${numB}?`,
+        expected_answer: String(hcf),
+        feedback: {
+          success: `Excellent! The Highest Common Factor (HCF) is ${hcf}. 🌟`,
+          fail: `Look at your list of common factors. Which one is the greatest?`
+        }
+      }
+    ];
+
+    inst.parts = [
+      {
+        type: "text",
+        content: `Find the HCF of **${numA}** and **${numB}** by listing their factors.`
+      }
+    ];
+
+    inst.solution = [
+      { type: "paragraph", content: `To find the HCF of ${numA} and ${numB}:` },
+      { type: "paragraph", content: `1. **List the factors of ${numA}:** ${factorsA.join(', ')}` },
+      { type: "paragraph", content: `2. **List the factors of ${numB}:** ${factorsB.join(', ')}` },
+      { type: "paragraph", content: `3. **Common Factors:** The numbers appearing in both lists are ${commonValues.join(', ')}.` },
+      { type: "paragraph", content: `4. **Highest Common Factor:** The greatest among these common factors is ${hcf}.` },
+      { type: "paragraph", content: `**Hence, HCF(${numA}, {numB}) = ${hcf}.**` }
+    ];
+
+    inst.steps = steps;
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      ...templateVars
+    };
+    inst.correctAnswerText = String(hcf);
+  }
+
+  if (logic === 'long_division_journey_v1') {
+    let numA, numB;
+    if (overrideVariables) {
+      numA = overrideVariables.dividend;
+      numB = overrideVariables.divisor;
+    } else {
+      // Pick numbers that divide cleanly for 2-digit by 1-digit
+      const dividends = [48, 75, 96, 84, 72, 65, 91];
+      const divisors = [3, 4, 6, 7];
+      numA = dividends[Math.floor(Math.random() * dividends.length)];
+      numB = divisors[Math.floor(Math.random() * divisors.length)];
+      if (numA < numB) [numA, numB] = [numB, numA];
+    }
+
+    const { generateLongDivisionJourney } = require('./longDivisionGenerator');
+    const journey = generateLongDivisionJourney(numA, numB);
+
+    inst = {
+      ...inst,
+      ...journey,
+      type: 'stepwise',
+      logic_type: 'long_division_journey_v1',
+      adaptiveConfig: {
+        ...inst.adaptiveConfig,
+        variables: { dividend: numA, divisor: numB, ...journey.final_result }
+      },
+      correctAnswerText: String(journey.final_result.quotient)
+    };
+  }
+
+  if (logic === 'arithmetic_journey_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    const type = ds.type || 'addition'; 
+    const allowCarry = ds.carry !== false;
+    const range = ds.range || [1000, 9999];
+    
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      if (type === 'multiplication') {
+        const r1 = ds.range_top || [100, 999];
+        const r2 = ds.range_bottom || [2, 9];
+        n1 = Math.floor(Math.random() * (r1[1] - r1[0] + 1)) + r1[0];
+        n2 = Math.floor(Math.random() * (r2[1] - r2[0] + 1)) + r2[0];
+        
+        if (!allowCarry) {
+          // Simplistic "no carry" for multi: digits * single digit sum < 10
+          // e.g. 123 * 3 -> 1*3=3, 2*3=6, 3*3=9.
+          n2 = Math.floor(Math.random() * 3) + 2; // 2, 3, or 4
+          let s1 = "";
+          for(let i=0; i<3; i++) {
+             s1 += Math.floor(Math.random() * Math.floor(9/n2));
+          }
+          n1 = Number(s1);
+        }
+      } else {
+        const minNum = range[0];
+        const maxNum = range[1];
+        
+        if (!allowCarry) {
+          const len = String(maxNum).length;
+          let s1 = "", s2 = "";
+          for(let i=0; i<len; i++) {
+            if (type === 'addition') {
+                const d1 = Math.floor(Math.random() * 5); 
+                const d2 = Math.floor(Math.random() * (9 - d1));
+                s1 = d1 + s1; s2 = d2 + s2;
+            } else {
+                const d1 = Math.floor(Math.random() * 9) + (i === len-1 ? 1 : 0);
+                const d2 = Math.floor(Math.random() * (d1 + 1));
+                s1 = d1 + s1; s2 = d2 + s2;
+            }
+          }
+          n1 = Number(s1); n2 = Number(s2);
+        } else {
+          n1 = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+          n2 = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+          if (type === 'subtraction' && n1 < n2) [n1, n2] = [n2, n1];
+        }
+      }
+    }
+    
+    const { 
+      generateAdditionJourney, 
+      generateSubtractionJourney, 
+      generateMultiplicationJourney 
+    } = require('./arithmeticJourneyGenerator');
+    
+    let problem;
+    if (type === 'addition') problem = generateAdditionJourney(n1, n2);
+    else if (type === 'subtraction') problem = generateSubtractionJourney(n1, n2);
+    else if (type === 'multiplication') problem = generateMultiplicationJourney(n1, n2);
+    
+    const resultValue = (type === 'addition' || type === 'subtraction' || type === 'multiplication') ? problem.footer.match(/[\d,]+/g).pop().replace(/,/g, '') : "0";
+
+    inst = {
+      ...inst,
+      ...problem,
+      operation: problem.type, // Preserve 'addition', 'subtraction', or 'multiplication'
+      type: 'arithmetic_journey',
+      logic_type: 'arithmetic_journey_v1',
+      adaptiveConfig: {
+        ...inst.adaptiveConfig,
+        variables: { ...(inst.adaptiveConfig.variables || {}), n1, n2, type }
+      },
+      correctAnswerText: resultValue
+    };
+    return inst;
   }
 
   if (logic === 'table_min_max_comparison') {
@@ -389,7 +1157,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       target = overrideVariables.target || target;
     } else {
       const namesPool = ["Noah", "Liam", "Mason", "Jacob", "William", "Ethan", "Emma", "Olivia", "Sophia", "Ava", "Isabella", "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Krishna", "Ishaan", "Ananya", "Diya", "Saanvi", "Kiara", "Prisha", "Riya"];
-      
+
       // Shuffle and pick 4 names
       const shuffledNames = namesPool.sort(() => 0.5 - Math.random());
       names = shuffledNames.slice(0, 4);
@@ -431,7 +1199,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       comparative: comparative
     };
 
-    const templateVars = { 
+    const templateVars = {
       ...inst.adaptiveConfig.variables,
       name_1: names[0], name_2: names[1], name_3: names[2], name_4: names[3],
       num_1: values[0], num_2: values[1], num_3: values[2], num_4: values[3],
@@ -445,16 +1213,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     // Inject digit variables for each number (e.g. num_1_d1 for Ones, num_1_d2 for Tens)
     for (let i = 0; i < 4; i++) {
-        const numStr = String(values[i]);
-        for (let j = 0; j < numStr.length; j++) {
-            const placeIndex = numStr.length - j; // d1=Ones, d2=Tens, d3=Hundreds, etc.
-            templateVars[`num_${i+1}_d${placeIndex}`] = numStr[j];
-        }
+      const numStr = String(values[i]);
+      for (let j = 0; j < numStr.length; j++) {
+        const placeIndex = numStr.length - j; // d1=Ones, d2=Tens, d3=Hundreds, etc.
+        templateVars[`num_${i + 1}_d${placeIndex}`] = numStr[j];
+      }
     }
 
     inst.type = 'mcq'; // Switch template to MCQ renderer
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.options) {
       let parsedOptions = typeof question.options === 'string' ? JSON.parse(question.options) : question.options;
       inst.options = hydrateNode(parsedOptions, templateVars);
@@ -467,7 +1235,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
         { type: "text", content: names[3] }
       ];
     }
-    
+
     if (question.solution) {
       let parsedSolution = typeof question.solution === 'string' ? JSON.parse(question.solution) : question.solution;
       inst.solution = hydrateNode(parsedSolution, templateVars);
@@ -477,7 +1245,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     if (scaffoldSrc) {
       inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
       if (!inst.adaptiveConfig.scaffold.id) {
-         inst.adaptiveConfig.scaffold.id = (inst.template_id || 'v1') + '_scaffold';
+        inst.adaptiveConfig.scaffold.id = (inst.template_id || 'v1') + '_scaffold';
       }
     }
 
@@ -491,7 +1259,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
   if (logic === 'number_comparison') {
     let num1, num2, correctPhrase;
-    
+
     if (overrideVariables) {
       num1 = overrideVariables.num_1;
       num2 = overrideVariables.num_2;
@@ -500,28 +1268,28 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] };
       const minVal = dataSource.range[0];
       const maxVal = dataSource.range[1];
-      
+
       const isEq = Math.random() < 0.25;
       const varyLengths = Math.random() < 0.5; // 50% chance to force different lengths
-      
+
       if (isEq) {
         num1 = Math.floor(Math.random() * (maxVal - minVal + 1)) + minVal;
         num2 = num1;
       } else {
         num1 = Math.floor(Math.random() * (maxVal - minVal + 1)) + minVal;
-        
+
         if (varyLengths && String(maxVal).length > String(minVal).length) {
-           // pick a power of 10 smaller or larger
-           const len1 = String(num1).length;
-           const newLen = len1 > String(minVal).length ? len1 - 1 : len1 + 1;
-           const min2 = Math.pow(10, newLen - 1);
-           const max2 = Math.pow(10, newLen) - 1;
-           num2 = Math.floor(Math.random() * (max2 - min2 + 1)) + min2;
+          // pick a power of 10 smaller or larger
+          const len1 = String(num1).length;
+          const newLen = len1 > String(minVal).length ? len1 - 1 : len1 + 1;
+          const min2 = Math.pow(10, newLen - 1);
+          const max2 = Math.pow(10, newLen) - 1;
+          num2 = Math.floor(Math.random() * (max2 - min2 + 1)) + min2;
         } else {
-           // same length, vary slightly
-           let change = Math.floor(Math.random() * 90) + 1;
-           num2 = Math.random() < 0.5 ? num1 + change : num1 - change;
-           if (String(num2).length !== String(num1).length) num2 = num1; // reset if overflow
+          // same length, vary slightly
+          let change = Math.floor(Math.random() * 90) + 1;
+          num2 = Math.random() < 0.5 ? num1 + change : num1 - change;
+          if (String(num2).length !== String(num1).length) num2 = num1; // reset if overflow
         }
       }
 
@@ -537,14 +1305,14 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     // Procedurally generate the exact solution breakdown
     let breakdown = `First, count the number of digits in each number. There are ${n1Str.length} digits in ${n1Fmt} and ${n2Str.length} digits in ${n2Fmt}. `;
-    
+
     if (n1Str.length !== n2Str.length) {
       breakdown += `The number with more digits is always greater.\n\n**${n1Fmt} ${correctPhrase} ${n2Fmt}.**`;
     } else {
       breakdown += `They have the same number of digits.\n\n`;
       const placesArray = ["ones", "tens", "hundreds", "thousands", "ten thousands", "lakhs", "ten lakhs"];
       let diffFound = false;
-      
+
       for (let i = 0; i < n1Str.length; i++) {
         let pName = placesArray[n1Str.length - 1 - i];
         breakdown += `Compare the ${pName} digits. The ${pName} digit in ${n1Fmt} is ${n1Str[i]}. The ${pName} digit in ${n2Fmt} is ${n2Str[i]}. `;
@@ -554,16 +1322,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
           breakdown += `${n1Str[i]} is ${n1Str[i] > n2Str[i] ? 'greater' : 'less'} than ${n2Str[i]}.\n\n`;
           diffFound = true;
           breakdown += `**${n1Fmt} ${correctPhrase} ${n2Fmt}.**`;
-          
+
           breakdown = breakdown.replace('Compare the hundreds', 'Now compare the hundreds')
-                               .replace('Compare the tens', 'Now compare the tens')
-                               .replace('Compare the ones', 'Now compare the ones');
+            .replace('Compare the tens', 'Now compare the tens')
+            .replace('Compare the ones', 'Now compare the ones');
           breakdown = breakdown.replace(/^Now /, '');
           breakdown = breakdown.replace(/\n\nNow /, '\n\nNow ');
           breakdown = breakdown.replace(/\n\nCompare /, '\n\nNow compare ');
           breakdown = breakdown.replace(/^Compare /, 'Compare ');
           breakdown = breakdown.replace(/\n\nNow/, '\n\nNow');
-          
+
           breakdown = breakdown.split('\n\n').map((line, idx) => {
             if (idx === 1 && line.startsWith('Now ')) return line.substring(4);
             return line;
@@ -588,26 +1356,110 @@ export function instantiateTemplate(question, overrideVariables = null) {
     };
 
     const templateVars = { ...inst.adaptiveConfig.variables };
-    
+
     inst.type = 'mcq';
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     inst.options = [
-        { type: "text", content: "is greater than" },
-        { type: "text", content: "is less than" },
-        { type: "text", content: "is equal to" }
+      { type: "text", content: "is greater than" },
+      { type: "text", content: "is less than" },
+      { type: "text", content: "is equal to" }
     ];
-    
+
     inst.correctAnswerIndex = inst.options.findIndex(opt => opt.content === correctPhrase);
-    
+
     if (question.solution) {
       let parsedSolution = typeof question.solution === 'string' ? JSON.parse(question.solution) : question.solution;
       inst.solution = hydrateNode(parsedSolution, templateVars);
     }
-    
+
     const answerPayload = JSON.stringify({ ans_value: correctPhrase });
     inst.correctAnswerText = answerPayload;
     inst.adaptiveConfig.correctAnswerText = answerPayload;
+  }
+
+  if (logic === 'place_value_underlined_choice_v1') {
+    let targetValue, correctNum, wrongNum, targetPlace, targetDigit, otherDigit;
+    let opt1Html, opt2Html, opt1IsCorrect;
+
+    if (overrideVariables) {
+      targetValue = overrideVariables.value;
+      correctNum = overrideVariables.correct_number;
+      wrongNum = overrideVariables.wrong_number;
+      targetPlace = overrideVariables.target_place;
+      targetDigit = overrideVariables.target_digit;
+      opt1Html = overrideVariables.opt1Html;
+      opt2Html = overrideVariables.opt2Html;
+      opt1IsCorrect = overrideVariables.opt1IsCorrect;
+    } else {
+      const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
+      const range = dataSource.range || [10, 99];
+      targetPlace = range[1] > 99 ? 100 : 10; // Auto-detect Tens or Hundreds
+
+      // Choose a random target digit (e.g., 1-9)
+      targetDigit = Math.floor(Math.random() * 9) + 1;
+      targetValue = targetDigit * targetPlace;
+
+      // Generate the CORRECT number (e.g., 96 for target 90)
+      otherDigit = Math.floor(Math.random() * 9) + 1;
+      correctNum = targetValue + (Math.random() < 0.5 ? otherDigit : 0);
+
+      // Generate the INCORRECT number (e.g., 39 for target 90)
+      wrongNum = (otherDigit * 10) + targetDigit;
+
+      const rawOptCorrect = targetPlace === 10 ? `<u>${targetDigit}</u>${correctNum % 10}` : `<u>${targetDigit}</u>xx`;
+      const rawOptWrong = targetPlace === 10 ? `${wrongNum / 10 | 0}<u>${targetDigit}</u>` : `x<u>${targetDigit}</u>x`;
+
+      // Shuffle options safely by saving the exact state
+      if (Math.random() < 0.5) {
+        opt1Html = rawOptCorrect;
+        opt2Html = rawOptWrong;
+        opt1IsCorrect = true;
+      } else {
+        opt1Html = rawOptWrong;
+        opt2Html = rawOptCorrect;
+        opt1IsCorrect = false;
+      }
+    }
+
+    const items = [
+      { content: opt1Html, label: opt1Html, isCorrect: opt1IsCorrect },
+      { content: opt2Html, label: opt2Html, isCorrect: !opt1IsCorrect }
+    ];
+
+    inst.options = items;
+    inst.correctAnswerIndex = items.findIndex(i => i.isCorrect);
+
+    const templateVars = {
+      value: targetValue,
+      target_digit: targetDigit,
+      correct_number: correctNum,
+      wrong_number: wrongNum,
+      target_place: targetPlace,
+      place_name: targetPlace === 10 ? 'tens' : 'hundreds',
+      opt1Html: opt1Html,
+      opt2Html: opt2Html,
+      opt1IsCorrect: opt1IsCorrect
+    };
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      ...templateVars
+    };
+
+    inst.parts = hydrateNode(question.parts || [], templateVars);
+
+    // Fallback options hydration
+    if (question.options) {
+      inst.options = inst.options.map(opt => hydrateNode(opt, templateVars));
+    }
+
+    if (question.solution) {
+      inst.solution = hydrateNode(question.solution, templateVars);
+    }
+
+    inst.correctAnswerText = hydrateNode(question.correctAnswerText || '', templateVars);
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
 
   if (logic === 'place_value_conversion') {
@@ -629,19 +1481,19 @@ export function instantiateTemplate(question, overrideVariables = null) {
         { name: "tens", singular: "ten" },
         { name: "ones", singular: "one" }
       ];
-      
+
       const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
       const minBase = dataSource.min_base || 1;
       const maxBase = dataSource.max_base || 9;
-      
+
       baseQty = Math.floor(Math.random() * (maxBase - minBase + 1)) + minBase;
       derivedQty = baseQty * 10;
 
       const idx = Math.floor(Math.random() * (places.length - 1));
       largerPlace = places[idx].name;
       largerSingular = places[idx].singular;
-      smallerPlace = places[idx+1].name;
-      smallerPlural = places[idx+1].name;
+      smallerPlace = places[idx + 1].name;
+      smallerPlural = places[idx + 1].name;
 
       const target = inst.adaptiveConfig?.target || 'base'; // 'base' means answering the larger side
       correctValue = target === 'base' ? baseQty : derivedQty;
@@ -661,7 +1513,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const templateVars = { ...inst.adaptiveConfig.variables, value: correctValue };
 
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.solution) {
       let parsedSolution = question.solution;
       if (typeof parsedSolution === 'string') {
@@ -674,10 +1526,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
     if (scaffoldSrc) {
       inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
       if (!inst.adaptiveConfig.scaffold.id) {
-         inst.adaptiveConfig.scaffold.id = (inst.template_id || 'v1') + '_scaffold';
+        inst.adaptiveConfig.scaffold.id = (inst.template_id || 'v1') + '_scaffold';
       }
       if (!inst.adaptiveConfig.scaffold.trigger_on) {
-         inst.adaptiveConfig.scaffold.trigger_on = ["conversion_error", "place_name_error"];
+        inst.adaptiveConfig.scaffold.trigger_on = ["conversion_error", "place_name_error"];
       }
     }
 
@@ -691,18 +1543,18 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const range = dataSource.range || [1, 50];
     const targetCategory = dataSource.category_target || 'even';
     const otherCategory = targetCategory === 'even' ? 'odd' : 'even';
-    
+
     // Generate candidates
     const allNumbers = [];
     for (let i = range[0]; i <= range[1]; i++) allNumbers.push(i);
-    
+
     // Shuffle and pick 4 unique numbers
     const shuffled = [...allNumbers].sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, 4);
-    
+
     const matches = selected.filter(n => (targetCategory === 'even' ? n % 2 === 0 : n % 2 !== 0));
     const nonMatches = selected.filter(n => (targetCategory === 'even' ? n % 2 !== 0 : n % 2 === 0));
-    
+
     const templateVars = {
       category_target: targetCategory,
       other_category: otherCategory,
@@ -718,7 +1570,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.adaptiveConfig.variables = templateVars;
     inst.parts = hydrateNode(question.parts || [], templateVars);
     inst.solution = hydrateNode(question.solution || [], templateVars);
-    
+
     inst.options = selected.map(n => ({
       content: String(n),
       isCorrect: (targetCategory === 'even' ? n % 2 === 0 : n % 2 !== 0)
@@ -727,12 +1579,12 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.isMultiSelect = matches.length > 1;
     inst.showSubmitButton = inst.isMultiSelect; // Force submit button if multi-select
     inst.type = 'mcq';
-    
+
     // Build answer key metadata for internal validation
     inst.correctAnswerIndices = inst.options
       .map((opt, i) => (opt.isCorrect ? i : null))
       .filter(v => v !== null);
-    
+
     if (!inst.isMultiSelect && inst.correctAnswerIndices.length > 0) {
       inst.correctAnswerIndex = inst.correctAnswerIndices[0];
     }
@@ -753,7 +1605,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const names = ["Noah", "Liam", "Mason", "Jacob", "William", "Ethan", "Emma", "Olivia", "Sophia", "Ava", "Isabella", "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Krishna", "Ishaan", "Ananya", "Diya", "Saanvi", "Kiara", "Prisha", "Riya"];
       const units = ["litres", "kilograms", "meters", "boxes", "bags"];
       const colors = ["white", "sea green", "blue", "red", "yellow", "orange", "purple"];
-      
+
       name = names[Math.floor(Math.random() * names.length)];
       unit = units[Math.floor(Math.random() * units.length)];
       const shuffledColors = colors.sort(() => 0.5 - Math.random());
@@ -766,10 +1618,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
       while (!valid) {
         n1 = Math.floor(Math.random() * 90000) + 10000;
         n2 = Math.floor(Math.random() * 90) + 10;
-        
+
         const s1 = String(n1);
         const s2 = String(n2);
-        
+
         // Check ones:
         const d1_o = Number(s1[s1.length - 1]);
         const d2_o = Number(s2[s2.length - 1]);
@@ -803,7 +1655,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const s1 = String(num1);
     const s2 = String(num2);
     const sSum = String(sum);
-    
+
     const d1_o = s1[s1.length - 1]; const d2_o = s2[s2.length - 1]; const r_o = sSum[sSum.length - 1];
     const d1_t = s1[s1.length - 2]; const d2_t = s2[s2.length - 2]; const r_t = sSum[sSum.length - 2];
     const d1_h = s1[s1.length - 3]; const r_h = sSum[sSum.length - 3];
@@ -811,54 +1663,70 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const d1_tth = s1[s1.length - 5]; const r_tth = sSum[sSum.length - 5];
 
     const generateArith = (highlightPos = null) => {
-        const rows = [
-            { kind: "text", text: `  ${n1Fmt.padStart(6, ' ')}` },
-            { kind: "text", text: `+ ${n2Fmt.padStart(6, ' ')}` },
-            { kind: "divider" }
-        ];
-        
-        let resultLine = `  ${sumFmt.padStart(6, ' ')}`;
-        // Simple highlighting hack for static solution: wrap in stars for renderer to bold if it supports it
-        // Or we can just use the vertical display style.
-        rows.push({ kind: "text", text: resultLine });
-        return { type: "arithmeticLayout", layout: { rows: rows } };
+      const rows = [
+        { kind: "text", text: `  ${n1Fmt.padStart(6, ' ')}` },
+        { kind: "text", text: `+ ${n2Fmt.padStart(6, ' ')}` },
+        { kind: "divider" }
+      ];
+
+      let resultLine = `  ${sumFmt.padStart(6, ' ')}`;
+      // Simple highlighting hack for static solution: wrap in stars for renderer to bold if it supports it
+      // Or we can just use the vertical display style.
+      rows.push({ kind: "text", text: resultLine });
+      return { type: "arithmeticLayout", layout: { rows: rows } };
     };
 
     // For a "pro" solution like the screenshot, we want vertical parts
     const solutionParts = [
-        { type: "text", content: `Add the numbers of ${unit}.` },
-        { type: "text", content: `**Add:**` },
-        { type: "arithmeticLayout", layout: { rows: [
+      { type: "text", content: `Add the numbers of ${unit}.` },
+      { type: "text", content: `**Add:**` },
+      {
+        type: "arithmeticLayout", layout: {
+          rows: [
             { kind: "text", text: `${n1Fmt.padStart(10, ' ')}` },
             { kind: "text", text: `+ ${n2Fmt.padStart(8, ' ')}` },
             { kind: "divider" }
-        ] } },
-        { type: "text", content: `Add the ones. Add ${d1_o} + ${d2_o} = ${r_o}.` },
-        { type: "arithmeticLayout", layout: { rows: [
+          ]
+        }
+      },
+      { type: "text", content: `Add the ones. Add ${d1_o} + ${d2_o} = ${r_o}.` },
+      {
+        type: "arithmeticLayout", layout: {
+          rows: [
             { kind: "text", text: `${n1Fmt.slice(0, -1)}*${d1_o}`.padStart(10, ' ') },
             { kind: "text", text: `+ ${n2Fmt.slice(0, -1)}*${d2_o}`.padStart(8, ' ') },
             { kind: "divider" },
             { kind: "text", text: `*${r_o}`.padStart(10, ' ') }
-        ] } },
-        { type: "text", content: `Add the tens. Add ${d1_t} + ${d2_t} = ${r_t}.` },
-        { type: "arithmeticLayout", layout: { rows: [
+          ]
+        }
+      },
+      { type: "text", content: `Add the tens. Add ${d1_t} + ${d2_t} = ${r_t}.` },
+      {
+        type: "arithmeticLayout", layout: {
+          rows: [
             { kind: "text", text: `${n1Fmt.slice(0, -2)}*${d1_t}${d1_o}`.padStart(10, ' ') },
             { kind: "text", text: `+ *${d2_t}${d2_o}`.padStart(8, ' ') },
             { kind: "divider" },
             { kind: "text", text: `*${r_t}${r_o}`.padStart(10, ' ') }
-        ] } },
-        { type: "text", content: `Add the hundreds. Bring down the ${d1_h}.` },
-        { type: "arithmeticLayout", layout: { rows: [
+          ]
+        }
+      },
+      { type: "text", content: `Add the hundreds. Bring down the ${d1_h}.` },
+      {
+        type: "arithmeticLayout", layout: {
+          rows: [
             { kind: "text", text: `${n1Fmt.slice(0, -4)}*${d1_h}${s1.slice(-2).padStart(3, ',')}`.padStart(10, ' ') },
             { kind: "text", text: `+ ${n2Fmt}`.padStart(8, ' ') },
             { kind: "divider" },
             { kind: "text", text: `*${r_h}${sSum.slice(-2).padStart(3, ',')}`.padStart(10, ' ') }
-        ] } },
-        { type: "text", content: `The sum is ${sumFmt}. ${name} used ${sumFmt} ${unit} of paint in all.` }
+          ]
+        }
+      },
+      { type: "text", content: `The sum is ${sumFmt}. ${name} used ${sumFmt} ${unit} of paint in all.` }
     ];
 
     inst.solution = solutionParts.map(p => ({ ...p, isVertical: true }));
-    
+
     const answerPayload = JSON.stringify({ ans_value: String(sum) });
     inst.correctAnswerText = answerPayload;
     inst.adaptiveConfig.correctAnswerText = answerPayload;
@@ -866,7 +1734,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
   if (logic === 'rounding_template_v1') {
     let number, targetPlaceMultiplier, targetPlaceName, roundedValue, targetDigit, rightDigit, isRoundUp;
-    
+
     if (overrideVariables) {
       number = overrideVariables.number;
       targetPlaceMultiplier = overrideVariables.target_place_multiplier;
@@ -879,24 +1747,24 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1000, 9999] };
       const range = dataSource.range || [1000, 9999];
       number = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-      
+
       const places = [1000, 100, 10]; // Supported rounding targets
       const names = { 1000: "thousand", 100: "hundred", 10: "ten" };
-      
+
       // Filter based on number magnitude (don't round to thousands if number is < 1000)
       const validMultipliers = places.filter(p => p * 10 <= number * 10);
       targetPlaceMultiplier = validMultipliers[Math.floor(Math.random() * validMultipliers.length)];
       targetPlaceName = names[targetPlaceMultiplier];
-      
+
       // Calculate rounding
       const factor = targetPlaceMultiplier;
       const rightPlaceMultiplier = factor / 10;
-      
+
       targetDigit = Math.floor((number / factor) % 10);
       rightDigit = Math.floor((number / rightPlaceMultiplier) % 10);
-      
+
       isRoundUp = rightDigit >= 5;
-      
+
       if (isRoundUp) {
         roundedValue = (Math.floor(number / factor) + 1) * factor;
       } else {
@@ -907,41 +1775,41 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const numStr = String(number);
     const nFmt = number.toLocaleString('en-IN');
     const rFmt = roundedValue.toLocaleString('en-IN');
-    
+
     // Highlight digits in formatted strings
     const highlightInFormatted = (fmtStr, targetDigitValue, isRight = false) => {
-        // Find the digit in the formatted string. 
-        // For rounding, we usually want the specific place.
-        // If it's the target digit, it's the first occurrence of that digit at the expected place.
-        // A safer way: iterate chars and count digits.
-        const chars = fmtStr.split('');
-        let digitCount = 0;
-        const targetDigitPos = numStr.length - 1 - (isRight ? (Math.log10(targetPlaceMultiplier) - 1) : Math.log10(targetPlaceMultiplier));
-        
-        for (let i = 0; i < chars.length; i++) {
-            if (/[0-9]/.test(chars[i])) {
-                if (digitCount === targetDigitPos) {
-                    chars[i] = `<span style="color:blue;font-weight:800">${chars[i]}</span>`;
-                    break;
-                }
-                digitCount++;
-            }
+      // Find the digit in the formatted string. 
+      // For rounding, we usually want the specific place.
+      // If it's the target digit, it's the first occurrence of that digit at the expected place.
+      // A safer way: iterate chars and count digits.
+      const chars = fmtStr.split('');
+      let digitCount = 0;
+      const targetDigitPos = numStr.length - 1 - (isRight ? (Math.log10(targetPlaceMultiplier) - 1) : Math.log10(targetPlaceMultiplier));
+
+      for (let i = 0; i < chars.length; i++) {
+        if (/[0-9]/.test(chars[i])) {
+          if (digitCount === targetDigitPos) {
+            chars[i] = `<span style="color:blue;font-weight:800">${chars[i]}</span>`;
+            break;
+          }
+          digitCount++;
         }
-        return chars.join('');
+      }
+      return chars.join('');
     };
 
     const highlightRangeInFormatted = (fmtStr, startDigitPos, color = 'blue') => {
-        const chars = fmtStr.split('');
-        let digitCount = 0;
-        for (let i = 0; i < chars.length; i++) {
-            if (/[0-9]/.test(chars[i])) {
-                if (digitCount >= startDigitPos) {
-                    chars[i] = `<span style="color:${color};font-weight:800">${chars[i]}</span>`;
-                }
-                digitCount++;
-            }
+      const chars = fmtStr.split('');
+      let digitCount = 0;
+      for (let i = 0; i < chars.length; i++) {
+        if (/[0-9]/.test(chars[i])) {
+          if (digitCount >= startDigitPos) {
+            chars[i] = `<span style="color:${color};font-weight:800">${chars[i]}</span>`;
+          }
+          digitCount++;
         }
-        return chars.join('');
+      }
+      return chars.join('');
     };
 
     const targetPos = numStr.length - 1 - Math.log10(targetPlaceMultiplier);
@@ -970,7 +1838,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const sol = typeof question.solution === 'string' ? JSON.parse(question.solution) : question.solution;
       inst.solution = hydrateNode(sol, templateVars);
     }
-    
+
     inst.correctAnswerText = JSON.stringify({ ans: String(roundedValue) });
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
@@ -1021,14 +1889,14 @@ export function instantiateTemplate(question, overrideVariables = null) {
     if (layoutType === "table") {
       const answerCells = [];
       const correctPayload = {};
-      
+
       for (let i = 0; i < maxDigits; i++) {
-        const digitPos = maxDigits - 1 - i; 
+        const digitPos = maxDigits - 1 - i;
         const cellId = `ans_${digitPos}`;
         const charIdx = i - resPadding;
-        
-        answerCells.push({ 
-          id: cellId, 
+
+        answerCells.push({
+          id: cellId,
           type: "digit"
         });
         correctPayload[cellId] = charIdx >= 0 ? resDigits[charIdx] : "";
@@ -1099,8 +1967,8 @@ export function instantiateTemplate(question, overrideVariables = null) {
     for (let i = 0; i < maxDigits; i++) {
       const digitPos = maxDigits - 1 - i;
       const charIdx = i - resPadding;
-      solutionCells.push({ 
-        kind: "fixed", 
+      solutionCells.push({
+        kind: "fixed",
         value: charIdx >= 0 ? resDigits[charIdx] : ""
       });
       if (digitPos === 3 && maxDigits > 3) {
@@ -1115,13 +1983,13 @@ export function instantiateTemplate(question, overrideVariables = null) {
         type: (layoutType === "table") ? "arithmeticLayout" : "verticalMultiply",
         isVertical: true,
         layout: (layoutType === "table") ? {
-            mode: "placeValue",
-            rows: [
-              { kind: "answer", prefix: "\u00A0", cells: getFixedCells(v1, maxDigits) },
-              { kind: "answer", prefix: "×", cells: getFixedCells(v2, maxDigits) },
-              { kind: "divider" },
-              { kind: "answer", prefix: "\u00A0", cells: solutionCells }
-            ]
+          mode: "placeValue",
+          rows: [
+            { kind: "answer", prefix: "\u00A0", cells: getFixedCells(v1, maxDigits) },
+            { kind: "answer", prefix: "×", cells: getFixedCells(v2, maxDigits) },
+            { kind: "divider" },
+            { kind: "answer", prefix: "\u00A0", cells: solutionCells }
+          ]
         } : {
           v1: v1Str,
           v2: v2Str,
@@ -1136,7 +2004,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
     const f1Range = dataSource.f1_range || [2, 9];
     const f2Range = dataSource.f2_range || [2, 9];
-    
+
     let f1, f2;
     if (overrideVariables) {
       f1 = overrideVariables.f1;
@@ -1146,34 +2014,34 @@ export function instantiateTemplate(question, overrideVariables = null) {
       f2 = Math.floor(Math.random() * (f2Range[1] - f2Range[0] + 1)) + f2Range[0];
     }
     const baseResult = f1 * f2;
-    
+
     inst.adaptiveConfig.variables = { f1, f2, base: baseResult };
-    
+
     const steps = [1, 10, 100, 1000, 10000, 100000, 1000000];
     const correctPayload = {};
     const parts = [{ type: 'text', content: 'Complete the pattern:' }];
-    
+
     steps.forEach((multiplier, i) => {
       const f2Expanded = f2 * multiplier;
       const f2Str = f2Expanded.toLocaleString();
       const ans = baseResult * multiplier;
       const ansStr = String(ans);
       const cellId = `ans_${i}`;
-      
-      parts.push({ 
-        type: 'text', 
-        content: `${f1} × ${f2Str} =` 
+
+      parts.push({
+        type: 'text',
+        content: `${f1} × ${f2Str} =`
       });
-      parts.push({ 
-        type: 'digit_blank', 
+      parts.push({
+        type: 'digit_blank',
         id: cellId,
         size: "small",
         placeholder: ""
       });
-      
+
       correctPayload[cellId] = ansStr;
     });
-    
+
     inst.isVertical = false;
     inst.parts = parts;
     inst.correctAnswerText = JSON.stringify(correctPayload);
@@ -1186,20 +2054,20 @@ export function instantiateTemplate(question, overrideVariables = null) {
       { type: 'text', content: `**${f1} × ${f2} = ${baseResult}**` },
       { type: 'text', content: 'Step 2: Use place value to complete the pattern.' }
     ];
-    
+
     const placeNames = ["ones", "tens", "hundreds", "thousands", "ten thousands", "hundred thousands", "millions"];
     steps.slice(1).forEach((multiplier, i) => {
-      sol.push({ 
-        type: 'text', 
-        content: `**${f1} × ${f2} ${placeNames[i+1]}** = **${baseResult} ${placeNames[i+1]}** (${(baseResult * multiplier).toLocaleString()})`
+      sol.push({
+        type: 'text',
+        content: `**${f1} × ${f2} ${placeNames[i + 1]}** = **${baseResult} ${placeNames[i + 1]}** (${(baseResult * multiplier).toLocaleString()})`
       });
     });
-    
-    sol.push({ 
-      type: 'text', 
-      content: `***Tip:** Notice how the number of zeros in the product matches the number of zeros in the factor!*` 
+
+    sol.push({
+      type: 'text',
+      content: `***Tip:** Notice how the number of zeros in the product matches the number of zeros in the factor!*`
     });
-    
+
     inst.solution = sol;
   }
 
@@ -1207,7 +2075,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || {};
     const rowRange = dataSource.row_range || [2, 5];
     const colRange = dataSource.col_range || [2, 5];
-    
+
     let rows, cols;
     if (overrideVariables) {
       rows = overrideVariables.rows;
@@ -1217,11 +2085,11 @@ export function instantiateTemplate(question, overrideVariables = null) {
       cols = Math.floor(Math.random() * (colRange[1] - colRange[0] + 1)) + colRange[0];
     }
     const product = rows * cols;
-    
+
     const gridRows = 10;
     const gridCols = 10;
     const correctIndices = [];
-    
+
     // Use integer indices (row * width + col)
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -1231,7 +2099,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     inst.type = "shadeGrid";
     const correctAnswerVal = product; // For numeric comparison fallback if needed
-    
+
     inst.adaptiveConfig = {
       ...inst.adaptiveConfig,
       logic_type: logic,
@@ -1247,11 +2115,11 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.parts = [
       { type: "text", content: `Make a rectangular array of squares to model **${rows} × ${cols} = ${product}**.` }
     ];
-    
+
     // Simplest form for the server and UI logic
-    inst.correctAnswerText = String(product); 
+    inst.correctAnswerText = String(product);
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
-    
+
     // Remove complex value to avoid JSON bubble in UI
     delete inst.correctAnswerValue;
     delete inst.adaptiveConfig.correctAnswerValue;
@@ -1667,8 +2535,8 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
           const matchesCarryMode = (
             carryMode === 'with_carry' ? hasCarry :
-            carryMode === 'without_carry' ? !hasCarry :
-            true
+              carryMode === 'without_carry' ? !hasCarry :
+                true
           );
 
           if (matchesCarryMode) {
@@ -2671,7 +3539,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
         isVertical: true
       }
     ], templateVars);
-  }  if (logic === 'addition_basic_v1') {
+  } if (logic === 'addition_basic_v1') {
     const ds = question.data_source || inst.adaptiveConfig?.data_source || {};
     const rangeA = ds.range_a || [1, 9];
     const rangeB = ds.range_b || [1, 9];
@@ -2700,9 +3568,9 @@ export function instantiateTemplate(question, overrideVariables = null) {
     ];
 
     inst.solution = [
-      { 
-        type: 'section', 
-        label: 'solve', 
+      {
+        type: 'section',
+        label: 'solve',
         contentParts: [
           { type: 'text', content: `To find the sum of **${a}** and **${b}**, you can count forward from ${Math.max(a, b)}.` },
           { type: 'text', content: `**${a} + ${b} = ${sum}**` }
@@ -2721,22 +3589,22 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const operation = vars.operation || dataSource.operation || (Math.random() > 0.5 ? 'addition' : 'subtraction');
     const digits = dataSource.digits || 3;
     const range = digits === 3 ? [100, 999] : [1000, 9999];
-    
+
     let n1 = vars.num1 || (Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]);
     let n2 = vars.num2 || (Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]);
-    
+
     if (operation === 'subtraction' && !vars.num1) {
       if (n1 < n2) [n1, n2] = [n2, n1];
     }
-    
+
     const result = operation === 'addition' ? n1 + n2 : n1 - n2;
     const resStr = String(result);
     const n1Str = String(n1);
     const n2Str = String(n2);
-    
+
     // Determine max columns needed
     const maxLen = Math.max(n1Str.length, n2Str.length, resStr.length);
-    
+
     const getCellsForNum = (num) => {
       return String(num).split('').map((char) => ({
         kind: 'fixed',
@@ -2752,7 +3620,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     for (let i = 0; i < maxLen; i++) {
       const cellId = `a_${i}`;
       answerCells.push({ id: cellId, type: 'digit' });
-      
+
       // Map result digits from left to right, considering padding
       const resIdx = i - resPadding;
       correctPayload[cellId] = resIdx >= 0 ? resArr[resIdx] : "";
@@ -2791,15 +3659,15 @@ export function instantiateTemplate(question, overrideVariables = null) {
     ];
 
     inst.correctAnswerText = JSON.stringify(correctPayload);
-    inst.adaptiveConfig.variables = { 
+    inst.adaptiveConfig.variables = {
       ...(inst.adaptiveConfig.variables || {}),
-      num1: n1, num2: n2, result, operation 
+      num1: n1, num2: n2, result, operation
     };
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
-    
+
     // Auto-generate solution text if not provided
     if (!inst.solution || inst.solution === "[]") {
-        inst.solution = `${n1} ${operation === 'addition' ? '+' : '-'} ${n2} = ${result}`;
+      inst.solution = `${n1} ${operation === 'addition' ? '+' : '-'} ${n2} = ${result}`;
     }
   }
 
@@ -2828,13 +3696,13 @@ export function instantiateTemplate(question, overrideVariables = null) {
       one_count: o
     };
 
-    const templateVars = { 
+    const templateVars = {
       ...inst.adaptiveConfig.variables,
       number_formatted: number.toLocaleString('en-IN')
     };
 
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.solution) {
       let parsedSolution = question.solution;
       if (typeof parsedSolution === 'string') {
@@ -2926,19 +3794,19 @@ export function instantiateTemplate(question, overrideVariables = null) {
       }));
     } else {
       customOptions = [
-        { 
-          parts: [ { type: "baseTenBlocks", thousands: tThousands, hundreds: tHundreds, tens: tTens, ones: tOnes, variant: "green" } ],
+        {
+          parts: [{ type: "baseTenBlocks", thousands: tThousands, hundreds: tHundreds, tens: tTens, ones: tOnes, variant: "green" }],
           label: String(targetNum),
           isCorrect: true
         },
-        { 
-          parts: [ { type: "baseTenBlocks", thousands: dThousands, hundreds: dHundreds, tens: dTens, ones: dOnes, variant: "purple" } ],
+        {
+          parts: [{ type: "baseTenBlocks", thousands: dThousands, hundreds: dHundreds, tens: dTens, ones: dOnes, variant: "purple" }],
           label: String(distractorNum),
           isCorrect: false
         }
       ];
     }
-    
+
     inst.parts = hydrateNode(question.parts || [
       { type: "text", content: "Which place-value model shows {target_num}?" }
     ], baseTenVars);
@@ -2992,12 +3860,12 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [11, 99] };
       const range = dataSource.range || [11, 99];
       targetNum = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-      
+
       // Dynamic offsets based on range
       let offsets = [1, 10];
       if (range[1] >= 100) offsets.push(100);
       if (range[1] >= 1000) offsets.push(1000);
-      
+
       let validDistractors = offsets.map(opt => targetNum + opt).filter(val => val <= range[1]);
       if (validDistractors.length === 0) {
         validDistractors = offsets.map(opt => targetNum - opt).filter(val => val >= range[0]);
@@ -3007,7 +3875,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
         validDistractors = [targetNum === range[0] ? range[0] + 1 : range[0]];
       }
       distractorNum = validDistractors[Math.floor(Math.random() * validDistractors.length)];
-      
+
       targetColor = Math.random() < 0.5 ? "green" : "purple";
       distractorColor = targetColor === "green" ? "purple" : "green";
       isTargetOptionA = Math.random() < 0.5;
@@ -3041,7 +3909,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       option_b_color: isTargetOptionA ? distractorColor : targetColor,
       is_target_option_a: isTargetOptionA,
     };
-    
+
     inst.adaptiveConfig.variables = customVars;
 
     let customOptions = [];
@@ -3054,33 +3922,33 @@ export function instantiateTemplate(question, overrideVariables = null) {
       }));
     } else {
       customOptions = [
-        { 
-          label: String(targetNum), 
-          parts: [{ 
-            type: 'baseTenBlocks', 
+        {
+          label: String(targetNum),
+          parts: [{
+            type: 'baseTenBlocks',
             thousands: tThousands,
             hundreds: tHundreds,
-            tens: tTens, 
-            ones: tOnes, 
-            variant: targetColor 
-          }], 
-          isCorrect: true 
+            tens: tTens,
+            ones: tOnes,
+            variant: targetColor
+          }],
+          isCorrect: true
         },
-        { 
-          label: String(distractorNum), 
-          parts: [{ 
-            type: 'baseTenBlocks', 
+        {
+          label: String(distractorNum),
+          parts: [{
+            type: 'baseTenBlocks',
             thousands: dThousands,
             hundreds: dHundreds,
-            tens: dTens, 
-            ones: dOnes, 
-            variant: distractorColor 
-          }], 
-          isCorrect: false 
+            tens: dTens,
+            ones: dOnes,
+            variant: distractorColor
+          }],
+          isCorrect: false
         }
       ];
     }
-    
+
     let shuffledOrder;
     if (overrideVariables && overrideVariables.shuffled_order) {
       shuffledOrder = overrideVariables.shuffled_order;
@@ -3088,7 +3956,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       shuffledOrder = isTargetOptionA ? [0, 1] : [1, 0];
     }
     inst.adaptiveConfig.variables.shuffled_order = shuffledOrder;
-    
+
     const shuffled = shuffledOrder.map(idx => customOptions[Number(idx)]);
     inst.options = shuffled.map(({ isCorrect, is_correct, ...option }) => option);
     inst.correctAnswerIndex = shuffledOrder.findIndex(idx => customOptions[Number(idx)].isCorrect);
@@ -3116,9 +3984,9 @@ export function instantiateTemplate(question, overrideVariables = null) {
         { type: "text", content: `The **${targetColor}** model matches this breakdown, showing **${targetNum}**.`, isVertical: true }
       ];
     }
-    
+
     inst.type = 'mcq';
-    inst.isVertical = false; 
+    inst.isVertical = false;
     const answerPayload = JSON.stringify({ ans: String(targetNum) });
     inst.correctAnswerText = answerPayload;
     inst.adaptiveConfig.correctAnswerText = answerPayload;
@@ -3130,8 +3998,8 @@ export function instantiateTemplate(question, overrideVariables = null) {
       b = overrideVariables.b;
     } else {
       a = Math.floor(Math.random() * 8) + 2; // 2 to 9
-      if (Math.random() < 0.3) a = -a; 
-      
+      if (Math.random() < 0.3) a = -a;
+
       b = Math.floor(Math.random() * 18) - 9; // -9 to 9
       if (b === 0) b = 5;
     }
@@ -3168,16 +4036,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
           type: 'sequence',
           children: [
             { type: 'text', content: 'f\'(x) = ' },
-            { 
-              type: 'blank', 
-              id: 'ans', 
-              width: 350, 
-              placeholder: 'Type your answer...' 
+            {
+              type: 'blank',
+              id: 'ans',
+              width: 350,
+              placeholder: 'Type your answer...'
             }
           ]
         }
       ];
-      
+
       // Inject the symbolic keypad
       inst.adaptiveConfig.showKeypad = true;
       inst.adaptiveConfig.keypadKeys = [
@@ -3190,9 +4058,9 @@ export function instantiateTemplate(question, overrideVariables = null) {
     } else {
       // Scaffold Mode: Fraction and Sqrt structure pre-provided as separate inputs
       inst.parts = hydrateNode(question.parts || [], customVars);
-      inst.correctAnswerText = JSON.stringify({ 
+      inst.correctAnswerText = JSON.stringify({
         n: deriv_inner,
-        d: inner_f.replace(/\s+/g, '') 
+        d: inner_f.replace(/\s+/g, '')
       });
     }
 
@@ -3283,16 +4151,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
       num_b = overrideVariables.num_b;
       power_n = overrideVariables.power_n;
     } else {
-      num_a = Math.floor(Math.random() * 8) + 2; 
-      num_b = Math.floor(Math.random() * 9) + 1; 
-      power_n = Math.floor(Math.random() * 4) + 2; 
+      num_a = Math.floor(Math.random() * 8) + 2;
+      num_b = Math.floor(Math.random() * 9) + 1;
+      power_n = Math.floor(Math.random() * 4) + 2;
     }
 
     const f_x = `\\frac{${num_a}x^{${power_n}} + ${num_b}}{x^{${power_n}}}`;
     const simplified_f_x = `${num_a} + x^{-${power_n}}`; // if num_b is 1, keep it clean
     const step1_f = `\\frac{${num_a}x^{${power_n}}}{x^{${power_n}}} + \\frac{${num_b}}{x^{${power_n}}}`;
     const simplified_final = num_b === 1 ? `${num_a} + x^{-${power_n}}` : `${num_a} + ${num_b}x^{-${power_n}}`;
-    
+
     const coeff = -(num_b * power_n);
     const new_power = power_n + 1;
     const final_ans = `-\\frac{${Math.abs(coeff)}}{x^{${new_power}}}`;
@@ -3335,7 +4203,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       inst.correctAnswerText = JSON.stringify({ ans: final_ans.replace(/\s+/g, '') });
     } else {
       inst.parts = hydrateNode(question.parts || [], customVars);
-      inst.correctAnswerText = JSON.stringify({ 
+      inst.correctAnswerText = JSON.stringify({
         n: String(coeff),
         d: `x^{${new_power}}`
       });
@@ -3380,7 +4248,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     // Dynamically Construct Equation Sequence
     const sequenceChildren = [{ type: 'text', content: `**${num}** = ` }];
-    
+
     if (hasThousands) {
       sequenceChildren.push({ type: 'input', id: 'ans_thousands', width: 60 });
       sequenceChildren.push({ type: 'text', content: ` thousands + ` });
@@ -3398,7 +4266,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const headers = [];
     const rows = [[]];
     const equationText = [];
-    
+
     if (hasThousands) {
       headers.push("thousands");
       rows[0].push(`**${th_digit}**`);
@@ -3431,7 +4299,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
           return { ...part, headers, rows };
         }
         if (typeof part.content === 'string' && part.content.includes("=")) {
-           return { ...part, content: `### **${num} = ${equationText.join(' + ')}**` };
+          return { ...part, content: `### **${num} = ${equationText.join(' + ')}**` };
         }
         return part;
       });
@@ -3439,8 +4307,8 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     inst.type = 'fillInTheBlank';
     inst.isVertical = true;
-    
-    const ansPayload = { 
+
+    const ansPayload = {
       ans_tens: String(t_digit),
       ans_ones: String(o_digit)
     };
@@ -3456,21 +4324,21 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let num_groups, dots_per_group;
     const existingVars = (question.adaptiveConfig?.variables || {});
     if (existingVars.num_groups && existingVars.dots_per_group) {
-        num_groups = Number(existingVars.num_groups);
-        dots_per_group = Number(existingVars.dots_per_group);
+      num_groups = Number(existingVars.num_groups);
+      dots_per_group = Number(existingVars.dots_per_group);
     } else if (overrideVariables) {
-        num_groups = Number(overrideVariables.num_groups);
-        dots_per_group = Number(overrideVariables.dots_per_group);
+      num_groups = Number(overrideVariables.num_groups);
+      dots_per_group = Number(overrideVariables.dots_per_group);
     } else {
-        num_groups = Math.floor(Math.random() * 4) + 2; 
-        dots_per_group = Math.floor(Math.random() * 4) + 2;
+      num_groups = Math.floor(Math.random() * 4) + 2;
+      dots_per_group = Math.floor(Math.random() * 4) + 2;
     }
 
     const correct_raw = `${num_groups} × ${dots_per_group}`;
     let dist_g = dots_per_group;
     let dist_d = num_groups;
     if (dist_g === num_groups && dist_d === dots_per_group) {
-        dist_d = dots_per_group + 1;
+      dist_d = dots_per_group + 1;
     }
     const distractor_raw = `${dist_g} × ${dist_d}`;
 
@@ -3488,25 +4356,25 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const seedValue = (Number(num_groups) + Number(dots_per_group));
     let shuffledOrder = (seedValue % 2 === 0) ? [0, 1] : [1, 0];
     if (inst.adaptiveConfig?.shuffled_order && Array.isArray(inst.adaptiveConfig.shuffled_order)) {
-        shuffledOrder = inst.adaptiveConfig.shuffled_order;
+      shuffledOrder = inst.adaptiveConfig.shuffled_order;
     }
     inst.adaptiveConfig.shuffled_order = shuffledOrder;
     inst.adaptiveConfig.shuffleOptions = false;
-    
+
     const optionsRaw = (question.options && question.options.length > 0) ? question.options : [
       { type: "text", content: "{correct_val}" },
       { type: "text", content: "{distractor_val}" }
     ];
-    
+
     const hydratedOptions = optionsRaw.map(opt => {
-        const hyd = hydrateNode(opt, customVars);
-        if (hyd && typeof hyd === 'object') {
-            hyd.label = hyd.content || hyd.text || '';
-        }
-        return hyd;
+      const hyd = hydrateNode(opt, customVars);
+      if (hyd && typeof hyd === 'object') {
+        hyd.label = hyd.content || hyd.text || '';
+      }
+      return hyd;
     });
     inst.options = [hydratedOptions[shuffledOrder[0]], hydratedOptions[shuffledOrder[1]]];
-    
+
     inst.correctAnswerIndex = shuffledOrder.indexOf(0);
     inst.correctAnswerText = correct_raw;
     inst.parts = hydrateNode(question.parts || [], customVars);
@@ -3518,20 +4386,20 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let num_groups, dots_per_group;
     const existingVars = (question.adaptiveConfig?.variables || {});
     if (existingVars.num_groups && existingVars.dots_per_group) {
-        num_groups = Number(existingVars.num_groups);
-        dots_per_group = Number(existingVars.dots_per_group);
+      num_groups = Number(existingVars.num_groups);
+      dots_per_group = Number(existingVars.dots_per_group);
     } else if (overrideVariables) {
-        num_groups = Number(overrideVariables.num_groups);
-        dots_per_group = Number(overrideVariables.dots_per_group);
+      num_groups = Number(overrideVariables.num_groups);
+      dots_per_group = Number(overrideVariables.dots_per_group);
     } else {
-        // Generation settings (2-5 groups, 2-5 dots)
-        num_groups = Math.floor(Math.random() * 4) + 2; 
-        dots_per_group = Math.floor(Math.random() * 4) + 2;
+      // Generation settings (2-5 groups, 2-5 dots)
+      num_groups = Math.floor(Math.random() * 4) + 2;
+      dots_per_group = Math.floor(Math.random() * 4) + 2;
     }
 
     const total = num_groups * dots_per_group;
     const target = logic.includes('groups') ? 'groups' : (logic.includes('dots') ? 'dots' : 'total');
-    
+
     const customVars = {
       ...(inst.adaptiveConfig?.variables || {}),
       num_groups,
@@ -3548,24 +4416,24 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const inputStyle = { width: '80px', height: '80px', fontSize: '1.8rem', textAlign: 'center' };
 
     if (target === 'groups') {
-        sentenceParts.push(
-            { type: "blank", id: "ans", ...inputStyle },
-            { type: "text", content: ` × ${dots_per_group} = ${total}`, ...mathTextStyle }
-        );
-        correct = num_groups;
+      sentenceParts.push(
+        { type: "blank", id: "ans", ...inputStyle },
+        { type: "text", content: ` × ${dots_per_group} = ${total}`, ...mathTextStyle }
+      );
+      correct = num_groups;
     } else if (target === 'dots') {
-        sentenceParts.push(
-            { type: "text", content: `${num_groups} × `, ...mathTextStyle },
-            { type: "blank", id: "ans", ...inputStyle },
-            { type: "text", content: ` = ${total}`, ...mathTextStyle }
-        );
-        correct = dots_per_group;
+      sentenceParts.push(
+        { type: "text", content: `${num_groups} × `, ...mathTextStyle },
+        { type: "blank", id: "ans", ...inputStyle },
+        { type: "text", content: ` = ${total}`, ...mathTextStyle }
+      );
+      correct = dots_per_group;
     } else {
-        sentenceParts.push(
-            { type: "text", content: `${num_groups} × ${dots_per_group} = `, ...mathTextStyle },
-            { type: "blank", id: "ans", ...inputStyle }
-        );
-        correct = total;
+      sentenceParts.push(
+        { type: "text", content: `${num_groups} × ${dots_per_group} = `, ...mathTextStyle },
+        { type: "blank", id: "ans", ...inputStyle }
+      );
+      correct = total;
     }
 
     inst.parts = [
@@ -3587,10 +4455,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     inst.correctAnswerText = JSON.stringify({ ans: correct });
     inst.solution = [
-        { type: "text", content: `### ${target === 'groups' ? 'How many groups?' : target === 'dots' ? 'How many dots in each?' : 'What is the total?'}` },
-        { type: "dotsGrouping", numGroups: num_groups, dotsPerGroup: dots_per_group, color: customVars.color, showGroupLabels: (target === 'groups'), showDotLabels: (target === 'dots') },
-        { type: "text", content: `The model shows **${num_groups} groups** of **${dots_per_group}** dots.` },
-        { type: "text", content: `The multiplication sentence is: **${num_groups} × ${dots_per_group} = ${total}**` }
+      { type: "text", content: `### ${target === 'groups' ? 'How many groups?' : target === 'dots' ? 'How many dots in each?' : 'What is the total?'}` },
+      { type: "dotsGrouping", numGroups: num_groups, dotsPerGroup: dots_per_group, color: customVars.color, showGroupLabels: (target === 'groups'), showDotLabels: (target === 'dots') },
+      { type: "text", content: `The model shows **${num_groups} groups** of **${dots_per_group}** dots.` },
+      { type: "text", content: `The multiplication sentence is: **${num_groups} × ${dots_per_group} = ${total}**` }
     ];
     inst.type = 'fillInTheBlank';
   }
@@ -3599,20 +4467,20 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let num_groups, dots_per_group;
     const existingVars = (question.adaptiveConfig?.variables || {});
     if (existingVars.num_groups && existingVars.dots_per_group) {
-        num_groups = Number(existingVars.num_groups);
-        dots_per_group = Number(existingVars.dots_per_group);
+      num_groups = Number(existingVars.num_groups);
+      dots_per_group = Number(existingVars.dots_per_group);
     } else if (overrideVariables) {
-        num_groups = Number(overrideVariables.num_groups);
-        dots_per_group = Number(overrideVariables.dots_per_group);
+      num_groups = Number(overrideVariables.num_groups);
+      dots_per_group = Number(overrideVariables.dots_per_group);
     } else {
-        num_groups = Math.floor(Math.random() * 3) + 2; 
-        dots_per_group = Math.floor(Math.random() * 3) + 2;
+      num_groups = Math.floor(Math.random() * 3) + 2;
+      dots_per_group = Math.floor(Math.random() * 3) + 2;
     }
 
     const total = num_groups * dots_per_group;
     const addTerm = String(dots_per_group);
     const additionSentence = Array(num_groups).fill(addTerm).join(' + ') + ' = ' + total;
-    
+
     const customVars = {
       ...(inst.adaptiveConfig?.variables || {}),
       num_groups,
@@ -3650,17 +4518,17 @@ export function instantiateTemplate(question, overrideVariables = null) {
       }
     ];
 
-    inst.correctAnswerText = JSON.stringify({ 
-        groups_count: num_groups, 
-        mult_groups: num_groups 
+    inst.correctAnswerText = JSON.stringify({
+      groups_count: num_groups,
+      mult_groups: num_groups
     });
-    
+
     inst.solution = [
-        { type: "text", content: "### Relating Addition and Multiplication" },
-        { type: "dotsGrouping", numGroups: num_groups, dotsPerGroup: dots_per_group, color: customVars.color, showGroupLabels: true },
-        { type: "text", content: `You can see **${num_groups} groups** of **${dots_per_group}** dots.` },
-        { type: "text", content: `Adding the groups: **${additionSentence}**` },
-        { type: "text", content: `This is the same as: **${num_groups} × ${dots_per_group} = ${total}**` }
+      { type: "text", content: "### Relating Addition and Multiplication" },
+      { type: "dotsGrouping", numGroups: num_groups, dotsPerGroup: dots_per_group, color: customVars.color, showGroupLabels: true },
+      { type: "text", content: `You can see **${num_groups} groups** of **${dots_per_group}** dots.` },
+      { type: "text", content: `Adding the groups: **${additionSentence}**` },
+      { type: "text", content: `This is the same as: **${num_groups} × ${dots_per_group} = ${total}**` }
     ];
     inst.type = 'fillInTheBlank';
   }
@@ -3669,21 +4537,21 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let rows, cols;
     const existingVars = (question.adaptiveConfig?.variables || {});
     if (existingVars.rows && existingVars.cols) {
-        rows = Number(existingVars.rows);
-        cols = Number(existingVars.cols);
+      rows = Number(existingVars.rows);
+      cols = Number(existingVars.cols);
     } else if (overrideVariables) {
-        rows = Number(overrideVariables.rows);
-        cols = Number(overrideVariables.cols);
+      rows = Number(overrideVariables.rows);
+      cols = Number(overrideVariables.cols);
     } else {
-        rows = Math.floor(Math.random() * 3) + 2; 
-        cols = Math.floor(Math.random() * 3) + 2;
+      rows = Math.floor(Math.random() * 3) + 2;
+      cols = Math.floor(Math.random() * 3) + 2;
     }
 
     const correct_raw = `${rows} × ${cols}`;
     let dist_rows = cols;
     let dist_cols = rows;
     if (dist_rows === rows && dist_cols === cols) {
-        dist_cols = cols + 1;
+      dist_cols = cols + 1;
     }
     const distractor_raw = `${dist_rows} × ${dist_cols}`;
 
@@ -3701,68 +4569,68 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const seedValue = (Number(rows) + Number(cols));
     let shuffledOrder = (seedValue % 2 === 0) ? [0, 1] : [1, 0];
     if (inst.adaptiveConfig?.shuffled_order && Array.isArray(inst.adaptiveConfig.shuffled_order)) {
-        shuffledOrder = inst.adaptiveConfig.shuffled_order;
+      shuffledOrder = inst.adaptiveConfig.shuffled_order;
     }
     inst.adaptiveConfig.shuffled_order = shuffledOrder;
     inst.adaptiveConfig.shuffleOptions = false;
-    
+
     const optionsRaw = [
       { type: "text", content: "{correct_val}" },
       { type: "text", content: "{distractor_val}" }
     ];
-    
+
     const hydratedOptions = optionsRaw.map(opt => {
-        const hyd = hydrateNode(opt, customVars);
-        if (hyd && typeof hyd === 'object') {
-            hyd.label = hyd.content || hyd.text || '';
-        }
-        return hyd;
+      const hyd = hydrateNode(opt, customVars);
+      if (hyd && typeof hyd === 'object') {
+        hyd.label = hyd.content || hyd.text || '';
+      }
+      return hyd;
     });
     inst.options = [hydratedOptions[shuffledOrder[0]], hydratedOptions[shuffledOrder[1]]];
-    
+
     inst.correctAnswerIndex = shuffledOrder.indexOf(0);
     inst.correctAnswerText = correct_raw;
 
     // Logic to prevent double-rendering if template already has a dotArray
     const hasExistingArray = (question.parts || []).some(p => p.type === 'dotArray' || p.type === 'dot_array');
-    
+
     let finalParts = [];
     if (question.parts && question.parts.length > 0) {
-        // Hydrate and specifically update the dotArray part inside the template
-        finalParts = hydrateNode(question.parts, customVars).map(p => {
-            if (p.type === 'dotArray' || p.type === 'dot_array') {
-                return {
-                    ...p,
-                    rows: rows,
-                    cols: cols,
-                    color: p.color || customVars.color,
-                    gap: p.gap || 12,
-                    dotSize: p.dotSize || 35
-                };
-            }
-            return p;
-        });
+      // Hydrate and specifically update the dotArray part inside the template
+      finalParts = hydrateNode(question.parts, customVars).map(p => {
+        if (p.type === 'dotArray' || p.type === 'dot_array') {
+          return {
+            ...p,
+            rows: rows,
+            cols: cols,
+            color: p.color || customVars.color,
+            gap: p.gap || 12,
+            dotSize: p.dotSize || 35
+          };
+        }
+        return p;
+      });
     } else {
-        // Default parts if template has nothing
-        finalParts = [
-            { type: "text", content: "Which expression describes this array?", hasAudio: true },
-            {
-                type: "dotArray",
-                rows: rows,
-                cols: cols,
-                color: customVars.color,
-                gap: 12,
-                dotSize: 35
-            }
-        ];
+      // Default parts if template has nothing
+      finalParts = [
+        { type: "text", content: "Which expression describes this array?", hasAudio: true },
+        {
+          type: "dotArray",
+          rows: rows,
+          cols: cols,
+          color: customVars.color,
+          gap: 12,
+          dotSize: 35
+        }
+      ];
     }
     inst.parts = finalParts;
 
     inst.solution = [
-        { type: "text", content: "### Identifying the Array" },
-        { type: "dotArray", rows: rows, cols: cols, color: customVars.color, showLabels: true },
-        { type: "text", content: `This array has **${rows} rows** and **${cols} columns**.` },
-        { type: "text", content: `The multiplication expression is: **${rows} × ${cols}**` }
+      { type: "text", content: "### Identifying the Array" },
+      { type: "dotArray", rows: rows, cols: cols, color: customVars.color, showLabels: true },
+      { type: "text", content: `This array has **${rows} rows** and **${cols} columns**.` },
+      { type: "text", content: `The multiplication expression is: **${rows} × ${cols}**` }
     ];
     inst.type = 'mcq';
   }
@@ -3771,19 +4639,19 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let rows, cols;
     const existingVars = (question.adaptiveConfig?.variables || {});
     if (existingVars.rows && existingVars.cols) {
-        rows = Number(existingVars.rows);
-        cols = Number(existingVars.cols);
+      rows = Number(existingVars.rows);
+      cols = Number(existingVars.cols);
     } else if (overrideVariables) {
-        rows = Number(overrideVariables.rows);
-        cols = Number(overrideVariables.cols);
+      rows = Number(overrideVariables.rows);
+      cols = Number(overrideVariables.cols);
     } else {
-        rows = Math.floor(Math.random() * 3) + 2; 
-        cols = Math.floor(Math.random() * 3) + 2;
+      rows = Math.floor(Math.random() * 3) + 2;
+      cols = Math.floor(Math.random() * 3) + 2;
     }
 
     const total = rows * cols;
     const target = logic.includes('groups') ? 'rows' : (logic.includes('cols') ? 'cols' : 'total');
-    
+
     const customVars = {
       ...(inst.adaptiveConfig?.variables || {}),
       rows,
@@ -3800,49 +4668,49 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const inputStyle = { width: '80px', height: '80px', fontSize: '1.8rem', textAlign: 'center' };
 
     if (target === 'rows') {
-        sentenceParts.push(
-            { type: "blank", id: "ans", ...inputStyle },
-            { type: "text", content: ` × ${cols} = ${total}`, ...mathTextStyle }
-        );
-        correct = rows;
+      sentenceParts.push(
+        { type: "blank", id: "ans", ...inputStyle },
+        { type: "text", content: ` × ${cols} = ${total}`, ...mathTextStyle }
+      );
+      correct = rows;
     } else if (target === 'cols') {
-        sentenceParts.push(
-            { type: "text", content: `${rows} × `, ...mathTextStyle },
-            { type: "blank", id: "ans", ...inputStyle },
-            { type: "text", content: ` = ${total}`, ...mathTextStyle }
-        );
-        correct = cols;
+      sentenceParts.push(
+        { type: "text", content: `${rows} × `, ...mathTextStyle },
+        { type: "blank", id: "ans", ...inputStyle },
+        { type: "text", content: ` = ${total}`, ...mathTextStyle }
+      );
+      correct = cols;
     } else {
-        sentenceParts.push(
-            { type: "text", content: `${rows} × ${cols} = `, ...mathTextStyle },
-            { type: "blank", id: "ans", ...inputStyle }
-        );
-        correct = total;
+      sentenceParts.push(
+        { type: "text", content: `${rows} × ${cols} = `, ...mathTextStyle },
+        { type: "blank", id: "ans", ...inputStyle }
+      );
+      correct = total;
     }
 
     // Smart merge dotArray parts and ensure text
     let finalParts = [];
     if (question.parts && question.parts.length > 0) {
-        finalParts = hydrateNode(question.parts, customVars).map(p => {
-            if (p.type === 'dotArray' || p.type === 'dot_array') {
-                return {
-                    ...p,
-                    rows: rows,
-                    cols: cols,
-                    color: p.color || customVars.color,
-                    gap: p.gap || 12,
-                    dotSize: p.dotSize || 45
-                };
-            }
-            return p;
-        });
+      finalParts = hydrateNode(question.parts, customVars).map(p => {
+        if (p.type === 'dotArray' || p.type === 'dot_array') {
+          return {
+            ...p,
+            rows: rows,
+            cols: cols,
+            color: p.color || customVars.color,
+            gap: p.gap || 12,
+            dotSize: p.dotSize || 45
+          };
+        }
+        return p;
+      });
     } else {
-        finalParts = [
-            { type: "text", content: "Complete the multiplication number sentence that describes the array.", hasAudio: true },
-            { type: "dotArray", rows, cols, color: customVars.color, gap: 12, dotSize: 45 }
-        ];
+      finalParts = [
+        { type: "text", content: "Complete the multiplication number sentence that describes the array.", hasAudio: true },
+        { type: "dotArray", rows, cols, color: customVars.color, gap: 12, dotSize: 45 }
+      ];
     }
-    
+
     inst.parts = [
       ...finalParts,
       {
@@ -3856,10 +4724,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     inst.correctAnswerText = JSON.stringify({ ans: correct });
     inst.solution = [
-        { type: "text", content: `### ${target === 'rows' ? 'Counting rows' : target === 'cols' ? 'Counting columns' : 'Finding the total'}` },
-        { type: "dotArray", rows: rows, cols: cols, color: customVars.color, showLabels: true, imageUrl: inst.parts.find(p => p.type === 'dotArray')?.imageUrl },
-        { type: "text", content: `The array has **${rows} rows** and **${cols} columns**.` },
-        { type: "text", content: `The multiplication sentence is: **${rows} × ${cols} = ${total}**` }
+      { type: "text", content: `### ${target === 'rows' ? 'Counting rows' : target === 'cols' ? 'Counting columns' : 'Finding the total'}` },
+      { type: "dotArray", rows: rows, cols: cols, color: customVars.color, showLabels: true, imageUrl: inst.parts.find(p => p.type === 'dotArray')?.imageUrl },
+      { type: "text", content: `The array has **${rows} rows** and **${cols} columns**.` },
+      { type: "text", content: `The multiplication sentence is: **${rows} × ${cols} = ${total}**` }
     ];
     inst.type = 'fillInTheBlank';
   }
@@ -3868,7 +4736,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let n1, n2, sum;
     let digits1 = [], digits2 = [], sums = [], resDigits = [], finalCarries = [];
     const isRegrouping = (logic === 'vertical_addition_with_regrouping_v1');
-    
+
     const dataSource = (question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] });
     const range = dataSource.range || [100, 999];
     const numDigits = dataSource.num_digits || String(range[1]).length || 3;
@@ -3880,16 +4748,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const s1 = String(n1).padStart(numDigits, '0');
       const s2 = String(n2).padStart(numDigits, '0');
       let carryIdx = 0;
-      for(let i=numDigits - 1; i>=0; i--) {
-          const d1 = Number(s1[i]);
-          const d2 = Number(s2[i]);
-          const s = d1 + d2 + carryIdx;
-          digits1.unshift(d1);
-          digits2.unshift(d2);
-          sums.unshift(s);
-          resDigits.unshift(s % 10);
-          finalCarries.unshift(carryIdx);
-          carryIdx = s > 9 ? 1 : 0;
+      for (let i = numDigits - 1; i >= 0; i--) {
+        const d1 = Number(s1[i]);
+        const d2 = Number(s2[i]);
+        const s = d1 + d2 + carryIdx;
+        digits1.unshift(d1);
+        digits2.unshift(d2);
+        sums.unshift(s);
+        resDigits.unshift(s % 10);
+        finalCarries.unshift(carryIdx);
+        carryIdx = s > 9 ? 1 : 0;
       }
     } else {
       let valid = false;
@@ -3897,12 +4765,12 @@ export function instantiateTemplate(question, overrideVariables = null) {
         digits1 = []; digits2 = []; sums = []; resDigits = []; finalCarries = [];
         let carry = 0;
         let anyRegroup = false;
-        
+
         for (let i = 0; i < numDigits; i++) {
           const isLeading = (i === numDigits - 1);
           const min1 = isLeading ? 1 : 0;
           let d1, d2;
-          
+
           if (isRegrouping) {
             d1 = Math.floor(Math.random() * (9 - min1 + 1)) + min1;
             // Attempt to force regrouping in at least one column
@@ -3911,10 +4779,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
             d1 = Math.floor(Math.random() * (9 - min1 + 1)) + min1;
             d2 = Math.floor(Math.random() * (9 - d1 + 1));
           }
-          
+
           const colSum = d1 + d2 + carry;
           if (colSum > 9) anyRegroup = true;
-          
+
           digits1.unshift(d1);
           digits2.unshift(d2);
           sums.unshift(colSum);
@@ -3922,54 +4790,54 @@ export function instantiateTemplate(question, overrideVariables = null) {
           finalCarries.unshift(carry); // carry into this column
           carry = colSum > 9 ? 1 : 0;
         }
-        
+
         if (!isRegrouping || anyRegroup) {
           valid = true;
           if (carry > 0) { // If final column carries, expand (e.g., 9+9=18)
-             resDigits.unshift(carry);
-             sums.unshift(carry);
-             digits1.unshift(0); // padding for layout
-             digits2.unshift(0);
-             finalCarries.unshift(0);
+            resDigits.unshift(carry);
+            sums.unshift(carry);
+            digits1.unshift(0); // padding for layout
+            digits2.unshift(0);
+            finalCarries.unshift(0);
           }
         }
       }
-      
+
       n1 = Number(digits1.join(''));
       n2 = Number(digits2.join(''));
       sum = n1 + n2;
     }
 
     const customVars = {
-       ...(inst.adaptiveConfig?.variables || {}),
-       num_1: n1, num_2: n2, sum: sum,
-       digits1, digits2, sums, resDigits, finalCarries
+      ...(inst.adaptiveConfig?.variables || {}),
+      num_1: n1, num_2: n2, sum: sum,
+      digits1, digits2, sums, resDigits, finalCarries
     };
     inst.adaptiveConfig.variables = customVars;
 
     // Build Arithmetic Rows
     const rows = [];
     if (isRegrouping) {
-        // Carry inputs row
-        const carryCells = finalCarries.map((c, i) => {
-            if (i === finalCarries.length - 1) return { kind: "empty" }; // No carry row for ones
-            // Carry is written in the cell to the LEFT of where it was generated
-            const carryValueFromNext = finalCarries[i+1];
-            if (carryValueFromNext > 0 || i < finalCarries.length - 1) { // Show box if carry exists or could exist
-                return { id: `carry_${i}`, type: "digit", variant: "circular", placeholder: "" };
-            }
-            return { kind: "empty" };
-        });
-        rows.push({ kind: "carry", cells: carryCells });
+      // Carry inputs row
+      const carryCells = finalCarries.map((c, i) => {
+        if (i === finalCarries.length - 1) return { kind: "empty" }; // No carry row for ones
+        // Carry is written in the cell to the LEFT of where it was generated
+        const carryValueFromNext = finalCarries[i + 1];
+        if (carryValueFromNext > 0 || i < finalCarries.length - 1) { // Show box if carry exists or could exist
+          return { id: `carry_${i}`, type: "digit", variant: "circular", placeholder: "" };
+        }
+        return { kind: "empty" };
+      });
+      rows.push({ kind: "carry", cells: carryCells });
     }
-    
+
     rows.push({ kind: "text", text: '   ' + digits1.join('  ') });
     rows.push({ kind: "text", text: '+  ' + digits2.join('  ') });
-    
+
     const answerCells = resDigits.map((_, i) => ({
       id: `ans_${resDigits.length - 1 - i}`,
       type: "digit",
-      autoFocus: (i === resDigits.length - 1) 
+      autoFocus: (i === resDigits.length - 1)
     }));
 
     rows.push({
@@ -3996,23 +4864,23 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const d2 = digits2[i];
       const prevCarry = finalCarries[i];
       const s = sums[i];
-      
+
       let text = `Add the ${place}. `;
       if (prevCarry > 0) text += `Add the carry: 1 + ${d1} + ${d2} = **${s}**. `;
       else text += `Add ${d1} + ${d2} = **${s}**. `;
-      
+
       if (s > 9 && i > 0) {
-          text += `Write the **${s % 10}** and carry the **1** to the ${placeNames[digits1.length - i] || 'next place'}.`;
+        text += `Write the **${s % 10}** and carry the **1** to the ${placeNames[digits1.length - i] || 'next place'}.`;
       }
 
       solSteps.push({ type: "text", content: text, isVertical: true });
-      
+
       // Grid for step showing carry
       const highlightRow1 = '   ' + digits1.map((d, idx) => idx === i ? `*${d}` : d).join('  ');
       const highlightRow2 = '+  ' + digits2.map((d, idx) => idx === i ? `*${d}` : d).join('  ');
-      const carryRowText = '   ' + finalCarries.map((c, idx) => idx === i && c > 0 ? `(${c})` : (idx === i-1 && sums[i] > 9 ? `[*1]` : ' ')).join('  ');
+      const carryRowText = '   ' + finalCarries.map((c, idx) => idx === i && c > 0 ? `(${c})` : (idx === i - 1 && sums[i] > 9 ? `[*1]` : ' ')).join('  ');
       const resultStr = '   ' + resDigits.map((d, idx) => idx >= i ? `*${d}` : ' ').join('  ');
-      
+
       // Simplified grid for solution
       solSteps.push({
         type: "arithmeticLayout",
@@ -4031,17 +4899,17 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     inst.solution = [solHeader, ...solSteps];
     inst.type = 'fillInTheBlank';
-    
+
     const correctAns = {};
-    for(let i=0; i<resDigits.length; i++) {
-        correctAns[`ans_${i}`] = String(resDigits[resDigits.length - 1 - i]);
+    for (let i = 0; i < resDigits.length; i++) {
+      correctAns[`ans_${i}`] = String(resDigits[resDigits.length - 1 - i]);
     }
     // Also include carries in correct answer for validation if student fills them
-    for(let i=0; i<finalCarries.length - 1; i++) {
-        if (finalCarries[i] > 0) correctAns[`carry_${i}`] = "1";
-        else correctAns[`carry_${i}`] = "";
+    for (let i = 0; i < finalCarries.length - 1; i++) {
+      if (finalCarries[i] > 0) correctAns[`carry_${i}`] = "1";
+      else correctAns[`carry_${i}`] = "";
     }
-    
+
     inst.correctAnswerText = JSON.stringify(correctAns);
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
@@ -4049,7 +4917,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
   if (logic === 'shading_grids_v1') {
     const config = inst.adaptiveConfig || {};
     let rows, cols, target;
-    
+
     if (overrideVariables) {
       rows = overrideVariables.rows || overrideVariables.gridRows || 3;
       cols = overrideVariables.cols || overrideVariables.gridCols || 3;
@@ -4062,16 +4930,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
         rows = config.gridRows || config.rows || Math.floor(Math.random() * 3) + 2; // 2 to 4
         cols = config.gridCols || config.cols || Math.floor(Math.random() * 4) + 2; // 2 to 5
       }
-      
+
       const total = rows * cols;
       // Randomize target if not explicitly fixed in config
     }
 
     const customVars = {
       ...(inst.adaptiveConfig?.variables || {}),
-      rows, 
-      cols, 
-      target, 
+      rows,
+      cols,
+      target,
       total: rows * cols,
       target_shaded: target
     };
@@ -4095,7 +4963,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     ];
     inst.solution = hydrateNode(rawSolution, customVars);
 
-    inst.correctAnswerText = String(target); 
+    inst.correctAnswerText = String(target);
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
 
@@ -4109,7 +4977,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 99] };
       shadedCount = Math.floor(Math.random() * (dataSource.range[1] - dataSource.range[0] + 1)) + dataSource.range[0];
     }
-    
+
     // Pick a random primary color
     const color = PRIMARY_COLORS[Math.floor(Math.random() * PRIMARY_COLORS.length)];
 
@@ -4170,7 +5038,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
   if (logic === 'shade_fraction_bar_v1') {
     let den, num, ori, color;
-    
+
     if (overrideVariables) {
       den = overrideVariables.denominator;
       num = overrideVariables.numerator;
@@ -4193,7 +5061,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       fill_color: color
     };
     inst.adaptiveConfig.variables = customVars;
-    
+
     inst.type = 'shadeGrid';
     inst.show_submit_button = true;
 
@@ -4216,7 +5084,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       { type: "text", content: `### Shading {numerator}/{denominator}`, isVertical: true },
       { type: "text", content: `The model is divided into **{denominator}** equal sections.`, isVertical: true },
       { type: "text", content: `To represent the fraction **{numerator}/{denominator}**, you must shade **{numerator}** of those sections.`, isVertical: true },
-      { type: "text", content: `Click on exactly **{numerator}** ${den === 1? 'section' : 'sections'} to fill ${num === 1? 'it' : 'them'} with color.`, isVertical: true }
+      { type: "text", content: `Click on exactly **{numerator}** ${den === 1 ? 'section' : 'sections'} to fill ${num === 1 ? 'it' : 'them'} with color.`, isVertical: true }
     ];
     inst.solution = hydrateNode(rawSolution, customVars);
 
@@ -4302,11 +5170,11 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     const rawParts = [
       { type: "text", content: "Fill in the blanks to describe the model.", isVertical: true },
-      { 
-        type: "dotsGrouping", 
-        numGroups: numGroups, 
-        dotsPerGroup: dotsPerGroup, 
-        color: color 
+      {
+        type: "dotsGrouping",
+        numGroups: numGroups,
+        dotsPerGroup: dotsPerGroup,
+        color: color
       },
       { type: "text", content: "There are [[ans1]] groups of dots.", isVertical: true },
       { type: "text", content: "There are [[ans2]] dots in each group.", isVertical: true }
@@ -4315,21 +5183,21 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     const rawSolution = [
       { type: "text", content: "### Count the number of groups", isVertical: true },
-      { 
-        type: "dotsGrouping", 
-        numGroups: numGroups, 
-        dotsPerGroup: dotsPerGroup, 
+      {
+        type: "dotsGrouping",
+        numGroups: numGroups,
+        dotsPerGroup: dotsPerGroup,
         color: color,
-        showGroupLabels: true 
+        showGroupLabels: true
       },
       { type: "text", content: "There are **{num_groups} groups** of dots.", isVertical: true },
       { type: "text", content: "Each group has an equal number of dots. Count the number of dots in a group.", isVertical: true },
-      { 
-        type: "dotsGrouping", 
-        numGroups: 1, 
-        dotsPerGroup: dotsPerGroup, 
+      {
+        type: "dotsGrouping",
+        numGroups: 1,
+        dotsPerGroup: dotsPerGroup,
         color: color,
-        showDotLabels: true 
+        showDotLabels: true
       },
       { type: "text", content: "There are **{dots_per_group} dots** in each group.", isVertical: true }
     ];
@@ -4342,7 +5210,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
   if (logic === 'balanced_addition_equations_v1') {
     let n1, n2, n3, n4, total;
     let missingIndex = 0;
-    
+
     if (overrideVariables) {
       n1 = overrideVariables.num_1; n2 = overrideVariables.num_2;
       n3 = overrideVariables.num_3; n4 = overrideVariables.num_4;
@@ -4352,13 +5220,13 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const dataSource = (question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] });
       const range = dataSource.range || [300, 999];
       total = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-      
+
       const splitLeft = Math.floor(Math.random() * (total - 100)) + 50;
       n1 = splitLeft; n2 = total - splitLeft;
-      
+
       const splitRight = Math.floor(Math.random() * (total - 100)) + 50;
       n3 = splitRight; n4 = total - splitRight;
-      
+
       missingIndex = Math.floor(Math.random() * 4);
     }
 
@@ -4401,7 +5269,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
   if (logic === 'vertical_addition_missing_addend_v1') {
     let n1, n2, sum;
     let digits1 = [], digits2 = [], sums = [];
-    
+
     const dataSource = (question.data_source || inst.adaptiveConfig?.data_source || { range: [100, 999] });
     const range = dataSource.range || [100, 999];
     const numDigits = dataSource.num_digits || String(range[1]).length || 3;
@@ -4413,7 +5281,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const s1 = String(n1).padStart(numDigits, '0');
       const s2 = String(n2).padStart(numDigits, '0');
       const ss = String(sum).padStart(numDigits, '0');
-      for(let i=0; i<numDigits; i++) {
+      for (let i = 0; i < numDigits; i++) {
         digits1.push(Number(s1[i]));
         digits2.push(Number(s2[i]));
         sums.push(Number(ss[i]));
@@ -4426,12 +5294,12 @@ export function instantiateTemplate(question, overrideVariables = null) {
         const sDigit = Math.floor(Math.random() * (9 - minS + 1)) + minS;
         const knownDigit = Math.floor(Math.random() * (sDigit + 1));
         const missingDigit = sDigit - knownDigit;
-        
+
         sums.unshift(sDigit);
         digits2.unshift(knownDigit); // known addend
         digits1.unshift(missingDigit); // missing addend
       }
-      
+
       n1 = Number(digits1.join(''));
       n2 = Number(digits2.join(''));
       sum = Number(sums.join(''));
@@ -4478,16 +5346,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
       const d1 = digits1[i];
       const sDigit = sums[i];
       const knownDigit = digits2[i];
-      
+
       solSteps.push({ type: "text", content: `Subtract the ${place}: ${sDigit} - ${knownDigit} = **${d1}**.`, isVertical: true });
     }
     solSteps.push({ type: "text", content: `The missing number is **${n1}**.`, isVertical: true });
 
     inst.solution = [solHeader, ...solSteps];
     inst.type = 'fillInTheBlank';
-    
+
     const correctAns = {};
-    for(let i=0; i<numDigits; i++) correctAns[`ans_${i}`] = String(digits1[numDigits - 1 - i]);
+    for (let i = 0; i < numDigits; i++) correctAns[`ans_${i}`] = String(digits1[numDigits - 1 - i]);
     inst.correctAnswerText = JSON.stringify(correctAns);
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
   }
@@ -4496,13 +5364,13 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { rule: "add 100", rule_val: 100 };
     const ruleText = dataSource.rule || "add 100";
     const ruleVal = dataSource.rule_val || 100;
-    
+
     let inValues = [], outValues = [];
     if (overrideVariables) {
       inValues = overrideVariables.in_values;
       outValues = overrideVariables.out_values;
     } else {
-      for(let i=0; i<4; i++) {
+      for (let i = 0; i < 4; i++) {
         const v = Math.floor(Math.random() * 900);
         inValues.push(v);
         outValues.push(v + ruleVal);
@@ -4538,7 +5406,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const solSteps = [
       { type: "text", content: `Start with the numbers in the 'In' column. Add ${ruleVal} to each number.`, isVertical: true }
     ];
-    
+
     if (ruleVal === 100) {
       solSteps.push({ type: "text", content: "When you add 100, only the hundreds place changes (unless you are crossing 1,000).", isVertical: true });
     }
@@ -4609,7 +5477,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     if (question.solution) {
       let parsed = typeof question.solution === 'string' ? JSON.parse(question.solution) : question.solution;
-      
+
       if (thDigit === 0) {
         parsed = parsed.filter(step => {
           if (step.type === 'text' && typeof step.content === 'string') {
@@ -4618,25 +5486,25 @@ export function instantiateTemplate(question, overrideVariables = null) {
           return true;
         });
       }
-      
+
       let finalSolution = hydrateNode(parsed, customVars);
-      
+
       finalSolution = finalSolution.map(step => {
         if (step.type === 'text' && step.content && step.content.includes('{h_val} + {t_val}')) {
-          const eq = thDigit > 0 
+          const eq = thDigit > 0
             ? `### **${thDigit * 1000} + ${hDigit * 100} + ${tDigit * 10} + ${oDigit} = ${num}**`
             : `### **${hDigit * 100} + ${tDigit * 10} + ${oDigit} = ${num}**`;
           return { ...step, content: eq };
         }
         return step;
       });
-      
+
       inst.solution = finalSolution;
     }
 
     inst.type = 'fillInTheBlank';
     inst.isVertical = true;
-    
+
     // Set correct answer
     const answerPayload = JSON.stringify({ ans_total: String(num) });
     inst.correctAnswerText = answerPayload;
@@ -4657,20 +5525,20 @@ export function instantiateTemplate(question, overrideVariables = null) {
     } else {
       const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [11, 99] };
       const range = dataSource.range || [11, 99];
-      
+
       let attempts = 0;
       let isValid = false;
       do {
         num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
         strNum = String(num);
-        
+
         let digits = strNum.split('');
         let uniqueDigits = new Set(digits);
         isValid = uniqueDigits.size === digits.length;
-        
+
         targetPlaceIndex = Math.floor(Math.random() * strNum.length);
         targetDigit = strNum[targetPlaceIndex];
-        
+
         attempts++;
       } while (!isValid && attempts < 200);
     }
@@ -4689,13 +5557,13 @@ export function instantiateTemplate(question, overrideVariables = null) {
       target_digit: targetDigit,
       correct_ans: correctAns,
     };
-    
+
     inst.adaptiveConfig.variables = customVars;
 
     let customOptions = [];
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [11, 99] };
     const range = dataSource.range || [11, 99];
-    
+
     if (question.options && question.options.length >= 3 && range[1] <= 99) {
       customOptions = hydrateNode(question.options, customVars).map(o => ({
         ...o,
@@ -4715,16 +5583,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
         selectedDistractors = distractors.slice(0, 3);
         inst.adaptiveConfig.variables.selected_distractors = selectedDistractors;
       }
-      
+
       let candidates = [correctAns, ...selectedDistractors];
-      
+
       customOptions = candidates.map(c => ({
         label: c,
         parts: [{ type: 'text', content: c }],
         isCorrect: c === correctAns
       }));
     }
-    
+
     let shuffledOrder;
     if (overrideVariables && overrideVariables.shuffled_order) {
       shuffledOrder = overrideVariables.shuffled_order;
@@ -4733,7 +5601,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       shuffledOrder.sort(() => Math.random() - 0.5);
     }
     inst.adaptiveConfig.variables.shuffled_order = shuffledOrder;
-    
+
     const shuffled = shuffledOrder.map(idx => customOptions[Number(idx)]);
     inst.options = shuffled.map(({ isCorrect, is_correct, ...option }) => option);
     inst.correctAnswerIndex = shuffledOrder.findIndex(idx => customOptions[Number(idx)].isCorrect);
@@ -4745,7 +5613,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     if (question.solution) {
       let parsed = typeof question.solution === 'string' ? JSON.parse(question.solution) : question.solution;
-      
+
       // Dynamically upgrade smartTable
       let hasSmartTable = parsed.some(p => p.type === 'smartTable');
       if (hasSmartTable) {
@@ -4767,10 +5635,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
           return p;
         });
       }
-      
+
       inst.solution = hydrateNode(parsed, customVars);
     }
-    
+
     inst.type = 'mcq';
     inst.isVertical = true;
     const answerPayload = JSON.stringify({ ans: correctAns });
@@ -4816,16 +5684,16 @@ export function instantiateTemplate(question, overrideVariables = null) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.options) {
       const hydratedOptions = hydrateNode(question.options, templateVars);
       // Ensure options are unique (prevent correct answer appearing twice as a distractor)
       const seen = new Set();
       const uniqueOptions = [];
-      
+
       for (const opt of hydratedOptions) {
         const val = String(typeof opt === 'object' ? (opt.content || opt.text || '') : opt);
         if (!seen.has(val)) {
@@ -4859,7 +5727,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let num, roundTo;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [101, 999], round_to: 100 };
     roundTo = dataSource.round_to || 100;
-    
+
     if (overrideVariables) {
       num = overrideVariables.num;
     } else {
@@ -4873,10 +5741,10 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     const factor = roundTo;
     const rightFactor = factor / 10;
-    
+
     const targetDigit = Math.floor(num / factor) % 10;
     const rightDigit = Math.floor(num / rightFactor) % 10; // The digit that decides (tens for hundreds, hundreds for thousands)
-    
+
     const isRoundUp = rightDigit >= 5;
     const lowerMultiple = Math.floor(num / factor) * factor;
     const higherMultiple = (Math.floor(num / factor) + 1) * factor;
@@ -4902,7 +5770,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
     inst.type = 'mcq';
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.options) {
       const hydratedOptions = hydrateNode(question.options, templateVars);
       const seen = new Set();
@@ -4939,7 +5807,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
   if (logic === 'rounding_fill_blank_v1') {
     let num, scale;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1100, 9999], scales: ["ten", "hundred", "thousand"] };
-    
+
     // Pick a random scale from available ones
     const scales = dataSource.scales || ["ten", "hundred", "thousand"];
     scale = scales[Math.floor(Math.random() * scales.length)];
@@ -4985,7 +5853,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.solution) {
       let parsedSolution = question.solution;
       if (typeof parsedSolution === 'string') {
@@ -5004,7 +5872,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     let num, targetScale;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [2100, 2900], target_scale: 1000 };
     targetScale = dataSource.target_scale || 1000;
-    
+
     if (overrideVariables) {
       num = overrideVariables.num;
     } else {
@@ -5015,7 +5883,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
     const lowBenchmark = Math.floor(num / targetScale) * targetScale;
     const highBenchmark = lowBenchmark + targetScale;
     const midpoint = lowBenchmark + (targetScale / 2);
-    
+
     const distLow = num - lowBenchmark;
     const distHigh = highBenchmark - num;
     const distMid = Math.abs(num - midpoint);
@@ -5040,24 +5908,24 @@ export function instantiateTemplate(question, overrideVariables = null) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     const preHydratedParts = question.parts || [];
     inst.parts = hydrateNode(preHydratedParts, templateVars).map(p => {
-        if (p.type === 'numberLineRounding') {
-            return {
-                ...p,
-                min: lowBenchmark,
-                max: highBenchmark,
-                mid: midpoint,
-                current: num,
-                distLow: distLow,
-                distHigh: distHigh,
-                distMid: distMid
-            };
-        }
-        return p;
+      if (p.type === 'numberLineRounding') {
+        return {
+          ...p,
+          min: lowBenchmark,
+          max: highBenchmark,
+          mid: midpoint,
+          current: num,
+          distLow: distLow,
+          distHigh: distHigh,
+          distMid: distMid
+        };
+      }
+      return p;
     });
-    
+
     if (question.solution) {
       let parsedSolution = question.solution;
       if (typeof parsedSolution === 'string') {
@@ -5065,32 +5933,32 @@ export function instantiateTemplate(question, overrideVariables = null) {
       }
       inst.solution = hydrateNode(parsedSolution, templateVars);
     }
-    
+
     const answerPayload = JSON.stringify({ ans: String(chosenBenchmark) });
     inst.correctAnswerText = answerPayload;
     inst.adaptiveConfig.correctAnswerText = answerPayload;
   }
 
-function numberToWords(n) {
-  const units = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-  const teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
-  const tens = ["", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
-  
-  if (n < 10) return units[n];
-  if (n < 20) return teens[n - 10];
-  if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + units[n % 10] : "");
-  if (n < 1000) {
-    const hundredPart = units[Math.floor(n / 100)] + " hundred";
-    const rest = n % 100;
-    if (rest === 0) return hundredPart;
-    return hundredPart + " and " + numberToWords(rest);
-  }
-  return n.toString();
-}
+  function numberToWords(n) {
+    const units = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+    const teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+    const tens = ["", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
 
-/**
- * instantiateTemplate implementation...
- */
+    if (n < 10) return units[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + units[n % 10] : "");
+    if (n < 1000) {
+      const hundredPart = units[Math.floor(n / 100)] + " hundred";
+      const rest = n % 100;
+      if (rest === 0) return hundredPart;
+      return hundredPart + " and " + numberToWords(rest);
+    }
+    return n.toString();
+  }
+
+  /**
+   * instantiateTemplate implementation...
+   */
 
   // (previous logic blocks...)
 
@@ -5098,7 +5966,7 @@ function numberToWords(n) {
     inst.type = 'mcq';
     let num;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [101, 999] };
-    
+
     if (overrideVariables) {
       num = overrideVariables.num;
     } else {
@@ -5131,38 +5999,38 @@ function numberToWords(n) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     // Create and shuffle options
     if (Array.isArray(question.options)) {
-        let options = hydrateNode(question.options, templateVars);
-        
-        // Ensure options have all required labeling fields
-        options = options.map(o => ({
-            ...o,
-            label: String(o.content),
-            text: String(o.content)
-        }));
+      let options = hydrateNode(question.options, templateVars);
 
-        // Unique check
-        const seen = new Set();
-        options = options.filter(o => {
-            const val = String(o.content);
-            if (seen.has(val)) return false;
-            seen.add(val);
-            return true;
-        });
+      // Ensure options have all required labeling fields
+      options = options.map(o => ({
+        ...o,
+        label: String(o.content),
+        text: String(o.content)
+      }));
 
-        // Shuffle
-        inst.options = options.sort(() => Math.random() - 0.5);
+      // Unique check
+      const seen = new Set();
+      options = options.filter(o => {
+        const val = String(o.content);
+        if (seen.has(val)) return false;
+        seen.add(val);
+        return true;
+      });
 
-        // Track correct index AFTER shuffle
-        const correctIdx = inst.options.findIndex(o => String(o.content) === String(num));
-        inst.correctAnswerIndex = correctIdx;
-        inst.correctAnswerText = String(num);
+      // Shuffle
+      inst.options = options.sort(() => Math.random() - 0.5);
+
+      // Track correct index AFTER shuffle
+      const correctIdx = inst.options.findIndex(o => String(o.content) === String(num));
+      inst.correctAnswerIndex = correctIdx;
+      inst.correctAnswerText = String(num);
     }
 
     inst.parts = hydrateNode(question.parts || [], templateVars);
-    
+
     if (question.solution) {
       let solution = hydrateNode(question.solution, templateVars);
       // Clean up markdown markers if necessary
@@ -5184,7 +6052,7 @@ function numberToWords(n) {
   if (logic === 'interactive_object_counting_v1') {
     let num, objectType, arrangement, imageUrl;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 10] };
-    
+
     if (overrideVariables) {
       num = overrideVariables.num;
       objectType = overrideVariables.object_type;
@@ -5193,13 +6061,13 @@ function numberToWords(n) {
     } else {
       const range = dataSource.range || [1, 20];
       num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-      
+
       const objectTypes = ["firefly", "ladybug", "star", "apple"];
       objectType = dataSource.object_type || inst.adaptiveConfig?.variables?.object_type || objectTypes[Math.floor(Math.random() * objectTypes.length)];
-      
+
       const arrangements = ["grid", "scatter"];
       arrangement = dataSource.arrangement || inst.adaptiveConfig?.variables?.arrangement || arrangements[Math.floor(Math.random() * arrangements.length)];
-      
+
       imageUrl = dataSource.image_url || inst.adaptiveConfig?.variables?.image_url || null;
     }
 
@@ -5211,7 +6079,7 @@ function numberToWords(n) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     // Create options: 1 to 10 if num <= 10, else 1 to 20
     const maxOption = num <= 10 ? 10 : 20;
     inst.options = Array.from({ length: maxOption }).map((_, i) => String(i + 1));
@@ -5232,10 +6100,10 @@ function numberToWords(n) {
       { type: 'text', content: 'As we point to each bug, we say the next number. The last number we say is the total.', hasAudio: false },
       { type: 'text', content: 'There are {num} {object_type}s.', hasAudio: true }
     ];
-    
+
     let parsedSolution = rawSolution;
     if (typeof parsedSolution === 'string') {
-        try { parsedSolution = JSON.parse(parsedSolution); } catch (e) { }
+      try { parsedSolution = JSON.parse(parsedSolution); } catch (e) { }
     }
     inst.solution = hydrateNode(parsedSolution, templateVars);
 
@@ -5365,7 +6233,7 @@ function numberToWords(n) {
     let categoryTarget, numList;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [10, 99] };
     const range = dataSource.range || [10, 99];
-    
+
     if (overrideVariables) {
       categoryTarget = overrideVariables.category_target;
       numList = overrideVariables.num_list;
@@ -5375,7 +6243,7 @@ function numberToWords(n) {
       numList = [];
       const min = range[0];
       const max = range[1];
-      
+
       while (numList.length < 4) {
         const n = Math.floor(Math.random() * (max - min + 1)) + min;
         if (!numList.includes(n)) numList.push(n);
@@ -5383,16 +6251,16 @@ function numberToWords(n) {
       // Guarantee at least one correct
       const hasMatch = numList.some(n => (categoryTarget === 'even' ? n % 2 === 0 : n % 2 !== 0));
       if (!hasMatch) {
-         const pos = Math.floor(Math.random() * 4);
-         const base = Math.floor(Math.random() * (max - min + 1)) + min;
-         numList[pos] = categoryTarget === 'even' ? (base % 2 === 0 ? base : base + 1) : (base % 2 !== 0 ? base : base + 1);
-         if (numList[pos] > max) numList[pos] -= 2; // Keep in range
+        const pos = Math.floor(Math.random() * 4);
+        const base = Math.floor(Math.random() * (max - min + 1)) + min;
+        numList[pos] = categoryTarget === 'even' ? (base % 2 === 0 ? base : base + 1) : (base % 2 !== 0 ? base : base + 1);
+        if (numList[pos] > max) numList[pos] -= 2; // Keep in range
       }
     }
 
     const otherCategory = categoryTarget === 'even' ? 'odd' : 'even';
     const rule = categoryTarget === 'even' ? 'ends in 0, 2, 4, 6, or 8' : 'ends in 1, 3, 5, 7, or 9';
-    
+
     const matches = numList.filter(n => (categoryTarget === 'even' ? n % 2 === 0 : n % 2 !== 0));
     const nonMatches = numList.filter(n => (categoryTarget === 'even' ? n % 2 !== 0 : n % 2 === 0));
 
@@ -5406,14 +6274,14 @@ function numberToWords(n) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars, num_list: numList };
-    
+
     inst.type = 'mcq';
     inst.isMultiSelect = true;
 
     // Build options with isCorrect flag
     inst.options = numList.map(n => {
-       const isCorr = categoryTarget === 'even' ? n % 2 === 0 : n % 2 !== 0;
-       return { content: String(n), isCorrect: isCorr };
+      const isCorr = categoryTarget === 'even' ? n % 2 === 0 : n % 2 !== 0;
+      return { content: String(n), isCorrect: isCorr };
     });
 
     inst.correctAnswerIndices = inst.options.map((opt, i) => opt.isCorrect ? i : null).filter(i => i !== null);
@@ -5425,31 +6293,31 @@ function numberToWords(n) {
 
     // Build default solution if not provided
     const solParts = question.solution && (Array.isArray(question.solution) ? question.solution.length > 0 : true) ? question.solution : [
-        { type: "text", content: "**Remember:**", isVertical: true },
-        { type: "text", content: "A number is **even** if it ends in 0, 2, 4, 6, or 8.", isVertical: true },
-        { type: "text", content: "A number is **odd** if it ends in 1, 3, 5, 7, or 9.", isVertical: true },
-        { type: "text", content: "**Solve:**", isVertical: true },
-        { type: "text", content: "Look at the last digit of each number:", isVertical: true },
-        { type: "text", content: "**{list_of_matches}** are **{category_target}**.", isVertical: true },
-        { type: "text", content: "**{list_of_non_matches}** are **{other_category}**.", isVertical: true }
+      { type: "text", content: "**Remember:**", isVertical: true },
+      { type: "text", content: "A number is **even** if it ends in 0, 2, 4, 6, or 8.", isVertical: true },
+      { type: "text", content: "A number is **odd** if it ends in 1, 3, 5, 7, or 9.", isVertical: true },
+      { type: "text", content: "**Solve:**", isVertical: true },
+      { type: "text", content: "Look at the last digit of each number:", isVertical: true },
+      { type: "text", content: "**{list_of_matches}** are **{category_target}**.", isVertical: true },
+      { type: "text", content: "**{list_of_non_matches}** are **{other_category}**.", isVertical: true }
     ];
     let parsedSol = solParts;
     if (typeof parsedSol === 'string') {
-        try { parsedSol = JSON.parse(parsedSol); } catch (e) { }
+      try { parsedSol = JSON.parse(parsedSol); } catch (e) { }
     }
     inst.solution = hydrateNode(parsedSol, templateVars);
 
     // Build Scaffold
     const firstWrongNum = nonMatches[0] || 93;
     const scaffoldSrc = question.scaffold || inst.adaptiveConfig?.scaffold || {
-        id: "even_odd_scaffold",
-        trigger_on: ["incorrect_selection"],
-        parts: [
-            { type: "text", content: "Let's look closely at the **last digit** (the ones place).", isVertical: true },
-            { type: "text", content: `For example, in **${String(firstWrongNum).slice(0, -1)}<span style="color:#FF4B4B;font-weight:900;text-decoration:underline">${String(firstWrongNum).slice(-1)}</span>**, the last digit is ${String(firstWrongNum).slice(-1)}.`, isVertical: true },
-            { type: "numberPairs", num: String(firstWrongNum) },
-            { type: "text", content: `Does every dot have a partner in ${firstWrongNum}?`, isVertical: true }
-        ]
+      id: "even_odd_scaffold",
+      trigger_on: ["incorrect_selection"],
+      parts: [
+        { type: "text", content: "Let's look closely at the **last digit** (the ones place).", isVertical: true },
+        { type: "text", content: `For example, in **${String(firstWrongNum).slice(0, -1)}<span style="color:#FF4B4B;font-weight:900;text-decoration:underline">${String(firstWrongNum).slice(-1)}</span>**, the last digit is ${String(firstWrongNum).slice(-1)}.`, isVertical: true },
+        { type: "numberPairs", num: String(firstWrongNum) },
+        { type: "text", content: `Does every dot have a partner in ${firstWrongNum}?`, isVertical: true }
+      ]
     };
     inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
     inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
@@ -5459,7 +6327,7 @@ function numberToWords(n) {
     let numStart, category, seqType;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [10, 99] };
     const range = dataSource.range || [10, 99];
-    
+
     if (overrideVariables) {
       numStart = overrideVariables.num_start;
       category = overrideVariables.category;
@@ -5467,10 +6335,10 @@ function numberToWords(n) {
     } else {
       category = dataSource.category && dataSource.category !== 'random' ? dataSource.category : (Math.random() < 0.5 ? "even" : "odd");
       seqType = dataSource.type || (Math.random() < 0.33 ? "before" : (Math.random() < 0.5 ? "after" : "middle"));
-      
+
       const min = Math.max(range[0], 5);
       const max = range[1] - 10;
-      
+
       numStart = Math.floor(Math.random() * (max - min + 1)) + min;
       // Force parity
       if (category === 'even' && numStart % 2 !== 0) numStart++;
@@ -5547,12 +6415,12 @@ function numberToWords(n) {
 
     inst.type = 'fillInTheBlank';
     inst.correctAnswerText = JSON.stringify({ answer_1: String(ansVal) });
-    inst.adaptiveConfig.variables = { 
-        ...(inst.adaptiveConfig.variables || {}), 
-        num_start: numStart, 
-        ans_1: ansVal, 
-        category, 
-        seq_type: seqType 
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      num_start: numStart,
+      ans_1: ansVal,
+      category,
+      seq_type: seqType
     };
   }
 
@@ -5560,7 +6428,7 @@ function numberToWords(n) {
     let num1, num2, operation;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [10, 99] };
     const range = dataSource.range || [10, 99];
-    
+
     if (overrideVariables) {
       num1 = overrideVariables.num1;
       num2 = overrideVariables.num2;
@@ -5569,12 +6437,12 @@ function numberToWords(n) {
       num1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
       num2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
       operation = Math.random() < 0.5 ? "+" : "-";
-      
+
       // Ensure num1 >= num2 for subtraction
       if (operation === "-" && num1 < num2) {
-          const temp = num1;
-          num1 = num2;
-          num2 = temp;
+        const temp = num1;
+        num1 = num2;
+        num2 = temp;
       }
     }
 
@@ -5595,11 +6463,11 @@ function numberToWords(n) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = [
-        { content: "Even", isCorrect: rp === "even" },
-        { content: "Odd", isCorrect: rp === "odd" }
+      { content: "Even", isCorrect: rp === "even" },
+      { content: "Odd", isCorrect: rp === "odd" }
     ];
     inst.correctAnswerIndex = rp === "even" ? 0 : 1;
     inst.correctAnswerText = JSON.stringify({ ans_value: rp });
@@ -5609,25 +6477,25 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        { type: "text", content: "### 🔍 Step 1: Identify Parity", isVertical: true },
-        { type: "text", content: "**{num1}** is **{parity1}**.", isVertical: true },
-        { type: "text", content: "**{num2}** is **{parity2}**.", isVertical: true },
-        { type: "text", content: "\n### 📈 Step 2: Apply the Rule", isVertical: true },
-        { type: "text", content: "Use the rule: **{parity1} {operation} {parity2}** = **{result_parity}**.", isVertical: true },
-        { type: "text", content: "\n### ✅ Step 3: Check by Calculation", isVertical: true },
-        { type: "text", content: "**{num1} {operation} {num2} = {result}**", isVertical: true },
-        { type: "text", content: "**{result}** ends in a **{last_digit}**, which makes it **{result_parity}**.", isVertical: true }
+      { type: "text", content: "### 🔍 Step 1: Identify Parity", isVertical: true },
+      { type: "text", content: "**{num1}** is **{parity1}**.", isVertical: true },
+      { type: "text", content: "**{num2}** is **{parity2}**.", isVertical: true },
+      { type: "text", content: "\n### 📈 Step 2: Apply the Rule", isVertical: true },
+      { type: "text", content: "Use the rule: **{parity1} {operation} {parity2}** = **{result_parity}**.", isVertical: true },
+      { type: "text", content: "\n### ✅ Step 3: Check by Calculation", isVertical: true },
+      { type: "text", content: "**{num1} {operation} {num2} = {result}**", isVertical: true },
+      { type: "text", content: "**{result}** ends in a **{last_digit}**, which makes it **{result_parity}**.", isVertical: true }
     ], templateVars);
 
     const scaffoldSrc = question.scaffold || {
-        id: "parity_rules_scaffold",
-        trigger_on: ["incorrect_selection", "time_limit_exceeded"],
-        parts: [
-            { type: "text", content: "### 💡 Key Idea: Parity Rules", isVertical: true },
-            { type: "text", content: "You don't need to do the full math! Just look at the parities:", isVertical: true },
-            { type: "text", content: "| Rule | Result |\n| :--- | :--- |\n| even ± even | **even** |\n| odd ± odd | **even** |\n| even ± odd | **odd** |\n| odd ± even | **odd** |", isVertical: true },
-            { type: "text", content: `Since **{parity1} {operation} {parity2}** is our case, the answer must be **{result_parity}**.`, isVertical: true }
-        ]
+      id: "parity_rules_scaffold",
+      trigger_on: ["incorrect_selection", "time_limit_exceeded"],
+      parts: [
+        { type: "text", content: "### 💡 Key Idea: Parity Rules", isVertical: true },
+        { type: "text", content: "You don't need to do the full math! Just look at the parities:", isVertical: true },
+        { type: "text", content: "| Rule | Result |\n| :--- | :--- |\n| even ± even | **even** |\n| odd ± odd | **even** |\n| even ± odd | **odd** |\n| odd ± even | **odd** |", isVertical: true },
+        { type: "text", content: `Since **{parity1} {operation} {parity2}** is our case, the answer must be **{result_parity}**.`, isVertical: true }
+      ]
     };
     inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
   }
@@ -5636,7 +6504,7 @@ function numberToWords(n) {
     let name, startNum, skipInterval, targetNum;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 50] };
     const range = dataSource.range || [1, 50];
-    
+
     if (overrideVariables) {
       name = overrideVariables.name;
       startNum = overrideVariables.start_num;
@@ -5645,41 +6513,41 @@ function numberToWords(n) {
     } else {
       const names = ["Danny", "Anya", "Zaid", "Meera", "Leo", "Priya"];
       name = names[Math.floor(Math.random() * names.length)];
-      
+
       const intervals = [2, 5, 10];
       skipInterval = intervals[Math.floor(Math.random() * intervals.length)];
-      
+
       const min = Math.max(range[0], 1);
       const max = range[1] - (skipInterval * 3);
       startNum = Math.floor(Math.random() * (max - min + 1)) + min;
-      
+
       const offset = (Math.floor(Math.random() * 5) + 1) * skipInterval;
       const isPossible = Math.random() < 0.5;
       targetNum = isPossible ? (startNum + offset) : (startNum + offset - 1);
     }
 
     const isPossible = (targetNum - startNum) % skipInterval === 0;
-    
+
     // Generate sequence
     const seq = [];
     let cur = startNum;
     while (cur <= targetNum + skipInterval) {
-        seq.push(cur);
-        if (cur >= targetNum) break;
-        cur += skipInterval;
+      seq.push(cur);
+      if (cur >= targetNum) break;
+      cur += skipInterval;
     }
 
     const templateVars = {
       name, start_num: startNum, skip_interval: skipInterval, target_num: targetNum,
       sequence: seq.join(', '),
       is_possible: isPossible ? "Yes" : "No",
-      conclusion: isPossible 
-        ? `Yes, you say **${targetNum}**. ${name} could have been counting by **${skipInterval}s**.` 
+      conclusion: isPossible
+        ? `Yes, you say **${targetNum}**. ${name} could have been counting by **${skipInterval}s**.`
         : `No, you skip over **${targetNum}**. ${name} could not have been counting by **${skipInterval}s**.`
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = ["Yes", "No"];
     inst.correctAnswerIndex = isPossible ? 0 : 1;
@@ -5691,21 +6559,21 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        { type: "text", content: "### 🔭 Step 1: Restate the Goal", isVertical: true },
-        { type: "text", content: "We know **{name}** started at **{start_num}** and counted toward **{target_num}**.", isVertical: true },
-        { type: "\n### 👣 Step 2: Try the Path", content: "Try counting by **{skip_interval}s** from **{start_num}** until you hit **{target_num}** or pass it.", isVertical: true },
-        { type: "text", content: "The sequence is: **{sequence}**...", isVertical: true },
-        { type: "\n### ✅ Conclusion", content: "**{conclusion}**", isVertical: true }
+      { type: "text", content: "### 🔭 Step 1: Restate the Goal", isVertical: true },
+      { type: "text", content: "We know **{name}** started at **{start_num}** and counted toward **{target_num}**.", isVertical: true },
+      { type: "\n### 👣 Step 2: Try the Path", content: "Try counting by **{skip_interval}s** from **{start_num}** until you hit **{target_num}** or pass it.", isVertical: true },
+      { type: "text", content: "The sequence is: **{sequence}**...", isVertical: true },
+      { type: "\n### ✅ Conclusion", content: "**{conclusion}**", isVertical: true }
     ], templateVars);
 
     const scaffoldSrc = question.scaffold || {
-        id: "skip_count_scaffold",
-        trigger_on: ["incorrect_selection"],
-        parts: [
-            { type: "text", content: "Let's see the jumps on a number line!", isVertical: true },
-            { type: "numberLineJumps", start: startNum, target: targetNum, interval: skipInterval },
-            { type: "text", content: "Did the jump land right on **{target_num}**?", isVertical: true }
-        ]
+      id: "skip_count_scaffold",
+      trigger_on: ["incorrect_selection"],
+      parts: [
+        { type: "text", content: "Let's see the jumps on a number line!", isVertical: true },
+        { type: "numberLineJumps", start: startNum, target: targetNum, interval: skipInterval },
+        { type: "text", content: "Did the jump land right on **{target_num}**?", isVertical: true }
+      ]
     };
     inst.adaptiveConfig.scaffold = hydrateNode(scaffoldSrc, templateVars);
   }
@@ -5714,14 +6582,14 @@ function numberToWords(n) {
     let numStart, step;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [20, 100] };
     const range = dataSource.range || [20, 100];
-    
+
     if (overrideVariables) {
       numStart = overrideVariables.num_start;
       step = overrideVariables.step;
     } else {
       const steps = [1, 2, 3, 4, 5, 10];
       step = steps[Math.floor(Math.random() * steps.length)];
-      
+
       const minStart = 5 * step + 1;
       const min = Math.max(range[0], minStart);
       const max = range[1];
@@ -5730,21 +6598,21 @@ function numberToWords(n) {
 
     const sequence = [];
     for (let i = 0; i < 5; i++) {
-        sequence.push(numStart - (i * step));
+      sequence.push(numStart - (i * step));
     }
     const correctAns = numStart - (5 * step);
-    
+
     // Distractors
     const distractors = new Set();
     [correctAns + step, correctAns - step, numStart, numStart - step].forEach(d => {
-        if (d !== correctAns && d > 0) distractors.add(d);
+      if (d !== correctAns && d > 0) distractors.add(d);
     });
     // Ensure we have 3 distinct distractors
     let offset = 1;
     while (distractors.size < 3) {
-        let d = correctAns + (offset * step);
-        if (d !== correctAns && d > 0) distractors.add(d);
-        offset++;
+      let d = correctAns + (offset * step);
+      if (d !== correctAns && d > 0) distractors.add(d);
+      offset++;
     }
     const opts = [correctAns, ...Array.from(distractors)].slice(0, 4).sort((a, b) => a - b);
     const correctIndex = opts.indexOf(correctAns);
@@ -5758,7 +6626,7 @@ function numberToWords(n) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = opts.map(opt => String(opt));
     inst.correctAnswerIndex = correctIndex;
@@ -5771,11 +6639,11 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        { type: "text", content: "### 🧩 Step 1: Pattern Recognition", isVertical: true },
-        { type: "text", content: "First, look for a pattern. Notice how each number is **{step} less** than the previous number.", isVertical: true },
-        { type: "\n### 📈 Step 2: The Sequence", content: "**{num1}, {num2}, {num3}, {num4}, {num5}, ___**", isVertical: true },
-        { type: "text", content: "To make the pattern complete, the number **{correct_ans}** must go in the blank space.", isVertical: true },
-        { type: "\n### ✅ Math Check", content: "**{num5} - {step} = {correct_ans}**", isVertical: true }
+      { type: "text", content: "### 🧩 Step 1: Pattern Recognition", isVertical: true },
+      { type: "text", content: "First, look for a pattern. Notice how each number is **{step} less** than the previous number.", isVertical: true },
+      { type: "\n### 📈 Step 2: The Sequence", content: "**{num1}, {num2}, {num3}, {num4}, {num5}, ___**", isVertical: true },
+      { type: "text", content: "To make the pattern complete, the number **{correct_ans}** must go in the blank space.", isVertical: true },
+      { type: "\n### ✅ Math Check", content: "**{num5} - {step} = {correct_ans}**", isVertical: true }
     ], templateVars);
   }
 
@@ -5783,14 +6651,14 @@ function numberToWords(n) {
     let numStart, step;
     const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [1, 50] };
     const range = dataSource.range || [1, 50];
-    
+
     if (overrideVariables) {
       numStart = overrideVariables.num_start;
       step = overrideVariables.step;
     } else {
       const steps = [1, 2, 3, 5, 10];
       step = steps[Math.floor(Math.random() * steps.length)];
-      
+
       const min = range[0];
       const max = range[1] - (5 * step);
       numStart = Math.floor(Math.random() * (Math.max(max, min) - min + 1)) + min;
@@ -5798,20 +6666,20 @@ function numberToWords(n) {
 
     const sequence = [];
     for (let i = 0; i < 5; i++) {
-        sequence.push(numStart + (i * step));
+      sequence.push(numStart + (i * step));
     }
     const correctAns = numStart + (5 * step);
-    
+
     // Distractors
     const distractors = new Set();
     [correctAns + step, correctAns - step, numStart, numStart + step].forEach(d => {
-       if (d !== correctAns && d > 0) distractors.add(d);
+      if (d !== correctAns && d > 0) distractors.add(d);
     });
     let offset = 1;
     while (distractors.size < 3) {
-        let d = correctAns + (offset * step);
-        if (d !== correctAns && d > 0) distractors.add(d);
-        offset++;
+      let d = correctAns + (offset * step);
+      if (d !== correctAns && d > 0) distractors.add(d);
+      offset++;
     }
     const opts = [correctAns, ...Array.from(distractors)].slice(0, 4).sort((a, b) => a - b);
     const correctIndex = opts.indexOf(correctAns);
@@ -5825,7 +6693,7 @@ function numberToWords(n) {
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = opts.map(opt => String(opt));
     inst.correctAnswerIndex = correctIndex;
@@ -5838,11 +6706,11 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        { type: "text", content: "### 🧩 Step 1: Pattern Recognition", isVertical: true },
-        { type: "text", content: "First, look for a pattern. Notice how each number is **{step} more** than the previous number.", isVertical: true },
-        { type: "\n### 📈 Step 2: The Sequence", content: "**{num1}, {num2}, {num3}, {num4}, {num5}, ___**", isVertical: true },
-        { type: "text", content: "To make the pattern complete, the number **{correct_ans}** must go in the blank space.", isVertical: true },
-        { type: "\n### ✅ Math Check", content: "**{num5} + {step} = {correct_ans}**", isVertical: true }
+      { type: "text", content: "### 🧩 Step 1: Pattern Recognition", isVertical: true },
+      { type: "text", content: "First, look for a pattern. Notice how each number is **{step} more** than the previous number.", isVertical: true },
+      { type: "\n### 📈 Step 2: The Sequence", content: "**{num1}, {num2}, {num3}, {num4}, {num5}, ___**", isVertical: true },
+      { type: "text", content: "To make the pattern complete, the number **{correct_ans}** must go in the blank space.", isVertical: true },
+      { type: "\n### ✅ Math Check", content: "**{num5} + {step} = {correct_ans}**", isVertical: true }
     ], templateVars);
   }
 
@@ -5852,18 +6720,18 @@ function numberToWords(n) {
     const ordPool = ["first", "fifth", "tenth", "twelfth", "twentieth", "fiftieth", "eightieth", "hundredth"].sort();
 
     if (overrideVariables) {
-        targetType = overrideVariables.target_type;
+      targetType = overrideVariables.target_type;
     } else {
-        targetType = Math.random() > 0.5 ? 'ordinal' : 'cardinal';
+      targetType = Math.random() > 0.5 ? 'ordinal' : 'cardinal';
     }
 
     const otherType = targetType === 'ordinal' ? 'cardinal' : 'ordinal';
-    
+
     // Pick words deterministically if variables provided, otherwise pick randomly
     // For simplicity and stability, we use slices that are constant for a session
     // Or better: salt the random index with numStart if we had one.
     // Here we'll just pick based on targetType's existence to ensure stability.
-    
+
     // To be truly stable, we should ideally put the picked words in variables too.
     const card1 = overrideVariables?.card1 || cardPool[Math.floor(Math.random() * cardPool.length)];
     const card2 = overrideVariables?.card2 || cardPool.filter(c => c !== card1)[Math.floor(Math.random() * (cardPool.length - 1))];
@@ -5871,31 +6739,31 @@ function numberToWords(n) {
     const ord2 = overrideVariables?.ord2 || ordPool.filter(o => o !== ord1)[Math.floor(Math.random() * (ordPool.length - 1))];
 
     const allOptionsRaw = [
-        { text: card1, type: 'cardinal' },
-        { text: card2, type: 'cardinal' },
-        { text: ord1, type: 'ordinal' },
-        { text: ord2, type: 'ordinal' }
+      { text: card1, type: 'cardinal' },
+      { text: card2, type: 'cardinal' },
+      { text: ord1, type: 'ordinal' },
+      { text: ord2, type: 'ordinal' }
     ].sort((a, b) => a.text.localeCompare(b.text)); // Alphabetical sort for stability
-    
+
     const options = allOptionsRaw.map(o => o.text);
     const correctIndices = [];
     allOptionsRaw.forEach((o, i) => {
-        if (o.type === targetType) correctIndices.push(i);
+      if (o.type === targetType) correctIndices.push(i);
     });
-    
+
     const matches = allOptionsRaw.filter(o => o.type === targetType).map(o => o.text);
     const nonMatches = allOptionsRaw.filter(o => o.type !== targetType).map(o => o.text);
-    
+
     const templateVars = {
-        target_type: targetType,
-        other_type: otherType,
-        list_of_matches: matches.join('\n'),
-        list_of_non_matches: nonMatches.join('\n'),
-        card1, card2, ord1, ord2
+      target_type: targetType,
+      other_type: otherType,
+      list_of_matches: matches.join('\n'),
+      list_of_non_matches: nonMatches.join('\n'),
+      card1, card2, ord1, ord2
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.isMultiSelect = true;
     inst.showSubmitButton = true;
@@ -5910,68 +6778,68 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        {
-            type: "section",
-            label: "key idea",
-            parts: [
-                { type: "text", content: "**Cardinal** numbers tell how many.\nCounting numbers like *one (1)*, *two (2)*, and *three (3)* are cardinal numbers.", isVertical: true },
-                { type: "text", content: "\n**Ordinal** numbers tell position.\nPosition numbers like *first (1st)*, *second (2nd)*, and *third (3rd)* are ordinal numbers.", isVertical: true }
-            ]
-        },
-        {
-            type: "section",
-            label: "solution",
-            parts: [
-                { type: "text", content: "These are **{target_type}** numbers:", isVertical: true },
-                { type: "text", content: "{list_of_matches}", isVertical: true, style: { paddingLeft: '20px', fontWeight: 'bold' } },
-                { type: "text", content: "\nThis is not a **{target_type}** number. It is a **{other_type}** number:", isVertical: true },
-                { type: "text", content: "{list_of_non_matches}", isVertical: true, style: { paddingLeft: '20px', fontWeight: 'bold' } }
-            ]
-        }
+      {
+        type: "section",
+        label: "key idea",
+        parts: [
+          { type: "text", content: "**Cardinal** numbers tell how many.\nCounting numbers like *one (1)*, *two (2)*, and *three (3)* are cardinal numbers.", isVertical: true },
+          { type: "text", content: "\n**Ordinal** numbers tell position.\nPosition numbers like *first (1st)*, *second (2nd)*, and *third (3rd)* are ordinal numbers.", isVertical: true }
+        ]
+      },
+      {
+        type: "section",
+        label: "solution",
+        parts: [
+          { type: "text", content: "These are **{target_type}** numbers:", isVertical: true },
+          { type: "text", content: "{list_of_matches}", isVertical: true, style: { paddingLeft: '20px', fontWeight: 'bold' } },
+          { type: "text", content: "\nThis is not a **{target_type}** number. It is a **{other_type}** number:", isVertical: true },
+          { type: "text", content: "{list_of_non_matches}", isVertical: true, style: { paddingLeft: '20px', fontWeight: 'bold' } }
+        ]
+      }
     ], templateVars);
   }
 
   if (logic === 'numeral_type_v1') {
     let num, isOrdinal;
     const range = question.data_source?.range || [1, 100];
-    
+
     if (overrideVariables) {
-        num = overrideVariables.num;
-        isOrdinal = overrideVariables.is_ordinal;
+      num = overrideVariables.num;
+      isOrdinal = overrideVariables.is_ordinal;
     } else {
-        num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-        isOrdinal = Math.random() > 0.5;
+      num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      isOrdinal = Math.random() > 0.5;
     }
 
     const getSuffix = (n) => {
-        const lastDigit = n % 10;
-        const lastTwoDigits = n % 100;
-        if (lastTwoDigits >= 11 && lastTwoDigits <= 13) return "th";
-        if (lastDigit === 1) return "st";
-        if (lastDigit === 2) return "nd";
-        if (lastDigit === 3) return "rd";
-        return "th";
+      const lastDigit = n % 10;
+      const lastTwoDigits = n % 100;
+      if (lastTwoDigits >= 11 && lastTwoDigits <= 13) return "th";
+      if (lastDigit === 1) return "st";
+      if (lastDigit === 2) return "nd";
+      if (lastDigit === 3) return "rd";
+      return "th";
     };
 
     const suffix = getSuffix(num);
     const displayFormat = isOrdinal ? `${num}${suffix}` : `${num}`;
     const correctAnsText = isOrdinal ? "Ordinal" : "Cardinal";
     const otherType = isOrdinal ? "Cardinal" : "Ordinal";
-    
+
     const options = ["Cardinal", "Ordinal"];
     const correctIndex = options.indexOf(correctAnsText);
 
     const templateVars = {
-        num,
-        suffix,
-        display_format: displayFormat,
-        correct_answer: correctAnsText,
-        other_type: otherType,
-        is_ordinal: isOrdinal
+      num,
+      suffix,
+      display_format: displayFormat,
+      correct_answer: correctAnsText,
+      other_type: otherType,
+      is_ordinal: isOrdinal
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = options;
     inst.correctAnswerIndex = correctIndex;
@@ -5983,68 +6851,70 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        {
-            type: "section",
-            label: "key idea",
-            parts: [
-                { type: "text", content: "**Cardinal** numbers (like 1, 2, 3) tell us how many objects there are in total.", isVertical: true },
-                { type: "text", content: "**Ordinal** numbers (like 1st, 2nd, 3rd) tell us the position or order of an object.", isVertical: true }
-            ]
-        },
-        {
-            type: "section",
-            label: "solution",
-            parts: [
-                { type: "text", content: isOrdinal 
-                    ? "The number **{display_format}** has a **'{suffix}'** at the end, which tells us a position. This makes it an **ordinal** number."
-                    : "The number **{display_format}** does not have a position suffix. It tells us a count. This makes it a **cardinal** number.", isVertical: true },
-                { type: "text", content: "\n**Conclusion:** **{display_format}** is a/an **{correct_answer}** number.", isVertical: true }
-            ]
-        }
+      {
+        type: "section",
+        label: "key idea",
+        parts: [
+          { type: "text", content: "**Cardinal** numbers (like 1, 2, 3) tell us how many objects there are in total.", isVertical: true },
+          { type: "text", content: "**Ordinal** numbers (like 1st, 2nd, 3rd) tell us the position or order of an object.", isVertical: true }
+        ]
+      },
+      {
+        type: "section",
+        label: "solution",
+        parts: [
+          {
+            type: "text", content: isOrdinal
+              ? "The number **{display_format}** has a **'{suffix}'** at the end, which tells us a position. This makes it an **ordinal** number."
+              : "The number **{display_format}** does not have a position suffix. It tells us a count. This makes it a **cardinal** number.", isVertical: true
+          },
+          { type: "text", content: "\n**Conclusion:** **{display_format}** is a/an **{correct_answer}** number.", isVertical: true }
+        ]
+      }
     ], templateVars);
 
     inst.adaptiveConfig.scaffold = hydrateNode(question.adaptiveConfig?.scaffold || {
-        id: "race_scaffold",
-        trigger_on: ["incorrect_selection"],
-        parts: [{ 
-            type: 'text', 
-            content: "Think of a race: If you are number **{num}**, that is your **cardinal** count. \nIf you finish in **{num}{suffix}** place, that is your **ordinal** position!" 
-        }]
+      id: "race_scaffold",
+      trigger_on: ["incorrect_selection"],
+      parts: [{
+        type: 'text',
+        content: "Think of a race: If you are number **{num}**, that is your **cardinal** count. \nIf you finish in **{num}{suffix}** place, that is your **ordinal** position!"
+      }]
     }, templateVars);
   }
 
   if (logic === 'number_to_words_21_99_v1') {
     let num;
     const range = question.data_source?.range || [21, 99];
-    
+
     if (overrideVariables) {
-        num = overrideVariables.num;
+      num = overrideVariables.num;
     } else {
-        // Avoid teens for this specific skill logic
-        do {
-            num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-        } while (num >= 11 && num <= 19);
+      // Avoid teens for this specific skill logic
+      do {
+        num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      } while (num >= 11 && num <= 19);
     }
 
     const tens = Math.floor(num / 10);
     const ones = num % 10;
-    
+
     const tensMap = { 2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety" };
     const onesMap = { 0: "", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine" };
 
     const tensWord = tensMap[tens];
     const onesWord = onesMap[ones];
     const correctAns = ones === 0 ? tensWord : `${tensWord}-${onesWord}`;
-    
+
     // Distractors
     const distractors = new Set();
-    
+
     // 1. Swapped (if valid tens word for ones digit)
     if (ones >= 2 && tensMap[ones]) {
-       const swapped = `${tensMap[ones]}-${onesMap[tens]}`;
-       if (swapped !== correctAns) distractors.add(swapped);
+      const swapped = `${tensMap[ones]}-${onesMap[tens]}`;
+      if (swapped !== correctAns) distractors.add(swapped);
     }
-    
+
     // 2. Just tens or just ones
     if (tensWord !== correctAns) distractors.add(tensWord);
     if (onesWord && onesWord !== correctAns) distractors.add(onesWord);
@@ -6052,33 +6922,33 @@ function numberToWords(n) {
     // 3. Round Tens
     const roundTens = [20, 30, 40, 50, 60, 70, 80, 90];
     roundTens.forEach(rt => {
-        const w = tensMap[rt/10];
-        if (w !== correctAns) distractors.add(w);
+      const w = tensMap[rt / 10];
+      if (w !== correctAns) distractors.add(w);
     });
 
     // Fill to 4 options total
     const possibleOnes = Object.values(onesMap).filter(v => v !== "");
     let i = 0;
     while (distractors.size < 3) {
-        const d = `${tensWord}-${possibleOnes[i % possibleOnes.length]}`;
-        if (d !== correctAns) distractors.add(d);
-        i++;
+      const d = `${tensWord}-${possibleOnes[i % possibleOnes.length]}`;
+      if (d !== correctAns) distractors.add(d);
+      i++;
     }
 
     const opts = [correctAns, ...Array.from(distractors)].slice(0, 4).sort((a, b) => a.localeCompare(b));
     const correctIndex = opts.indexOf(correctAns);
 
     const templateVars = {
-        num,
-        tens_digit: tens,
-        ones_digit: ones,
-        tens_word: tensWord,
-        ones_word: onesWord || "zero",
-        correct_ans: correctAns
+      num,
+      tens_digit: tens,
+      ones_digit: ones,
+      tens_word: tensWord,
+      ones_word: onesWord || "zero",
+      correct_ans: correctAns
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = opts;
     inst.correctAnswerIndex = correctIndex;
@@ -6090,94 +6960,94 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        {
-            type: "section",
-            label: "strategy",
-            parts: [
-                { type: "text", content: "Remember how to write numbers from **21 to 99**.", isVertical: true },
-                { type: "text", content: "\nFirst, write the **tens** part. Then, put a **hyphen** and write the **ones** part.", isVertical: true },
-                { type: "text", content: "\n| TENS | | ONES | |\n| :--- | :--- | :--- | :--- |\n| 20 | twenty | 1 | one |\n| 30 | thirty | 2 | two |\n| 40 | forty | 3 | three |\n| 50 | fifty | 4 | four |\n| 60 | sixty | 5 | five |\n| 70 | seventy | 6 | six |\n| 80 | eighty | 7 | seven |\n| 90 | ninety | 9 | nine |", isVertical: true },
-                { type: "text", content: "\nYou write **{num}** as **{correct_ans}**.", isVertical: true }
-            ]
-        }
+      {
+        type: "section",
+        label: "strategy",
+        parts: [
+          { type: "text", content: "Remember how to write numbers from **21 to 99**.", isVertical: true },
+          { type: "text", content: "\nFirst, write the **tens** part. Then, put a **hyphen** and write the **ones** part.", isVertical: true },
+          { type: "text", content: "\n| TENS | | ONES | |\n| :--- | :--- | :--- | :--- |\n| 20 | twenty | 1 | one |\n| 30 | thirty | 2 | two |\n| 40 | forty | 3 | three |\n| 50 | fifty | 4 | four |\n| 60 | sixty | 5 | five |\n| 70 | seventy | 6 | six |\n| 80 | eighty | 7 | seven |\n| 90 | ninety | 9 | nine |", isVertical: true },
+          { type: "text", content: "\nYou write **{num}** as **{correct_ans}**.", isVertical: true }
+        ]
+      }
     ], templateVars);
 
     inst.adaptiveConfig.scaffold = hydrateNode(question.adaptiveConfig?.scaffold || {
-        id: "pv_scaffold",
-        trigger_on: ["incorrect_selection"],
-        parts: [
-            { type: "text", content: "Let's look at the place values for **{num}**:", isVertical: true },
-            { 
-               type: "table", 
-               content: "| Tens | Ones |\n| :---: | :---: |\n| **{tens_digit}** | **{ones_digit}** |", 
-               isVertical: true 
-            },
-            { 
-               type: "text", 
-               content: "\nThe **{tens_digit}** is in the tens place, so it means **{tens_word}**.\nThe **{ones_digit}** is in the ones place, so it means **{ones_word}**.\n\nLet's put them together!", 
-               isVertical: true 
-            }
-        ]
+      id: "pv_scaffold",
+      trigger_on: ["incorrect_selection"],
+      parts: [
+        { type: "text", content: "Let's look at the place values for **{num}**:", isVertical: true },
+        {
+          type: "table",
+          content: "| Tens | Ones |\n| :---: | :---: |\n| **{tens_digit}** | **{ones_digit}** |",
+          isVertical: true
+        },
+        {
+          type: "text",
+          content: "\nThe **{tens_digit}** is in the tens place, so it means **{tens_word}**.\nThe **{ones_digit}** is in the ones place, so it means **{ones_word}**.\n\nLet's put them together!",
+          isVertical: true
+        }
+      ]
     }, templateVars);
   }
 
   if (logic === 'words_to_digits_21_99_v1') {
     let num;
     const range = question.data_source?.range || [21, 99];
-    
+
     if (overrideVariables) {
-        num = overrideVariables.num;
+      num = overrideVariables.num;
     } else {
-        do {
-            num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-        } while (num >= 11 && num <= 19);
+      do {
+        num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      } while (num >= 11 && num <= 19);
     }
 
     const tens = Math.floor(num / 10);
     const ones = num % 10;
-    
+
     const tensMap = { 2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety" };
     const onesMap = { 0: "", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine" };
 
     const tensWord = tensMap[tens];
     const onesWord = onesMap[ones];
     const fullWord = ones === 0 ? tensWord : `${tensWord}-${onesWord}`;
-    
+
     // Distractors
     const distractors = new Set();
-    
+
     // 1. Swapped
     const swapped = (ones * 10) + tens;
     if (ones >= 2 && swapped !== num) {
-        distractors.add(swapped);
+      distractors.add(swapped);
     }
-    
+
     // 2. Round ten
     if (tens * 10 !== num) distractors.add(tens * 10);
-    
+
     // 3. Off-by-ten
     const offTen = (tens === 9 ? tens - 1 : tens + 1) * 10 + ones;
     if (offTen !== num) distractors.add(offTen);
 
     // 4. Neighbors
     [num + 1, num - 1, num + 10, num - 10].forEach(d => {
-        if (d > 0 && d !== num) distractors.add(d);
+      if (d > 0 && d !== num) distractors.add(d);
     });
 
     const opts = [num, ...Array.from(distractors)].slice(0, 4).sort((a, b) => a - b);
     const correctIndex = opts.indexOf(num);
 
     const templateVars = {
-        num,
-        tens_digit: tens,
-        ones_digit: ones,
-        tens_word: tensWord,
-        ones_word: onesWord || "zero",
-        full_word: fullWord
+      num,
+      tens_digit: tens,
+      ones_digit: ones,
+      tens_word: tensWord,
+      ones_word: onesWord || "zero",
+      full_word: fullWord
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = opts.map(o => String(o));
     inst.correctAnswerIndex = correctIndex;
@@ -6189,65 +7059,65 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        {
-            type: "section",
-            label: "strategy",
-            parts: [
-                { type: "text", content: "To write **{full_word}** in digits, look at the two parts:", isVertical: true },
-                { type: "text", content: "\n1. **{tens_word}** means there are **{tens_digit}** tens.\n2. **{ones_word}** means there are **{ones_digit}** ones.", isVertical: true },
-                { 
-                   type: "table", 
-                   content: "| Tens | Ones |\n| :---: | :---: |\n| **{tens_digit}** | **{ones_digit}** |", 
-                   isVertical: true 
-                },
-                { type: "text", content: "\nPut them together to get **{num}**.", isVertical: true }
-            ]
-        }
+      {
+        type: "section",
+        label: "strategy",
+        parts: [
+          { type: "text", content: "To write **{full_word}** in digits, look at the two parts:", isVertical: true },
+          { type: "text", content: "\n1. **{tens_word}** means there are **{tens_digit}** tens.\n2. **{ones_word}** means there are **{ones_digit}** ones.", isVertical: true },
+          {
+            type: "table",
+            content: "| Tens | Ones |\n| :---: | :---: |\n| **{tens_digit}** | **{ones_digit}** |",
+            isVertical: true
+          },
+          { type: "text", content: "\nPut them together to get **{num}**.", isVertical: true }
+        ]
+      }
     ], templateVars);
   }
 
   if (logic === 'comparison_counting_order_v1') {
     let num1, num2;
     const range = question.data_source?.range || [1, 100];
-    
+
     if (overrideVariables) {
-        num1 = overrideVariables.num1;
-        num2 = overrideVariables.num2;
+      num1 = overrideVariables.num1;
+      num2 = overrideVariables.num2;
     } else {
-        num1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-        // 20% chance of equal
-        if (Math.random() < 0.2) {
-            num2 = num1;
-        } else {
-            num2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-            if (num2 === num1) num2 = (num1 === range[1]) ? num1 - 1 : num1 + 1;
-        }
+      num1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      // 20% chance of equal
+      if (Math.random() < 0.2) {
+        num2 = num1;
+      } else {
+        num2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        if (num2 === num1) num2 = (num1 === range[1]) ? num1 - 1 : num1 + 1;
+      }
     }
 
     let orderWord, comparisonResult;
     if (num1 > num2) {
-        orderWord = "comes after";
-        comparisonResult = "is greater than";
+      orderWord = "comes after";
+      comparisonResult = "is greater than";
     } else if (num1 < num2) {
-        orderWord = "comes before";
-        comparisonResult = "is less than";
+      orderWord = "comes before";
+      comparisonResult = "is less than";
     } else {
-        orderWord = "is the same as";
-        comparisonResult = "is equal to";
+      orderWord = "is the same as";
+      comparisonResult = "is equal to";
     }
-    
+
     const options = ["is greater than", "is less than", "is equal to"];
     const correctIndex = options.indexOf(comparisonResult);
 
     const templateVars = {
-        num1,
-        num2,
-        order_word: orderWord,
-        comparison_result: comparisonResult
+      num1,
+      num2,
+      order_word: orderWord,
+      comparison_result: comparisonResult
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'mcq';
     inst.options = options;
     inst.correctAnswerIndex = correctIndex;
@@ -6259,31 +7129,31 @@ function numberToWords(n) {
     ], templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        {
-            type: "section",
-            label: "strategy",
-            parts: [
-                { type: "text", content: "When you count, **{num1}** **{order_word}** **{num2}**.", isVertical: true },
-                { type: "text", content: "\n**Conclusion:** **{num1}** **{comparison_result}** **{num2}**.", isVertical: true }
-            ]
-        }
+      {
+        type: "section",
+        label: "strategy",
+        parts: [
+          { type: "text", content: "When you count, **{num1}** **{order_word}** **{num2}**.", isVertical: true },
+          { type: "text", content: "\n**Conclusion:** **{num1}** **{comparison_result}** **{num2}**.", isVertical: true }
+        ]
+      }
     ], templateVars);
 
     inst.adaptiveConfig.scaffold = hydrateNode(question.adaptiveConfig?.scaffold || {
-        id: "counting_scaffold",
-        trigger_on: ["incorrect_selection"],
-        parts: [
-            { type: "text", content: "Think about counting to **100**.", isVertical: true },
-            { 
-               type: "text", 
-               content: num1 > num2 
-                 ? "You say **{num2}** first, and then you keep counting to reach **{num1}**. This means **{num1}** is bigger!"
-                 : num1 < num2 
-                   ? "You say **{num1}** first, and then you have to keep counting to reach **{num2}**. This means **{num1}** is smaller."
-                   : "Since both numbers are the same, they are equal!",
-               isVertical: true 
-            }
-        ]
+      id: "counting_scaffold",
+      trigger_on: ["incorrect_selection"],
+      parts: [
+        { type: "text", content: "Think about counting to **100**.", isVertical: true },
+        {
+          type: "text",
+          content: num1 > num2
+            ? "You say **{num2}** first, and then you keep counting to reach **{num1}**. This means **{num1}** is bigger!"
+            : num1 < num2
+              ? "You say **{num1}** first, and then you have to keep counting to reach **{num2}**. This means **{num1}** is smaller."
+              : "Since both numbers are the same, they are equal!",
+          isVertical: true
+        }
+      ]
     }, templateVars);
   }
 
@@ -6292,40 +7162,40 @@ function numberToWords(n) {
     const range = dataSource.range || [1, 100];
     const count = Math.min(6, Math.max(3, Number(dataSource.count || 4)));
     const order = dataSource.order || inst.adaptiveConfig?.order || 'ascending';
-    
+
     let nums = [];
     if (overrideVariables && Array.isArray(overrideVariables.nums)) {
-        nums = overrideVariables.nums;
+      nums = overrideVariables.nums;
     } else {
-        const set = new Set();
-        while (set.size < count) {
-            set.add(Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]);
-        }
-        nums = Array.from(set);
+      const set = new Set();
+      while (set.size < count) {
+        set.add(Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]);
+      }
+      nums = Array.from(set);
     }
 
     // Determine correct sort order
-    const sortedNums = [...nums].sort((a,b) => (order === 'descending' ? b - a : a - b));
-    const sorted_desc = [...nums].sort((a,b) => b - a);
-    const sorted_asc = [...nums].sort((a,b) => a - b);
+    const sortedNums = [...nums].sort((a, b) => (order === 'descending' ? b - a : a - b));
+    const sorted_desc = [...nums].sort((a, b) => b - a);
+    const sorted_asc = [...nums].sort((a, b) => a - b);
 
     const itemObjects = nums.map((n, i) => ({ id: `item_${i}`, content: String(n), value: n }));
     const correctIds = sortedNums.map(sn => itemObjects.find(io => io.value === sn).id);
 
     const sortedList = sortedNums.join(', ');
-    const templateVars = { 
-        nums: nums, 
-        sorted: sortedNums, 
-        sorted_asc,
-        sorted_desc,
-        sorted_list: sortedList,
-        smallest: sorted_asc[0],
-        largest: sorted_asc[sorted_asc.length - 1],
-        order: order
+    const templateVars = {
+      nums: nums,
+      sorted: sortedNums,
+      sorted_asc,
+      sorted_desc,
+      sorted_list: sortedList,
+      smallest: sorted_asc[0],
+      largest: sorted_asc[sorted_asc.length - 1],
+      order: order
     };
 
     inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
-    
+
     inst.type = 'sorting';
     inst.items = itemObjects;
     inst.correctAnswerIndex = -1;
@@ -6341,16 +7211,16 @@ function numberToWords(n) {
     inst.parts = hydrateNode(question.parts && question.parts.length > 0 ? question.parts : (order === 'descending' ? defaultLargestToSmallestParts : defaultSmallestToLargestParts), templateVars);
 
     inst.solution = hydrateNode(question.solution || [
-        {
-            type: "section",
-            label: "strategy",
-            parts: [
-                { type: "text", content: `To sort numbers from ${order === 'descending' ? 'largest to smallest' : 'smallest to largest'}, always start by looking for the **${order === 'descending' ? 'greatest' : 'smallest'}** number in the group.`, isVertical: true },
-                { type: "text", content: `\n1. Find the ${order === 'descending' ? 'largest' : 'smallest'} number: **${order === 'descending' ? '{largest}' : '{smallest}'}**.\n2. Look at the remaining numbers and find the next ${order === 'descending' ? 'largest' : 'smallest'}.\n3. Keep going until all numbers are sorted!`, isVertical: true },
-                { type: "text", content: "\n**The correct order is:**", isVertical: true },
-                { type: "text", content: "### **{sorted_list}**", isVertical: true }
-            ]
-        }
+      {
+        type: "section",
+        label: "strategy",
+        parts: [
+          { type: "text", content: `To sort numbers from ${order === 'descending' ? 'largest to smallest' : 'smallest to largest'}, always start by looking for the **${order === 'descending' ? 'greatest' : 'smallest'}** number in the group.`, isVertical: true },
+          { type: "text", content: `\n1. Find the ${order === 'descending' ? 'largest' : 'smallest'} number: **${order === 'descending' ? '{largest}' : '{smallest}'}**.\n2. Look at the remaining numbers and find the next ${order === 'descending' ? 'largest' : 'smallest'}.\n3. Keep going until all numbers are sorted!`, isVertical: true },
+          { type: "text", content: "\n**The correct order is:**", isVertical: true },
+          { type: "text", content: "### **{sorted_list}**", isVertical: true }
+        ]
+      }
     ], templateVars);
   }
 
@@ -6673,11 +7543,11 @@ function numberToWords(n) {
     const targetDigit = useTens ? tens : ones;
     const correctPlace = useTens ? 'tens place' : 'ones place';
 
-    const templateVars = { 
-      num, 
-      tens_digit: tens, 
-      ones_digit: ones, 
-      target_digit: targetDigit, 
+    const templateVars = {
+      num,
+      tens_digit: tens,
+      ones_digit: ones,
+      target_digit: targetDigit,
       correct_place: correctPlace
     };
 
@@ -6709,21 +7579,21 @@ function numberToWords(n) {
     const scaffold = inst.scaffold || inst.adaptiveConfig?.scaffold || {};
 
     let operands = data.operands;
-    
+
     // Auto-generate operands if missing or empty
     if (!operands || !Array.isArray(operands) || operands.length === 0) {
       const instr = String(scaffold.instruction || '').toLowerCase();
       const count = data.operand_count || 2;
       const explicitRange = data.range;
-      
+
       operands = Array.from({ length: count }).map((_, i) => {
         // 1. Priority: Fixed operands (n1, n2, n3...)
-        const fixedVal = data[`n${i+1}`];
+        const fixedVal = data[`n${i + 1}`];
         if (fixedVal !== undefined && fixedVal !== null) return Number(fixedVal);
 
         // 2. Priority: Explicit range from JSON
         if (explicitRange && Array.isArray(explicitRange)) {
-           return Math.floor(Math.random() * (explicitRange[1] - explicitRange[0] + 1)) + explicitRange[0];
+          return Math.floor(Math.random() * (explicitRange[1] - explicitRange[0] + 1)) + explicitRange[0];
         }
 
         // 3. Fallback: Instruction-based heuristics
@@ -6731,18 +7601,18 @@ function numberToWords(n) {
           if (i === 1 && (instr.includes('one-digit') || instr.includes('one digit'))) return Math.floor(Math.random() * 9) + 1;
           return Math.floor(Math.random() * 80) + 11;
         }
-        
+
         // 4. Default: Single digit
         return Math.floor(Math.random() * 9) + 1;
       });
     }
 
     const operator = data.operator || '+';
-    const missingIdx = data.missing_index ?? operands.length; 
+    const missingIdx = data.missing_index ?? operands.length;
     const ans = val.answer ?? (operator === '+' ? operands.reduce((a, b) => a + Number(b), 0) : operands[0] - operands[1]);
 
     const inputType = config.input_type || 'numpad';
-    
+
     if (inputType === 'multiple_choice') {
       inst.type = 'mcq';
     } else if (inputType === 'drag_drop') {
@@ -6752,7 +7622,7 @@ function numberToWords(n) {
     }
 
     inst.showSubmitButton = config.show_submit ?? (inst.type !== 'mcq');
-    
+
     const parts = [];
 
     // 1. Instruction
@@ -6791,10 +7661,10 @@ function numberToWords(n) {
         const prefix = isLastOp ? `${operator} ` : '  ';
         if (idx === missingIdx) {
           if (inst.type === 'mcq') {
-             rows.push({ kind: 'text', text: prefix + '?' });
+            rows.push({ kind: 'text', text: prefix + '?' });
           } else {
-             const cells = String(op).split('').map((char, charIdx) => ({ id: `op_${idx}_${charIdx}`, correctValue: char, type: 'digit' }));
-             rows.push({ kind: 'answer', prefix, cells });
+            const cells = String(op).split('').map((char, charIdx) => ({ id: `op_${idx}_${charIdx}`, correctValue: char, type: 'digit' }));
+            rows.push({ kind: 'answer', prefix, cells });
           }
         } else {
           rows.push({ kind: 'text', text: prefix + String(op) });
@@ -6805,11 +7675,11 @@ function numberToWords(n) {
 
       if (missingIdx === operands.length) {
         if (inst.type === 'mcq') {
-           rows.push({ kind: 'text', text: '?' });
+          rows.push({ kind: 'text', text: '?' });
         } else {
-           const ansStr = String(ans);
-           const cells = ansStr.split('').map((char, i) => ({ id: `ans_${i}`, correctValue: char, type: 'digit' }));
-           rows.push({ kind: 'answer', variant: 'joined', cells });
+          const ansStr = String(ans);
+          const cells = ansStr.split('').map((char, i) => ({ id: `ans_${i}`, correctValue: char, type: 'digit' }));
+          rows.push({ kind: 'answer', variant: 'joined', cells });
         }
       } else {
         rows.push({ kind: 'text', text: String(ans) });
@@ -6817,8 +7687,8 @@ function numberToWords(n) {
 
       parts.push({
         type: 'arithmeticLayout',
-        layout: { 
-          rows, 
+        layout: {
+          rows,
           inputMode: 'digitpad',
           mode: config.allow_regrouping_visuals ? 'beginner' : 'standard'
         },
@@ -6878,10 +7748,10 @@ function numberToWords(n) {
         });
       }
       if (Object.keys(ansMap).length === 0) ansMap.ans = String(ans);
-      
+
       // Store BOTH as JSON and as a raw value for multi-engine compatibility
       inst.correctAnswerText = JSON.stringify(ansMap);
-      inst.correct_answer_text = String(ans); 
+      inst.correct_answer_text = String(ans);
     }
 
     // Ensure validation object is updated for the session
@@ -6967,9 +7837,9 @@ function numberToWords(n) {
     const range = data.range || [1000, 9999];
     const trapMode = data.trap_mode || '';
     const vars = inst.adaptiveConfig?.variables || {};
-    
+
     let n1, n2, diff, s1, s2, sDiff;
-    
+
     // Priority: 1. Provided n1/n2 from data_source, 2. Persisted variables, 3. Random generation
     if (data.n1 !== undefined && data.n2 !== undefined) {
       n1 = Number(data.n1);
@@ -6982,9 +7852,9 @@ function numberToWords(n) {
       while (attempts < 50) {
         n1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
         // Ensure n2 is between a reasonable minimum (at least 1 digit) and n1
-        const n2Min = Math.min(range[0], Math.floor(n1 / 2)); 
+        const n2Min = Math.min(range[0], Math.floor(n1 / 2));
         n2 = Math.floor(Math.random() * (n1 - n2Min + 1)) + n2Min;
-        
+
         const testS1 = String(n1);
         const testS2 = String(n2).padStart(testS1.length, '0');
         let borrowCount = 0;
@@ -7010,78 +7880,78 @@ function numberToWords(n) {
     let tempDigits = s1.split('').map(Number);
     let solutionSteps = [];
     const placeNames = ["Ones", "Tens", "Hundreds", "Thousands", "Ten Thousands"];
-    
+
     for (let i = s1.length - 1; i >= 0; i--) {
-        const d1 = s1[i];
-        const d2 = s2[i] === ' ' ? 0 : Number(s2[i]);
-        const currentD1 = tempDigits[i];
-        const place = placeNames[s1.length - 1 - i];
-        
-        if (currentD1 < d2) {
-            let borrowIdx = i - 1;
-            while (borrowIdx >= 0 && tempDigits[borrowIdx] === 0) {
-              borrowIdx--;
-            }
-            
-            if (borrowIdx >= 0) {
-              solutionSteps.push({
-                type: 'text',
-                content: `**${place} Column**: We cannot subtract ${d2} from ${currentD1}. We must borrow from the ${placeNames[s1.length - 1 - borrowIdx]} place.`
-              });
-              
-              // Apply borrowing logic for multi-step (zeros)
-              let k = i - 1;
-              while (k >= 0 && tempDigits[k] === 0) {
-                  strikes[k] = true;
-                  tempDigits[k] = 9;
-                  carries[k] = 9;
-                  k--;
-              }
-              if (k >= 0) {
-                  strikes[k] = true;
-                  tempDigits[k] -= 1;
-                  carries[k] = tempDigits[k];
-              }
-              strikes[i] = true;
-              carries[i] = currentD1 + 10;
-              tempDigits[i] = currentD1 + 10;
-            }
+      const d1 = s1[i];
+      const d2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+      const currentD1 = tempDigits[i];
+      const place = placeNames[s1.length - 1 - i];
+
+      if (currentD1 < d2) {
+        let borrowIdx = i - 1;
+        while (borrowIdx >= 0 && tempDigits[borrowIdx] === 0) {
+          borrowIdx--;
         }
-        
-        const resDigit = tempDigits[i] - d2;
-        solutionSteps.push({
-          type: 'text',
-          content: `${place} Column: ${tempDigits[i]} - ${d2} = **${resDigit}**`
-        });
+
+        if (borrowIdx >= 0) {
+          solutionSteps.push({
+            type: 'text',
+            content: `**${place} Column**: We cannot subtract ${d2} from ${currentD1}. We must borrow from the ${placeNames[s1.length - 1 - borrowIdx]} place.`
+          });
+
+          // Apply borrowing logic for multi-step (zeros)
+          let k = i - 1;
+          while (k >= 0 && tempDigits[k] === 0) {
+            strikes[k] = true;
+            tempDigits[k] = 9;
+            carries[k] = 9;
+            k--;
+          }
+          if (k >= 0) {
+            strikes[k] = true;
+            tempDigits[k] -= 1;
+            carries[k] = tempDigits[k];
+          }
+          strikes[i] = true;
+          carries[i] = currentD1 + 10;
+          tempDigits[i] = currentD1 + 10;
+        }
+      }
+
+      const resDigit = tempDigits[i] - d2;
+      solutionSteps.push({
+        type: 'text',
+        content: `${place} Column: ${tempDigits[i]} - ${d2} = **${resDigit}**`
+      });
     }
 
     const cells = [];
-    const colCount = s1.length + 1; 
+    const colCount = s1.length + 1;
 
     carries.forEach((c, i) => {
-        if (c !== null) cells.push({ r: 0, c: i + 1, content: String(c) });
+      if (c !== null) cells.push({ r: 0, c: i + 1, content: String(c) });
     });
 
     s1.split('').forEach((digit, i) => {
-        cells.push({ r: 1, c: i + 1, content: digit, highlight: strikes[i] });
+      cells.push({ r: 1, c: i + 1, content: digit, highlight: strikes[i] });
     });
 
     const padSize = s1.length;
-    s2 = String(n2).padStart(padSize, ' '); 
+    s2 = String(n2).padStart(padSize, ' ');
 
     cells.push({ r: 2, c: 0, content: '-' }); // Column 0 is for the operator
     s2.split('').forEach((digit, i) => {
-        if (digit !== " ") cells.push({ r: 2, c: i + 1, content: digit });
+      if (digit !== " ") cells.push({ r: 2, c: i + 1, content: digit });
     });
 
     for (let i = 0; i < s1.length; i++) {
-        cells.push({ 
-            r: 3, 
-            c: i + 1, 
-            type: 'input', 
-            id: `digit_${i}`,
-            answerType: 'digit'
-        });
+      cells.push({
+        r: 3,
+        c: i + 1,
+        type: 'input',
+        id: `digit_${i}`,
+        answerType: 'digit'
+      });
     }
 
     inst.type = 'fillInTheBlank';
@@ -7095,11 +7965,11 @@ function numberToWords(n) {
       {
         type: 'smartTable',
         className: 'arithmeticWork',
-        config: { 
-            rows: 4, 
-            cols: colCount, 
-            showBorders: false,
-            alignment: 'left' 
+        config: {
+          rows: 4,
+          cols: colCount,
+          showBorders: false,
+          alignment: 'left'
         },
         cells: cells,
         isVertical: true
@@ -7108,7 +7978,7 @@ function numberToWords(n) {
 
     const expected = {};
     for (let i = 0; i < s1.length; i++) {
-        expected[`digit_${i}`] = sDiff[i];
+      expected[`digit_${i}`] = sDiff[i];
     }
 
 
@@ -7125,9 +7995,9 @@ function numberToWords(n) {
       }
     ];
     inst.adaptiveConfig = {
-        ...(inst.adaptiveConfig || {}),
-        variables: { n1, n2, diff },
-        autoAdvance: true
+      ...(inst.adaptiveConfig || {}),
+      variables: { n1, n2, diff },
+      autoAdvance: true
     };
     return inst;
   }
@@ -7138,7 +8008,7 @@ function numberToWords(n) {
   if (logic === 'math_addition_dynamic_v4') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const range = dataSource.range || [100, 999];
-    
+
     let n1, n2;
     if (overrideVariables) {
       n1 = Number(overrideVariables.n1);
@@ -7153,16 +8023,16 @@ function numberToWords(n) {
         n2 = fixedN2;
       } else if (!isNaN(fixedSum)) {
         if (!isNaN(fixedN1)) {
-           n1 = fixedN1;
-           n2 = fixedSum - n1;
+          n1 = fixedN1;
+          n2 = fixedSum - n1;
         } else if (!isNaN(fixedN2)) {
-           n2 = fixedN2;
-           n1 = fixedSum - n2;
+          n2 = fixedN2;
+          n1 = fixedSum - n2;
         } else {
-           // Fixed sum, random operands
-           const minVal = range[0];
-           n1 = Math.floor(Math.random() * (fixedSum - 2 * minVal)) + minVal;
-           n2 = fixedSum - n1;
+          // Fixed sum, random operands
+          const minVal = range[0];
+          n1 = Math.floor(Math.random() * (fixedSum - 2 * minVal)) + minVal;
+          n2 = fixedSum - n1;
         }
       } else {
         const ensureCarry = dataSource.ensure_carry !== false;
@@ -7170,15 +8040,15 @@ function numberToWords(n) {
         do {
           n1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
           n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-          
+
           const hasAnyCarry = (a, b) => {
             let c = 0;
             let sa = String(a).split('').reverse();
             let sb = String(b).split('').reverse();
-            for(let i=0; i < Math.max(sa.length, sb.length); i++) {
-               let cur = Number(sa[i] || 0) + Number(sb[i] || 0) + c;
-               if (cur >= 10) return true;
-               c = Math.floor(cur / 10);
+            for (let i = 0; i < Math.max(sa.length, sb.length); i++) {
+              let cur = Number(sa[i] || 0) + Number(sb[i] || 0) + c;
+              if (cur >= 10) return true;
+              c = Math.floor(cur / 10);
             }
             return false;
           };
@@ -7194,7 +8064,7 @@ function numberToWords(n) {
     const maxLen = Math.max(String(n1).length, String(n2).length);
     const sumLen = String(sum).length;
     const cols = Math.max(maxLen, sumLen);
-    
+
     // Right-aligned digit strings
     const s1 = String(n1).padStart(cols, ' ');
     const s2 = String(n2).padStart(cols, ' ');
@@ -7203,90 +8073,90 @@ function numberToWords(n) {
     const cells = [];
     const ansMap = {};
     const carryList = []; // stores carry value for each column (idx 0 to cols-1)
-    
+
     let currentCarry = 0;
     for (let i = cols - 1; i >= 0; i--) {
-        const d_1 = s1[i] === ' ' ? 0 : Number(s1[i]);
-        const d_2 = s2[i] === ' ' ? 0 : Number(s2[i]);
-        const colSum = d_1 + d_2 + currentCarry;
-        const nextCarry = Math.floor(colSum / 10);
-        carryList[i] = nextCarry;
-        currentCarry = nextCarry;
+      const d_1 = s1[i] === ' ' ? 0 : Number(s1[i]);
+      const d_2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+      const colSum = d_1 + d_2 + currentCarry;
+      const nextCarry = Math.floor(colSum / 10);
+      carryList[i] = nextCarry;
+      currentCarry = nextCarry;
     }
 
     const missingRow = Number(dataSource.missing_row || 3); // 1: n1, 2: n2, 3: answer
 
     // 1. Generate Digits (Row 1 & 2)
     for (let c = 0; c < cols; c++) {
-        const placeValue = Math.pow(10, cols - 1 - c);
-        
-        // Row 1 (n1)
-        if (s1[c] !== ' ') {
-            if (missingRow === 1) {
-                const id = `n1_${placeValue}`;
-                cells.push({ r: 1, c, type: 'input', id: id });
-                ansMap[id] = s1[c];
-            } else {
-                cells.push({ r: 1, c, content: s1[c] });
-            }
-        }
+      const placeValue = Math.pow(10, cols - 1 - c);
 
-        // Row 2 (n2)
-        if (s2[c] !== ' ') {
-            const cellBase = { r: 2, c };
-            if (c === 0 || s2[c-1] === ' ') cellBase.prefix = '+';
-
-            if (missingRow === 2) {
-                const id = `n2_${placeValue}`;
-                cells.push({ ...cellBase, type: 'input', id: id });
-                ansMap[id] = s2[c];
-            } else {
-                cells.push({ ...cellBase, content: s2[c] });
-            }
+      // Row 1 (n1)
+      if (s1[c] !== ' ') {
+        if (missingRow === 1) {
+          const id = `n1_${placeValue}`;
+          cells.push({ r: 1, c, type: 'input', id: id });
+          ansMap[id] = s1[c];
+        } else {
+          cells.push({ r: 1, c, content: s1[c] });
         }
+      }
+
+      // Row 2 (n2)
+      if (s2[c] !== ' ') {
+        const cellBase = { r: 2, c };
+        if (c === 0 || s2[c - 1] === ' ') cellBase.prefix = '+';
+
+        if (missingRow === 2) {
+          const id = `n2_${placeValue}`;
+          cells.push({ ...cellBase, type: 'input', id: id });
+          ansMap[id] = s2[c];
+        } else {
+          cells.push({ ...cellBase, content: s2[c] });
+        }
+      }
     }
 
     // 2. Generate Carry Row (Row 0)
     const showCarry = dataSource.show_carry !== false;
     if (showCarry) {
-        for (let c = cols - 1; c > 0; c--) {
-            const placeValue = Math.pow(10, cols - 1 - (c - 1));
-            const carryId = `c_${placeValue}`;
-            const carryValue = carryList[c];
-            
-            cells.push({ r: 0, c: c - 1, type: 'input', id: carryId, placeholder: 'c' });
-            if (carryValue > 0) ansMap[carryId] = String(carryValue);
-        }
+      for (let c = cols - 1; c > 0; c--) {
+        const placeValue = Math.pow(10, cols - 1 - (c - 1));
+        const carryId = `c_${placeValue}`;
+        const carryValue = carryList[c];
+
+        cells.push({ r: 0, c: c - 1, type: 'input', id: carryId, placeholder: 'c' });
+        if (carryValue > 0) ansMap[carryId] = String(carryValue);
+      }
     }
 
     // 3. Generate Answer Row (Row 3)
     for (let c = 0; c < cols; c++) {
-        const placeValue = Math.pow(10, cols - 1 - c);
-        const ansId = `a_${placeValue}`;
-        
-        if (ss[c] !== ' ') {
-            if (missingRow === 3) {
-                cells.push({ r: 3, c, type: 'input', id: ansId });
-                ansMap[ansId] = ss[c];
-            } else {
-                cells.push({ r: 3, c, content: ss[c] });
-            }
+      const placeValue = Math.pow(10, cols - 1 - c);
+      const ansId = `a_${placeValue}`;
+
+      if (ss[c] !== ' ') {
+        if (missingRow === 3) {
+          cells.push({ r: 3, c, type: 'input', id: ansId });
+          ansMap[ansId] = ss[c];
+        } else {
+          cells.push({ r: 3, c, content: ss[c] });
         }
+      }
     }
 
     // 4. Update Question Structure
     inst.parts = [
-        {
-            type: 'text',
-            content: `Calculate the sum of **${n1}** and **${n2}** using column addition.`,
-            isVertical: true
-        },
-        {
-            id: 'addition_grid',
-            type: 'smartTable',
-            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right' },
-            cells: cells
-        }
+      {
+        type: 'text',
+        content: `Calculate the sum of **${n1}** and **${n2}** using column addition.`,
+        isVertical: true
+      },
+      {
+        id: 'addition_grid',
+        type: 'smartTable',
+        config: { rows: 4, cols: cols, showBorders: false, alignment: 'right' },
+        cells: cells
+      }
     ];
 
     inst.correctAnswerText = ansMap;
@@ -7295,57 +8165,57 @@ function numberToWords(n) {
     // 5. High-Fidelity Solution Structure (as seen in screenshot)
     const solutionParts = [];
     for (let i = cols - 1; i >= 0; i--) {
-        const placeValue = Math.pow(10, cols - 1 - i);
-        const pName = placeValue === 1 ? 'ones' : (placeValue === 10 ? 'tens' : (placeValue === 100 ? 'hundreds' : 'thousands'));
-        
-        const d_1 = s1[i] === ' ' ? 0 : Number(s1[i]);
-        const d_2 = s2[i] === ' ' ? 0 : Number(s2[i]);
-        const prevCarry = i === cols - 1 ? 0 : carryList[i+1];
-        const colSum = d_1 + d_2 + prevCarry;
-        const digit = colSum % 10;
-        const nextCarry = carryList[i];
+      const placeValue = Math.pow(10, cols - 1 - i);
+      const pName = placeValue === 1 ? 'ones' : (placeValue === 10 ? 'tens' : (placeValue === 100 ? 'hundreds' : 'thousands'));
 
-        let note = `### **Add the ${pName}.** Add ${d_1} + ${d_2}${prevCarry > 0 ? ' + ' + prevCarry + ' (carry)' : ''}. `;
-        if (nextCarry > 0) note += `Remember to regroup.`;
+      const d_1 = s1[i] === ' ' ? 0 : Number(s1[i]);
+      const d_2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+      const prevCarry = i === cols - 1 ? 0 : carryList[i + 1];
+      const colSum = d_1 + d_2 + prevCarry;
+      const digit = colSum % 10;
+      const nextCarry = carryList[i];
 
-        // Create a solution-specific smartTable for this step
-        const stepCells = [];
-        
-        // Addends
-        for (let c = 0; c < cols; c++) {
-            if (s1[c] !== ' ') {
-                stepCells.push({ r: 1, c, content: s1[c], highlight: c === i });
-            }
-            if (s2[c] !== ' ') {
-                const cell = { r: 2, c, content: s2[c], highlight: c === i };
-                if (c === 0 || s2[c-1] === ' ') cell.prefix = '+';
-                stepCells.push(cell);
-            }
+      let note = `### **Add the ${pName}.** Add ${d_1} + ${d_2}${prevCarry > 0 ? ' + ' + prevCarry + ' (carry)' : ''}. `;
+      if (nextCarry > 0) note += `Remember to regroup.`;
+
+      // Create a solution-specific smartTable for this step
+      const stepCells = [];
+
+      // Addends
+      for (let c = 0; c < cols; c++) {
+        if (s1[c] !== ' ') {
+          stepCells.push({ r: 1, c, content: s1[c], highlight: c === i });
         }
-
-        // Carries in this step (only show relevant ones)
-        for (let j = cols - 1; j >= i; j--) {
-            if (j > 0) {
-               const val = carryList[j];
-               if (val > 0) {
-                   stepCells.push({ r: 0, c: j - 1, content: String(val), highlight: (j - 1) === (i - 1), color: '#3b82f6' });
-               }
-            }
+        if (s2[c] !== ' ') {
+          const cell = { r: 2, c, content: s2[c], highlight: c === i };
+          if (c === 0 || s2[c - 1] === ' ') cell.prefix = '+';
+          stepCells.push(cell);
         }
+      }
 
-        // Answer digits revealed so far
-        for (let j = cols - 1; j >= i; j--) {
-            if (ss[j] !== ' ') {
-                stepCells.push({ r: 3, c: j, content: ss[j], highlight: j === i });
-            }
+      // Carries in this step (only show relevant ones)
+      for (let j = cols - 1; j >= i; j--) {
+        if (j > 0) {
+          const val = carryList[j];
+          if (val > 0) {
+            stepCells.push({ r: 0, c: j - 1, content: String(val), highlight: (j - 1) === (i - 1), color: '#3b82f6' });
+          }
         }
+      }
 
-        solutionParts.push({ type: 'text', content: note, isVertical: true });
-        solutionParts.push({
-            type: 'smartTable',
-            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right', isReadOnly: true },
-            cells: stepCells
-        });
+      // Answer digits revealed so far
+      for (let j = cols - 1; j >= i; j--) {
+        if (ss[j] !== ' ') {
+          stepCells.push({ r: 3, c: j, content: ss[j], highlight: j === i });
+        }
+      }
+
+      solutionParts.push({ type: 'text', content: note, isVertical: true });
+      solutionParts.push({
+        type: 'smartTable',
+        config: { rows: 4, cols: cols, showBorders: false, alignment: 'right', isReadOnly: true },
+        cells: stepCells
+      });
     }
 
     solutionParts.push({ type: 'text', content: `\n### **The sum is ${sum}.**`, isVertical: true });
@@ -7355,7 +8225,7 @@ function numberToWords(n) {
   if (logic === 'math_subtraction_dynamic_v4') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const range = dataSource.range || [100, 999];
-    
+
     let n1, n2;
     if (overrideVariables) {
       n1 = Number(overrideVariables.n1);
@@ -7369,21 +8239,21 @@ function numberToWords(n) {
         n1 = fixedN1;
         n2 = fixedN2;
       } else if (!isNaN(fixedDiff)) {
-          n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-          n1 = n2 + fixedDiff;
+        n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        n1 = n2 + fixedDiff;
       } else {
-          // Standard random: Ensure n1 >= n2
-          let a = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-          let b = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-          n1 = Math.max(a, b);
-          n2 = Math.min(a, b);
+        // Standard random: Ensure n1 >= n2
+        let a = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        let b = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        n1 = Math.max(a, b);
+        n2 = Math.min(a, b);
       }
     }
 
     const diff = n1 - n2;
     const maxLen = Math.max(String(n1).length, String(n2).length);
     const cols = maxLen;
-    
+
     const s1 = String(n1).padStart(cols, ' ');
     const s2 = String(n2).padStart(cols, ' ');
     const sd = String(diff).padStart(cols, ' ');
@@ -7394,71 +8264,71 @@ function numberToWords(n) {
 
     // 1. Generate Digits (Row 1 & 2)
     for (let c = 0; c < cols; c++) {
-        const placeValue = Math.pow(10, cols - 1 - c);
-        
-        // Row 1 (n1)
-        if (s1[c] !== ' ') {
-            if (missingRow === 1) {
-                const id = `n1_${placeValue}`;
-                cells.push({ r: 1, c, type: 'input', id: id });
-                ansMap[id] = s1[c];
-            } else {
-                cells.push({ r: 1, c, content: s1[c] });
-            }
-        }
+      const placeValue = Math.pow(10, cols - 1 - c);
 
-        // Row 2 (n2)
-        if (s2[c] !== ' ') {
-            const cellBase = { r: 2, c };
-            if (c === 0 || s2[c-1] === ' ') cellBase.prefix = '-';
-
-            if (missingRow === 2) {
-                const id = `n2_${placeValue}`;
-                cells.push({ ...cellBase, type: 'input', id: id });
-                ansMap[id] = s2[c];
-            } else {
-                cells.push({ ...cellBase, content: s2[c] });
-            }
+      // Row 1 (n1)
+      if (s1[c] !== ' ') {
+        if (missingRow === 1) {
+          const id = `n1_${placeValue}`;
+          cells.push({ r: 1, c, type: 'input', id: id });
+          ansMap[id] = s1[c];
+        } else {
+          cells.push({ r: 1, c, content: s1[c] });
         }
+      }
+
+      // Row 2 (n2)
+      if (s2[c] !== ' ') {
+        const cellBase = { r: 2, c };
+        if (c === 0 || s2[c - 1] === ' ') cellBase.prefix = '-';
+
+        if (missingRow === 2) {
+          const id = `n2_${placeValue}`;
+          cells.push({ ...cellBase, type: 'input', id: id });
+          ansMap[id] = s2[c];
+        } else {
+          cells.push({ ...cellBase, content: s2[c] });
+        }
+      }
     }
 
     // 2. Borrow Row (Row 0)
     // Subtraction Borrowing logic simplified for template UI
     const showBorrow = dataSource.show_borrow !== false;
     if (showBorrow) {
-        for (let c = 0; c < cols; c++) {
-           const placeValue = Math.pow(10, cols - 1 - c);
-           cells.push({ r: 0, c, type: 'input', id: `b_${placeValue}`, placeholder: 'b' });
-        }
+      for (let c = 0; c < cols; c++) {
+        const placeValue = Math.pow(10, cols - 1 - c);
+        cells.push({ r: 0, c, type: 'input', id: `b_${placeValue}`, placeholder: 'b' });
+      }
     }
 
     // 3. Difference Row (Row 3)
     for (let c = 0; c < cols; c++) {
-        const placeValue = Math.pow(10, cols - 1 - c);
-        const ansId = `d_${placeValue}`;
-        
-        if (sd[c] !== ' ') {
-            if (missingRow === 3) {
-                cells.push({ r: 3, c, type: 'input', id: ansId });
-                ansMap[ansId] = sd[c];
-            } else {
-                cells.push({ r: 3, c, content: sd[c] });
-            }
+      const placeValue = Math.pow(10, cols - 1 - c);
+      const ansId = `d_${placeValue}`;
+
+      if (sd[c] !== ' ') {
+        if (missingRow === 3) {
+          cells.push({ r: 3, c, type: 'input', id: ansId });
+          ansMap[ansId] = sd[c];
+        } else {
+          cells.push({ r: 3, c, content: sd[c] });
         }
+      }
     }
 
     inst.parts = [
-        {
-            type: 'text',
-            content: `Calculate **${n1}** minus **${n2}** using column subtraction.`,
-            isVertical: true
-        },
-        {
-            id: 'subtraction_grid',
-            type: 'smartTable',
-            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right' },
-            cells: cells
-        }
+      {
+        type: 'text',
+        content: `Calculate **${n1}** minus **${n2}** using column subtraction.`,
+        isVertical: true
+      },
+      {
+        id: 'subtraction_grid',
+        type: 'smartTable',
+        config: { rows: 4, cols: cols, showBorders: false, alignment: 'right' },
+        cells: cells
+      }
     ];
 
     inst.correctAnswerText = ansMap;
@@ -7469,51 +8339,51 @@ function numberToWords(n) {
     let activeBorrow = 0;
 
     for (let i = cols - 1; i >= 0; i--) {
-        const placeValue = Math.pow(10, cols - 1 - i);
-        const pName = placeValue === 1 ? 'ones' : (placeValue === 10 ? 'tens' : (placeValue === 100 ? 'hundreds' : 'thousands'));
-        
-        let d1 = s1[i] === ' ' ? 0 : Number(s1[i]);
-        const d2 = s2[i] === ' ' ? 0 : Number(s2[i]);
-        
-        let note = `### **Subtract the ${pName}.**\n`;
-        
-        const originalD1 = d1;
-        if (activeBorrow > 0) {
-            d1 -= activeBorrow;
-            note += `We borrowed 1 from this column earlier, so **${originalD1}** becomes **${d1}**.\n\n`;
-        }
+      const placeValue = Math.pow(10, cols - 1 - i);
+      const pName = placeValue === 1 ? 'ones' : (placeValue === 10 ? 'tens' : (placeValue === 100 ? 'hundreds' : 'thousands'));
 
-        const currentBorrowNeeded = d1 < d2 ? 1 : 0;
-        if (currentBorrowNeeded) {
-           const borrowedD1 = d1 + 10;
-           note += `Since **${d1}** is less than **${d2}**, we borrow 1 from the next place to make it **${borrowedD1}**.\n`;
-           note += `**${borrowedD1} - ${d2} = ${borrowedD1 - d2}.**`;
+      let d1 = s1[i] === ' ' ? 0 : Number(s1[i]);
+      const d2 = s2[i] === ' ' ? 0 : Number(s2[i]);
+
+      let note = `### **Subtract the ${pName}.**\n`;
+
+      const originalD1 = d1;
+      if (activeBorrow > 0) {
+        d1 -= activeBorrow;
+        note += `We borrowed 1 from this column earlier, so **${originalD1}** becomes **${d1}**.\n\n`;
+      }
+
+      const currentBorrowNeeded = d1 < d2 ? 1 : 0;
+      if (currentBorrowNeeded) {
+        const borrowedD1 = d1 + 10;
+        note += `Since **${d1}** is less than **${d2}**, we borrow 1 from the next place to make it **${borrowedD1}**.\n`;
+        note += `**${borrowedD1} - ${d2} = ${borrowedD1 - d2}.**`;
+      } else {
+        if (i === 0 && d1 === 0) {
+          // leading zero
         } else {
-           if (i === 0 && d1 === 0) {
-              // leading zero
-           } else {
-              note += `**${d1} - ${d2} = ${d1 - d2}.**`;
-           }
+          note += `**${d1} - ${d2} = ${d1 - d2}.**`;
         }
-        activeBorrow = currentBorrowNeeded;
+      }
+      activeBorrow = currentBorrowNeeded;
 
-        const stepCells = [];
-        for (let c = 0; c < cols; c++) {
-            if (s1[c] !== ' ') stepCells.push({ r: 1, c, content: s1[c], highlight: c === i });
-            if (s2[c] !== ' ') {
-                const cell = { r: 2, c, content: s2[c], highlight: c === i };
-                if (c === 0 || s2[c-1] === ' ') cell.prefix = '-';
-                stepCells.push(cell);
-            }
-            if (sd[c] !== ' ' && c >= i) stepCells.push({ r: 3, c, content: sd[c], highlight: c === i });
+      const stepCells = [];
+      for (let c = 0; c < cols; c++) {
+        if (s1[c] !== ' ') stepCells.push({ r: 1, c, content: s1[c], highlight: c === i });
+        if (s2[c] !== ' ') {
+          const cell = { r: 2, c, content: s2[c], highlight: c === i };
+          if (c === 0 || s2[c - 1] === ' ') cell.prefix = '-';
+          stepCells.push(cell);
         }
+        if (sd[c] !== ' ' && c >= i) stepCells.push({ r: 3, c, content: sd[c], highlight: c === i });
+      }
 
-        solutionParts.push({ type: 'text', content: note, isVertical: true });
-        solutionParts.push({
-            type: 'smartTable',
-            config: { rows: 4, cols: cols, showBorders: false, alignment: 'right', isReadOnly: true },
-            cells: stepCells
-        });
+      solutionParts.push({ type: 'text', content: note, isVertical: true });
+      solutionParts.push({
+        type: 'smartTable',
+        config: { rows: 4, cols: cols, showBorders: false, alignment: 'right', isReadOnly: true },
+        cells: stepCells
+      });
     }
 
     solutionParts.push({ type: 'text', content: `\n### **The difference is ${diff}.**`, isVertical: true });
@@ -7532,9 +8402,9 @@ function numberToWords(n) {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const range1 = dataSource.range1 || [10, 99];
     const range2 = dataSource.range2 || [10, 99];
-    
+
     const allowCarry = dataSource.allow_carry !== false;
-    
+
     let n1, n2;
     if (overrideVariables) {
       n1 = Number(overrideVariables.n1);
@@ -7543,28 +8413,28 @@ function numberToWords(n) {
       let attempts = 0;
       do {
         n2 = Math.floor(Math.random() * (range2[1] - range2[0] + 1)) + range2[0];
-        
+
         if (!allowCarry && n2 < 10) {
-           // Constructive bias: pick digits that are less likely to carry
-           const dMax = Math.floor(9 / n2);
-           const len = String(range1[1]).length;
-           let res = "";
-           for (let i = 0; i < len; i++) {
-             res += Math.floor(Math.random() * (dMax + 1));
-           }
-           n1 = Number(res);
+          // Constructive bias: pick digits that are less likely to carry
+          const dMax = Math.floor(9 / n2);
+          const len = String(range1[1]).length;
+          let res = "";
+          for (let i = 0; i < len; i++) {
+            res += Math.floor(Math.random() * (dMax + 1));
+          }
+          n1 = Number(res);
         } else {
-           n1 = Math.floor(Math.random() * (range1[1] - range1[0] + 1)) + range1[0];
+          n1 = Math.floor(Math.random() * (range1[1] - range1[0] + 1)) + range1[0];
         }
-        
+
         // Range check
         if (n1 < range1[0] || n1 > range1[1]) {
-           attempts++;
-           continue;
+          attempts++;
+          continue;
         }
 
         if (allowCarry) break;
-        
+
         // Strict Validation check
         if (n2 < 10) {
           let hasCarry = false;
@@ -7595,7 +8465,7 @@ function numberToWords(n) {
     // Base Rows
     const f1Str = s1.padStart(cols, ' ');
     const f2Str = s2.padStart(cols, ' ');
-    
+
     // Multiplicand (Top Row)
     for (let c = 0; c < cols; c++) {
       if (f1Str[c] !== ' ') cells.push({ r: 1, c, content: f1Str[c] });
@@ -7626,8 +8496,8 @@ function numberToWords(n) {
           if (pIdx === mDigits.length - 1) style.borderBottom = '2px solid #333';
           cells.push({ r: 3 + pIdx, c, content, style });
         } else if (!isSingleDigit && pIdx === mDigits.length - 1) {
-           // Complete the line
-           cells.push({ r: 3 + pIdx, c, content: ' ', style: { borderBottom: '2px solid #333' } });
+          // Complete the line
+          cells.push({ r: 3 + pIdx, c, content: ' ', style: { borderBottom: '2px solid #333' } });
         }
       }
     });
@@ -7643,8 +8513,8 @@ function numberToWords(n) {
         const id = `ans_${String(c).padStart(2, '0')}`;
         const inputCell = { r: finalRow, c, type: 'input', id };
         if (!autoFocusDone) {
-           inputCell.autoFocus = true;
-           autoFocusDone = true;
+          inputCell.autoFocus = true;
+          autoFocusDone = true;
         }
         cells.push(inputCell);
         finalAnsMap[id] = resStr[c] === ' ' ? '0' : resStr[c];
@@ -7662,7 +8532,7 @@ function numberToWords(n) {
       const placeName = idx === 0 ? 'ones' : (idx === 1 ? 'tens' : 'hundreds');
       const pVal = Number(mDigit) * n1;
       const stepVal = pVal * Math.pow(10, idx);
-      
+
       // Calculate Carries for this digit
       let cLine = "";
       let tempCarry = 0;
@@ -7675,7 +8545,7 @@ function numberToWords(n) {
 
       const stepCells = [
         ...s1.padStart(cols, ' ').split('').map((char, c) => ({ r: 1, c, content: char, style: { color: '#5a67d8', fontWeight: 'bold' } })),
-        ...s2.padStart(cols, ' ').split('').map((char, c) => ({ r: 2, c, content: char, prefix: (c === (cols - s2.length) ? '×' : ''), style: { color: (char === mDigit && (cols-1-c) === idx ? 'blue' : 'black') } })),
+        ...s2.padStart(cols, ' ').split('').map((char, c) => ({ r: 2, c, content: char, prefix: (c === (cols - s2.length) ? '×' : ''), style: { color: (char === mDigit && (cols - 1 - c) === idx ? 'blue' : 'black') } })),
         ...cLine.split('').map((char, c) => ({ r: 0, c, content: char, style: { color: '#5a67d8', fontSize: '14px' } })),
         ...String(stepVal).padStart(cols, ' ').split('').map((char, c) => ({ r: 3, c, content: char, style: { color: 'green', fontWeight: 'bold' } }))
       ].filter(c => c.content !== ' ');
@@ -7687,10 +8557,10 @@ function numberToWords(n) {
     solution.push({ type: 'text', content: `### Now add the results.`, isVertical: true });
     const addCells = [
       ...s1.padStart(cols, ' ').split('').map((char, c) => ({ r: 0, c, content: char })),
-      ...s2.padStart(cols, ' ').split('').map((char, c) => ({ r: 1, c, content: char, prefix: (c === (cols-s2.length) ? '×' : '') })),
+      ...s2.padStart(cols, ' ').split('').map((char, c) => ({ r: 1, c, content: char, prefix: (c === (cols - s2.length) ? '×' : '') })),
       ...mDigits.map((d, i) => {
-         const p = String(Number(d) * n1 * Math.pow(10, i)).padStart(cols, ' ');
-         return p.split('').map((char, c) => ({ r: 2 + i, c, content: char, style: { color: 'blue' }, prefix: (i > 0 && c === (cols - String(Number(d) * n1 * Math.pow(10, i)).length) ? '+' : '') }));
+        const p = String(Number(d) * n1 * Math.pow(10, i)).padStart(cols, ' ');
+        return p.split('').map((char, c) => ({ r: 2 + i, c, content: char, style: { color: 'blue' }, prefix: (i > 0 && c === (cols - String(Number(d) * n1 * Math.pow(10, i)).length) ? '+' : '') }));
       }).flat(),
       ...String(prod).padStart(cols, ' ').split('').map((char, c) => ({ r: 2 + mDigits.length, c, content: char, style: { color: 'green', fontWeight: 'bold' } }))
     ].filter(c => c.content !== ' ');
@@ -7707,18 +8577,18 @@ function numberToWords(n) {
   if (logic === 'place_face_value_diff_v1') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const range = dataSource.range || [1000, 99999];
-    
+
     let number, digit, targetIdx;
     if (overrideVariables && overrideVariables.number) {
-        number = parseInt(String(overrideVariables.number).replace(/,/g, ''));
-        digit = Number(overrideVariables.digit);
-        targetIdx = String(number).indexOf(String(digit));
+      number = parseInt(String(overrideVariables.number).replace(/,/g, ''));
+      digit = Number(overrideVariables.digit);
+      targetIdx = String(number).indexOf(String(digit));
     } else {
-        number = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
-        const sNum = String(number);
-        const validIdxs = sNum.split('').map((d, i) => d !== '0' ? i : null).filter(v => v !== null);
-        targetIdx = validIdxs[Math.floor(Math.random() * validIdxs.length)];
-        digit = Number(sNum[targetIdx]);
+      number = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      const sNum = String(number);
+      const validIdxs = sNum.split('').map((d, i) => d !== '0' ? i : null).filter(v => v !== null);
+      targetIdx = validIdxs[Math.floor(Math.random() * validIdxs.length)];
+      digit = Number(sNum[targetIdx]);
     }
 
     const sNumFinal = String(number);
@@ -7726,13 +8596,13 @@ function numberToWords(n) {
     const placeValue = digit * Math.pow(10, power);
     const faceValue = digit;
     const diff = placeValue - faceValue;
-    
-    inst.adaptiveConfig.variables = { 
-      number: number.toLocaleString(), 
-      digit, 
-      placeValue: placeValue.toLocaleString(), 
-      faceValue, 
-      diff: diff.toLocaleString() 
+
+    inst.adaptiveConfig.variables = {
+      number: number.toLocaleString(),
+      digit,
+      placeValue: placeValue.toLocaleString(),
+      faceValue,
+      diff: diff.toLocaleString()
     };
 
     if (Array.isArray(inst.parts)) {
@@ -7745,16 +8615,16 @@ function numberToWords(n) {
       { label: String(faceValue), isCorrect: false },
       { label: String((placeValue + faceValue).toLocaleString()), isCorrect: false }
     ];
-    
+
     const seededShuffle = (arr, seed) => {
-        let m = arr.length;
-        let x = seed;
-        while (m) {
-            x = (1103515245 * x + 12345) & 0x7FFFFFFF;
-            let i = x % m--;
-            let t = arr[m]; arr[m] = arr[i]; arr[i] = t;
-        }
-        return arr;
+      let m = arr.length;
+      let x = seed;
+      while (m) {
+        x = (1103515245 * x + 12345) & 0x7FFFFFFF;
+        let i = x % m--;
+        let t = arr[m]; arr[m] = arr[i]; arr[i] = t;
+      }
+      return arr;
     };
 
     inst.options = seededShuffle(optionsArray, number);
@@ -7762,10 +8632,10 @@ function numberToWords(n) {
     inst.type = 'mcq';
 
     inst.solution = [
-        { type: 'text', content: `### **Solution:**` },
-        { type: 'text', content: `Place value of **${digit}** = **${placeValue.toLocaleString()}**` },
-        { type: 'text', content: `Face value of **${digit}** = **${faceValue}**` },
-        { type: 'text', content: `**Difference** = ${placeValue.toLocaleString()} - ${faceValue} = **${diff.toLocaleString()}**` }
+      { type: 'text', content: `### **Solution:**` },
+      { type: 'text', content: `Place value of **${digit}** = **${placeValue.toLocaleString()}**` },
+      { type: 'text', content: `Face value of **${digit}** = **${faceValue}**` },
+      { type: 'text', content: `**Difference** = ${placeValue.toLocaleString()} - ${faceValue} = **${diff.toLocaleString()}**` }
     ];
   }
 
@@ -7777,23 +8647,23 @@ function numberToWords(n) {
     const typeList = params.number_types || ['smallest', 'greatest'];
 
     if (overrideVariables && overrideVariables.number) {
-       number = parseInt(String(overrideVariables.number).replace(/,/g, ''));
-       type = overrideVariables.type;
-       digits = overrideVariables.digits;
+      number = parseInt(String(overrideVariables.number).replace(/,/g, ''));
+      type = overrideVariables.type;
+      digits = overrideVariables.digits;
     } else {
-       type = typeList[Math.floor(Math.random() * typeList.length)];
-       digits = digitList[Math.floor(Math.random() * digitList.length)];
-       if (type.toLowerCase().includes('small')) { number = Math.pow(10, digits - 1); } 
-       else { number = Math.pow(10, digits) - 1; }
+      type = typeList[Math.floor(Math.random() * typeList.length)];
+      digits = digitList[Math.floor(Math.random() * digitList.length)];
+      if (type.toLowerCase().includes('small')) { number = Math.pow(10, digits - 1); }
+      else { number = Math.pow(10, digits) - 1; }
     }
-    
+
     const succ = number + 1;
     const pred = number - 1;
     const prod = succ * pred;
     const label = `${type} ${digits}-digit number`;
-    
+
     inst.adaptiveConfig.variables = {
-       number: number.toLocaleString(), succ: succ.toLocaleString(), pred: pred.toLocaleString(), prod: prod.toLocaleString(), label, type, digits
+      number: number.toLocaleString(), succ: succ.toLocaleString(), pred: pred.toLocaleString(), prod: prod.toLocaleString(), label, type, digits
     };
 
     if (Array.isArray(inst.parts)) {
@@ -7808,21 +8678,21 @@ function numberToWords(n) {
     ];
 
     const seededShuffle = (arr, seed) => {
-        let m = arr.length; let x = seed;
-        while (m) { x = (1103515245 * x + 12345) & 0x7FFFFFFF; let i = x % m--; let t = arr[m]; arr[m] = arr[i]; arr[i] = t; }
-        return arr;
+      let m = arr.length; let x = seed;
+      while (m) { x = (1103515245 * x + 12345) & 0x7FFFFFFF; let i = x % m--; let t = arr[m]; arr[m] = arr[i]; arr[i] = t; }
+      return arr;
     };
 
     inst.options = seededShuffle(optionsArray, number);
     inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect);
     inst.type = 'mcq';
-    
+
     inst.solution = [
-        { type: 'text', content: `### **Solution:**`, isVertical: true },
-        { type: 'text', content: `1. **${label}** = **${number.toLocaleString()}**`, isVertical: true },
-        { type: 'text', content: `2. **Successor** = ${number.toLocaleString()} + 1 = **${succ.toLocaleString()}**`, isVertical: true },
-        { type: 'text', content: `3. **Predecessor** = ${number.toLocaleString()} - 1 = **${pred.toLocaleString()}**`, isVertical: true },
-        { type: 'text', content: `4. **Product** = ${succ.toLocaleString()} × ${pred.toLocaleString()} = **${prod.toLocaleString()}**`, isVertical: true }
+      { type: 'text', content: `### **Solution:**`, isVertical: true },
+      { type: 'text', content: `1. **${label}** = **${number.toLocaleString()}**`, isVertical: true },
+      { type: 'text', content: `2. **Successor** = ${number.toLocaleString()} + 1 = **${succ.toLocaleString()}**`, isVertical: true },
+      { type: 'text', content: `3. **Predecessor** = ${number.toLocaleString()} - 1 = **${pred.toLocaleString()}**`, isVertical: true },
+      { type: 'text', content: `4. **Product** = ${succ.toLocaleString()} × ${pred.toLocaleString()} = **${prod.toLocaleString()}**`, isVertical: true }
     ];
   }
 
@@ -7833,37 +8703,37 @@ function numberToWords(n) {
     const goals = params.goals || ['smallest', 'greatest'];
     let count, goal, digits;
     if (overrideVariables && overrideVariables.result) {
-        count = Number(overrideVariables.count);
-        goal = overrideVariables.goal;
-        digits = String(overrideVariables.digitList).split(', ').map(Number);
+      count = Number(overrideVariables.count);
+      goal = overrideVariables.goal;
+      digits = String(overrideVariables.digitList).split(', ').map(Number);
     } else {
-        count = countList[Math.floor(Math.random() * countList.length)];
-        goal = goals[Math.floor(Math.random() * goals.length)];
-        const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        digits = [];
-        if (params.include_zero !== false) { digits.push(0); pool.splice(0, 1); }
-        while (digits.length < count) { const idx = Math.floor(Math.random() * pool.length); digits.push(pool[idx]); pool.splice(idx, 1); }
+      count = countList[Math.floor(Math.random() * countList.length)];
+      goal = goals[Math.floor(Math.random() * goals.length)];
+      const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+      digits = [];
+      if (params.include_zero !== false) { digits.push(0); pool.splice(0, 1); }
+      while (digits.length < count) { const idx = Math.floor(Math.random() * pool.length); digits.push(pool[idx]); pool.splice(idx, 1); }
     }
 
-    let sorted = [...digits].sort((a,b) => a - b);
+    let sorted = [...digits].sort((a, b) => a - b);
     let result; let ruleText = "";
     if (goal === 'smallest') {
-        if (sorted[0] === 0 && sorted.length > 1) {
-            const fnzIdx = sorted.findIndex(d => d > 0); const fnz = sorted[fnzIdx];
-            const rest = [...sorted]; rest.splice(fnzIdx, 1);
-            result = String(fnz) + '0' + rest.slice(1).join('');
-            ruleText = `A number cannot start with **0**. So we put the smallest non-zero digit (**${fnz}**) first, then **0**, and then the rest!`;
-        } else { result = sorted.join(''); ruleText = "To get the smallest number, we arrange the digits from **smallest to largest**."; }
-    } else { result = [...digits].sort((a,b) => b - a).join(''); ruleText = "To get the biggest number, we arrange the digits from **largest to smallest**."; }
+      if (sorted[0] === 0 && sorted.length > 1) {
+        const fnzIdx = sorted.findIndex(d => d > 0); const fnz = sorted[fnzIdx];
+        const rest = [...sorted]; rest.splice(fnzIdx, 1);
+        result = String(fnz) + '0' + rest.slice(1).join('');
+        ruleText = `A number cannot start with **0**. So we put the smallest non-zero digit (**${fnz}**) first, then **0**, and then the rest!`;
+      } else { result = sorted.join(''); ruleText = "To get the smallest number, we arrange the digits from **smallest to largest**."; }
+    } else { result = [...digits].sort((a, b) => b - a).join(''); ruleText = "To get the biggest number, we arrange the digits from **largest to smallest**."; }
 
-    inst.adaptiveConfig.variables = { count, goal, digitList: [...digits].sort(() => Math.random() - 0.5).join(', '), sortedDigits: [...digits].sort((a,b) => a - b).join(', '), result, ruleText };
+    inst.adaptiveConfig.variables = { count, goal, digitList: [...digits].sort(() => Math.random() - 0.5).join(', '), sortedDigits: [...digits].sort((a, b) => a - b).join(', '), result, ruleText };
     if (Array.isArray(inst.parts)) { inst.parts = inst.parts.map(p => hydrateNode(p, inst.adaptiveConfig.variables)); }
 
     const resNum = parseInt(result);
     const optionsSet = new Set();
     optionsSet.add(String(result));
-    optionsSet.add([...digits].sort((a,b) => a - b).join(''));
-    optionsSet.add([...digits].sort((a,b) => b - a).join(''));
+    optionsSet.add([...digits].sort((a, b) => a - b).join(''));
+    optionsSet.add([...digits].sort((a, b) => b - a).join(''));
     while (optionsSet.size < 4) { optionsSet.add([...digits].sort(() => Math.random() - 0.5).join('')); }
 
     const optionsArray = Array.from(optionsSet).map(label => ({ label, isCorrect: label === String(result) }));
@@ -7872,10 +8742,10 @@ function numberToWords(n) {
     inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect);
     inst.type = 'mcq';
     inst.solution = [
-        { type: 'text', content: `### **Step-by-Step Solution:**`, isVertical: true },
-        { type: 'text', content: `1. **Digits provided:** **{sortedDigits}**`, isVertical: true },
-        { type: 'text', content: `2. **Rule:** {ruleText}`, isVertical: true },
-        { type: 'text', content: `3. **Result:** The finished number is **{result}**.`, isVertical: true }
+      { type: 'text', content: `### **Step-by-Step Solution:**`, isVertical: true },
+      { type: 'text', content: `1. **Digits provided:** **{sortedDigits}**`, isVertical: true },
+      { type: 'text', content: `2. **Rule:** {ruleText}`, isVertical: true },
+      { type: 'text', content: `3. **Result:** The finished number is **{result}**.`, isVertical: true }
     ];
     inst.solution = inst.solution.map(s => hydrateNode(s, inst.adaptiveConfig.variables));
   }
@@ -7888,39 +8758,39 @@ function numberToWords(n) {
     const cond = params.condition || 'odd';
     let count, digits;
     if (overrideVariables && overrideVariables.result) {
-        count = Number(overrideVariables.count); digits = String(overrideVariables.digitList).split(', ').map(Number);
+      count = Number(overrideVariables.count); digits = String(overrideVariables.digitList).split(', ').map(Number);
     } else {
-        count = countList[Math.floor(Math.random() * countList.length)];
-        const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; digits = [];
-        const odds = [1, 3, 5, 7, 9]; const evens = [0, 2, 4, 6, 8];
-        digits.push(odds[Math.floor(Math.random() * odds.length)]); digits.push(evens[Math.floor(Math.random() * evens.length)]);
-        const combinedPool = pool.filter(d => !digits.includes(d));
-        while (digits.length < count) { const idx = Math.floor(Math.random() * combinedPool.length); digits.push(combinedPool[idx]); combinedPool.splice(idx, 1); }
+      count = countList[Math.floor(Math.random() * countList.length)];
+      const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; digits = [];
+      const odds = [1, 3, 5, 7, 9]; const evens = [0, 2, 4, 6, 8];
+      digits.push(odds[Math.floor(Math.random() * odds.length)]); digits.push(evens[Math.floor(Math.random() * evens.length)]);
+      const combinedPool = pool.filter(d => !digits.includes(d));
+      while (digits.length < count) { const idx = Math.floor(Math.random() * combinedPool.length); digits.push(combinedPool[idx]); combinedPool.splice(idx, 1); }
     }
 
     const candidates = [];
     const validEnds = cond === 'even' ? digits.filter(d => d % 2 === 0) : digits.filter(d => d % 2 !== 0);
     validEnds.forEach(endDigit => {
-        const remaining = []; let found = false; digits.forEach(d => { if (!found && d === endDigit) { found = true; } else remaining.push(d); });
-        const sorted = [...remaining].sort((a,b) => goal === 'smallest' ? a - b : b - a);
-        let formed;
-        if (goal === 'smallest') {
-            if (sorted[0] === 0 && sorted.length > 0) {
-                const fnzIdx = sorted.findIndex(d => d > 0); const fnz = sorted[fnzIdx]; const rest = [...sorted]; rest.splice(fnzIdx, 1);
-                formed = String(fnz) + '0' + rest.slice(1).join('') + String(endDigit);
-            } else formed = sorted.join('') + String(endDigit);
+      const remaining = []; let found = false; digits.forEach(d => { if (!found && d === endDigit) { found = true; } else remaining.push(d); });
+      const sorted = [...remaining].sort((a, b) => goal === 'smallest' ? a - b : b - a);
+      let formed;
+      if (goal === 'smallest') {
+        if (sorted[0] === 0 && sorted.length > 0) {
+          const fnzIdx = sorted.findIndex(d => d > 0); const fnz = sorted[fnzIdx]; const rest = [...sorted]; rest.splice(fnzIdx, 1);
+          formed = String(fnz) + '0' + rest.slice(1).join('') + String(endDigit);
         } else formed = sorted.join('') + String(endDigit);
-        candidates.push(formed);
+      } else formed = sorted.join('') + String(endDigit);
+      candidates.push(formed);
     });
 
-    const result = goal === 'smallest' ? candidates.sort((a,b) => parseInt(a) - parseInt(b))[0] : candidates.sort((a,b) => parseInt(b) - parseInt(a))[0];
+    const result = goal === 'smallest' ? candidates.sort((a, b) => parseInt(a) - parseInt(b))[0] : candidates.sort((a, b) => parseInt(b) - parseInt(a))[0];
     const validEndText = cond === 'even' ? 'an even digit (0, 2, 4, 6, 8)' : 'an odd digit (1, 3, 5, 7, 9)';
     inst.adaptiveConfig.variables = { count, goal, condition: cond, result, digitList: [...digits].sort(() => Math.random() - 0.5).join(', '), validEnds: validEndText };
     if (Array.isArray(inst.parts)) inst.parts = inst.parts.map(p => hydrateNode(p, inst.adaptiveConfig.variables));
 
     const resNum = parseInt(result);
     const optionsSet = new Set(); optionsSet.add(result);
-    const sorted = [...digits].sort((a,b) => a - b);
+    const sorted = [...digits].sort((a, b) => a - b);
     if (sorted[0] === 0) { const fnzIdx = sorted.findIndex(d => d > 0); const fnz = sorted[fnzIdx]; const rest = [...sorted]; rest.splice(fnzIdx, 1); optionsSet.add(String(fnz) + '0' + rest.slice(1).join('')); } else optionsSet.add(sorted.join(''));
     while (optionsSet.size < 4) { const r = resNum + (Math.floor(Math.random() * 21) - 10); if (r > 0) optionsSet.add(String(r).padStart(count, '0')); }
 
@@ -7929,9 +8799,9 @@ function numberToWords(n) {
     inst.options = seededShuffle(optionsArray, resNum);
     inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect); inst.type = 'mcq';
     inst.solution = [
-        { type: 'text', content: `### **Step-by-Step Solution:**`, isVertical: true },
-        { type: 'text', content: `1. **Rule Check:** An **{condition}** number must end in **{validEnds}**.`, isVertical: true },
-        { type: 'text', content: `2. **Result:** The **{goal}** **{condition}** number is **{result}**.`, isVertical: true }
+      { type: 'text', content: `### **Step-by-Step Solution:**`, isVertical: true },
+      { type: 'text', content: `1. **Rule Check:** An **{condition}** number must end in **{validEnds}**.`, isVertical: true },
+      { type: 'text', content: `2. **Result:** The **{goal}** **{condition}** number is **{result}**.`, isVertical: true }
     ];
     inst.solution = inst.solution.map(s => hydrateNode(s, inst.adaptiveConfig.variables));
   }
@@ -7943,15 +8813,15 @@ function numberToWords(n) {
     const op = params.operation || 'difference';
     let count, digits;
     if (overrideVariables && overrideVariables.result) {
-        count = Number(overrideVariables.count); digits = String(overrideVariables.digitList).split(', ').map(Number);
+      count = Number(overrideVariables.count); digits = String(overrideVariables.digitList).split(', ').map(Number);
     } else {
-        count = countList[Math.floor(Math.random() * countList.length)];
-        const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; digits = [0]; pool.splice(0, 1);
-        while (digits.length < count) { const idx = Math.floor(Math.random() * pool.length); digits.push(pool[idx]); pool.splice(idx, 1); }
+      count = countList[Math.floor(Math.random() * countList.length)];
+      const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; digits = [0]; pool.splice(0, 1);
+      while (digits.length < count) { const idx = Math.floor(Math.random() * pool.length); digits.push(pool[idx]); pool.splice(idx, 1); }
     }
 
-    const sortedDesc = [...digits].sort((a,b) => b - a); const greatest = sortedDesc.join('');
-    const sortedAsc = [...digits].sort((a,b) => a - b);
+    const sortedDesc = [...digits].sort((a, b) => b - a); const greatest = sortedDesc.join('');
+    const sortedAsc = [...digits].sort((a, b) => a - b);
     let smallest;
     if (sortedAsc[0] === 0) { const fnzIdx = sortedAsc.findIndex(d => d > 0); const fnz = sortedAsc[fnzIdx]; const rest = [...sortedAsc]; rest.splice(fnzIdx, 1); smallest = String(fnz) + '0' + rest.slice(1).join(''); } else { smallest = sortedAsc.join(''); }
 
@@ -7969,9 +8839,9 @@ function numberToWords(n) {
     inst.options = seededShuffle(optionsArray, resultVal);
     inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect); inst.type = 'mcq';
     inst.solution = [
-        { type: 'text', content: `### **Step-by-Step Solution:**`, isVertical: true },
-        { type: 'text', content: `1. **Greatest:** **${greatest}**, **Smallest:** **${smallest}**`, isVertical: true },
-        { type: 'text', content: `2. **Result:** ${greatest} {opSymbol} ${smallest} = **{result}**`, isVertical: true }
+      { type: 'text', content: `### **Step-by-Step Solution:**`, isVertical: true },
+      { type: 'text', content: `1. **Greatest:** **${greatest}**, **Smallest:** **${smallest}**`, isVertical: true },
+      { type: 'text', content: `2. **Result:** ${greatest} {opSymbol} ${smallest} = **{result}**`, isVertical: true }
     ];
     inst.solution = inst.solution.map(s => hydrateNode(s, inst.adaptiveConfig.variables));
   }
@@ -7984,7 +8854,7 @@ function numberToWords(n) {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const range1 = dataSource.range1 || [10, 99];
     const range2 = dataSource.range2 || [10, 99];
-    
+
     let n1, n2;
     if (overrideVariables) {
       n1 = Number(overrideVariables.n1);
@@ -8028,21 +8898,21 @@ function numberToWords(n) {
         const char = pStr[c] === ' ' ? (c >= (cols - pIdx - 1) ? '0' : ' ') : pStr[c];
         if (char !== ' ') {
           if (isTargetPartial && pIdx === targetIdx) {
-              const id = `cell_${Math.pow(10, cols - 1 - c)}`;
-              cells.push({ r: 3 + pIdx, c, type: 'input', id });
-              ansMap[id] = char;
-              hiddenValue += char;
+            const id = `cell_${Math.pow(10, cols - 1 - c)}`;
+            cells.push({ r: 3 + pIdx, c, type: 'input', id });
+            ansMap[id] = char;
+            hiddenValue += char;
           } else {
-              const cell = { r: 3 + pIdx, c, content: char, style: { opacity: 0.8 } };
-              if (pIdx > 0 && c === (cols - String(pVal).length)) cell.prefix = '+';
-              cells.push(cell);
+            const cell = { r: 3 + pIdx, c, content: char, style: { opacity: 0.8 } };
+            if (pIdx > 0 && c === (cols - String(pVal).length)) cell.prefix = '+';
+            cells.push(cell);
           }
         }
       }
       if (pIdx === mDigits.length - 1) {
-          cells.filter(cl => cl.r === 3 + pIdx).forEach(cl => { 
-            cl.style = { ...cl.style, borderBottom: '2px solid #333' }; 
-          });
+        cells.filter(cl => cl.r === 3 + pIdx).forEach(cl => {
+          cl.style = { ...cl.style, borderBottom: '2px solid #333' };
+        });
       }
     });
 
@@ -8051,16 +8921,16 @@ function numberToWords(n) {
     const resStr = String(prod).padStart(cols, ' ');
     const isTargetTotal = targetIdx === mDigits.length;
     if (isTargetTotal) hiddenValue = String(prod);
-    
+
     for (let c = 0; c < cols; c++) {
       const char = resStr[c] === ' ' ? '0' : resStr[c];
       if (resStr[c] !== ' ' || c >= (cols - String(prod).length)) {
         if (isTargetTotal) {
-            const id = `cell_${Math.pow(10, cols - 1 - c)}`;
-            cells.push({ r: finalRow, c, type: 'input', id });
-            ansMap[id] = char;
+          const id = `cell_${Math.pow(10, cols - 1 - c)}`;
+          cells.push({ r: finalRow, c, type: 'input', id });
+          ansMap[id] = char;
         } else {
-            cells.push({ r: finalRow, c, content: char, style: { fontWeight: 'bold' } });
+          cells.push({ r: finalRow, c, content: char, style: { fontWeight: 'bold' } });
         }
       }
     }
@@ -8069,9 +8939,9 @@ function numberToWords(n) {
     let rightmostCell = null;
     cells.forEach(cl => {
       if (cl.type === 'input') {
-          if (!rightmostCell || cl.r > rightmostCell.r || (cl.r === rightmostCell.r && cl.c > rightmostCell.c)) {
-              rightmostCell = cl;
-          }
+        if (!rightmostCell || cl.r > rightmostCell.r || (cl.r === rightmostCell.r && cl.c > rightmostCell.c)) {
+          rightmostCell = cl;
+        }
       }
     });
     if (rightmostCell) rightmostCell.autoFocus = true;
@@ -8086,15 +8956,17 @@ function numberToWords(n) {
     const stepAdvice = targetIdx === 1 ? " Remember to write the zero at the end." : "";
 
     inst.solution = [
-        { type: 'text', content: `First, multiply by the ones.\n\nSecond, multiply by the tens. Remember to write the zero at the end.\n\nFinally, add to find the answer.`, isVertical: true, style: { background: '#f0f9ff', padding: '10px', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' } },
-        { type: 'text', content: `### **Solve**\nThe ${stepName} step is missing. Multiply by the ${stepAction} to find the missing number.${stepAdvice}`, isVertical: true },
-        { id: 'sol_grid', type: 'smartTable', config: { rows: finalRow + 1, cols, alignment: 'right' }, cells: cells.map(cl => {
-            if (cl.type === 'input') {
-                return { ...cl, type: 'content', content: ansMap[cl.id], style: { color: 'green', fontWeight: 'bold' } };
-            }
-            return cl;
-        }) },
-        { type: 'text', content: `The missing number is **${hiddenValue.toLocaleString()}**.` }
+      { type: 'text', content: `First, multiply by the ones.\n\nSecond, multiply by the tens. Remember to write the zero at the end.\n\nFinally, add to find the answer.`, isVertical: true, style: { background: '#f0f9ff', padding: '10px', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' } },
+      { type: 'text', content: `### **Solve**\nThe ${stepName} step is missing. Multiply by the ${stepAction} to find the missing number.${stepAdvice}`, isVertical: true },
+      {
+        id: 'sol_grid', type: 'smartTable', config: { rows: finalRow + 1, cols, alignment: 'right' }, cells: cells.map(cl => {
+          if (cl.type === 'input') {
+            return { ...cl, type: 'content', content: ansMap[cl.id], style: { color: 'green', fontWeight: 'bold' } };
+          }
+          return cl;
+        })
+      },
+      { type: 'text', content: `The missing number is **${hiddenValue.toLocaleString()}**.` }
     ];
 
     inst.correctAnswerText = hiddenValue;
@@ -8106,28 +8978,28 @@ function numberToWords(n) {
   if (logic === 'math_number_smallest_v1') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const categories = dataSource.categories || ["Natural", "Whole", "Even", "Odd", "Prime", "Composite"];
-    
+
     let category, mode;
     if (overrideVariables && overrideVariables.category && overrideVariables.mode) {
-        category = overrideVariables.category;
-        mode = overrideVariables.mode;
+      category = overrideVariables.category;
+      mode = overrideVariables.mode;
     } else {
-        category = categories[Math.floor(Math.random() * categories.length)];
-        mode = Math.random() > 0.5 ? "smallest" : "greatest";
+      category = categories[Math.floor(Math.random() * categories.length)];
+      mode = Math.random() > 0.5 ? "smallest" : "greatest";
     }
 
     const data = {
-        "Natural": { smallest: 1, greatest: 9, definition: "Natural numbers are counting numbers starting from 1." },
-        "Whole": { smallest: 0, greatest: 9, definition: "Whole numbers include zero and counting numbers." },
-        "Even": { smallest: 2, greatest: 8, definition: "Even numbers are exactly divisible by 2." },
-        "Odd": { smallest: 1, greatest: 9, definition: "Odd numbers are not exactly divisible by 2." },
-        "Prime": { smallest: 2, greatest: 7, definition: "Prime numbers have exactly two factors: 1 and itself." },
-        "Composite": { smallest: 4, greatest: 9, definition: "Composite numbers have more than two factors." }
+      "Natural": { smallest: 1, greatest: 9, definition: "Natural numbers are counting numbers starting from 1." },
+      "Whole": { smallest: 0, greatest: 9, definition: "Whole numbers include zero and counting numbers." },
+      "Even": { smallest: 2, greatest: 8, definition: "Even numbers are exactly divisible by 2." },
+      "Odd": { smallest: 1, greatest: 9, definition: "Odd numbers are not exactly divisible by 2." },
+      "Prime": { smallest: 2, greatest: 7, definition: "Prime numbers have exactly two factors: 1 and itself." },
+      "Composite": { smallest: 4, greatest: 9, definition: "Composite numbers have more than two factors." }
     };
 
     const target = data[category];
     if (!target) return; // safety
-    
+
     const resultVal = target[mode];
     const modeLabel = mode === 'smallest' ? "smallest" : "greatest 1-digit";
 
@@ -8135,54 +9007,54 @@ function numberToWords(n) {
     // but usually overrideVariables doesn't have options. Let's make it stable via category/mode.
     const optionsSet = new Set([resultVal]);
     const traps = mode === 'smallest' ? [0, 1, 2, 3, 4] : [9, 8, 7, 6, 4];
-    
+
     // Simple deterministic trap selector based on category string length
     let trapIdx = category.length % traps.length;
-    while(optionsSet.size < 4) {
-        optionsSet.add(traps[trapIdx]);
-        trapIdx = (trapIdx + 1) % traps.length;
+    while (optionsSet.size < 4) {
+      optionsSet.add(traps[trapIdx]);
+      trapIdx = (trapIdx + 1) % traps.length;
     }
 
     const optionsArray = Array.from(optionsSet).map(val => ({
-        label: String(val),
-        isCorrect: val === resultVal
+      label: String(val),
+      isCorrect: val === resultVal
     }));
 
     // Seeded Shuffle
     const seededShuffle = (arr, seed) => {
-        let m = arr.length, t, i;
-        let x = seed;
-        while (m) {
-            x = (1103515245 * x + 12345) & 0x7FFFFFFF;
-            i = x % m--;
-            t = arr[m]; arr[m] = arr[i]; arr[i] = t;
-        }
-        return arr;
+      let m = arr.length, t, i;
+      let x = seed;
+      while (m) {
+        x = (1103515245 * x + 12345) & 0x7FFFFFFF;
+        i = x % m--;
+        t = arr[m]; arr[m] = arr[i]; arr[i] = t;
+      }
+      return arr;
     };
     inst.options = seededShuffle(optionsArray, resultVal + category.length + mode.length);
     inst.correctAnswerIndex = inst.options.findIndex(o => o.isCorrect);
     inst.type = 'mcq';
 
     inst.parts = [
-        { type: 'text', content: `Which of the following is the **${modeLabel}** ${category} number?` }
+      { type: 'text', content: `Which of the following is the **${modeLabel}** ${category} number?` }
     ];
 
     inst.solution = [
-        { type: 'text', content: `### **Conceptual Solution**`, isVertical: true },
-        { type: 'text', content: `The question asks for the **${modeLabel}** ${category} number.`, isVertical: true },
-        { type: 'text', content: `1. **Category**: ${target.definition}`, isVertical: true },
-        { type: 'text', content: `2. **Identification**: Looking at the ${modeLabel} ${category} numbers, we find **${resultVal}**.`, isVertical: true }
+      { type: 'text', content: `### **Conceptual Solution**`, isVertical: true },
+      { type: 'text', content: `The question asks for the **${modeLabel}** ${category} number.`, isVertical: true },
+      { type: 'text', content: `1. **Category**: ${target.definition}`, isVertical: true },
+      { type: 'text', content: `2. **Identification**: Looking at the ${modeLabel} ${category} numbers, we find **${resultVal}**.`, isVertical: true }
     ];
 
     inst.concepts = [
-        {
-            type: "text",
-            content: `**${category} Numbers**: ${target.definition}`
-        },
-        {
-            type: "text",
-            content: `The **smallest** ${category} is **${target.smallest}**, and the **greatest 1-digit** ${category} is **${target.greatest}**.`
-        }
+      {
+        type: "text",
+        content: `**${category} Numbers**: ${target.definition}`
+      },
+      {
+        type: "text",
+        content: `The **smallest** ${category} is **${target.smallest}**, and the **greatest 1-digit** ${category} is **${target.greatest}**.`
+      }
     ];
 
     inst.adaptiveConfig.variables = { category, mode, resultVal };
@@ -8191,7 +9063,7 @@ function numberToWords(n) {
   if (logic === 'math_multiplication_area_model_v1') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const difficulty = (inst.difficulty || 'medium').toLowerCase();
-    
+
     let range1, range2;
     if (difficulty === 'easy') {
       range1 = dataSource.easy_range1 || dataSource.range1 || [10, 99];
@@ -8229,11 +9101,11 @@ function numberToWords(n) {
     const p2 = decompose(n2);
 
     const maxDigits = 4; // Support up to thousands for partial sums
-    const rowCount = p1.length + 2; 
+    const rowCount = p1.length + 2;
     const areaCols = p2.length + 1;
     const spacerCols = 1;
     const colCount = areaCols + spacerCols + maxDigits;
-    
+
     const cells = [];
     const solutionCells = [];
     const ansMap = {};
@@ -8246,18 +9118,18 @@ function numberToWords(n) {
       cells.push({ r: 0, c: cIdx + 1, content: String(val), style: { fontWeight: "bold", textAlign: "center", borderBottom: '1px solid #ccc' } });
       solutionCells.push({ r: 0, c: cIdx + 1, content: String(val), fontWeight: "bold" });
     });
-    
+
     p1.forEach((v1, rIdx) => {
       cells.push({ r: rIdx + 1, c: 0, content: String(v1), style: { fontWeight: "bold", textAlign: "center", borderRight: '1px solid #ccc' } });
       solutionCells.push({ r: rIdx + 1, c: 0, content: String(v1), fontWeight: "bold" });
-      
+
       p2.forEach((v2, cIdx) => {
         const partialProd = v1 * v2;
         const id = `scaffold_p_${rIdx}_${cIdx}`;
-        cells.push({ 
-          r: rIdx + 1, 
-          c: cIdx + 1, 
-          type: "input", 
+        cells.push({
+          r: rIdx + 1,
+          c: cIdx + 1,
+          type: "input",
           id,
           maxLength: 6,
           style: { textAlign: 'center', width: '70px', height: '44px', fontWeight: 'bold' }
@@ -8285,23 +9157,23 @@ function numberToWords(n) {
       // Only show boxes needed for this specific sum
       const rowSumStr = String(rowSum);
       const rowSumDigits = rowSumStr.length;
-      
+
       for (let d = 0; d < rowSumDigits; d++) {
         const char = rowSumStr[d];
         // Right-align by shifting col start
-        const colShift = 4 - rowSumDigits; 
+        const colShift = 4 - rowSumDigits;
         const col = areaCols + spacerCols + colShift + d;
         const id = `scaffold_row_sum_${rIdx}_d${d}`;
-        
+
         cells.push({
           r: rIdx + 1,
           c: col,
           type: "input",
           id,
           maxLength: 1,
-          style: { 
-            textAlign: 'center', 
-            width: '32px', 
+          style: {
+            textAlign: 'center',
+            width: '32px',
             height: '32px',
             border: '1px solid #000',
             borderRadius: '0px',
@@ -8329,17 +9201,17 @@ function numberToWords(n) {
       const colShift = 4 - totalDigits;
       const col = areaCols + spacerCols + colShift + d;
       const id = `scaffold_total_sum_d${d}`;
-      
+
       cells.push({
         r: rowCount - 1,
         c: col,
         type: "input",
         id,
         maxLength: 1,
-        style: { 
-          textAlign: 'center', 
-          width: '32px', 
-          height: '32px', 
+        style: {
+          textAlign: 'center',
+          width: '32px',
+          height: '32px',
           fontWeight: 'bold',
           border: '1px solid #000',
           borderRadius: '0px',
@@ -8361,24 +9233,24 @@ function numberToWords(n) {
 
     inst.parts = [
       { type: "text", content: `Break apart the numbers and multiply to fill the area model representing **${n1} × ${n2}**. Then, add by place value.`, isVertical: true },
-      { 
-        id: "area_table", 
-        type: "smartTable", 
-        config: { 
-          rows: rowCount, 
-          cols: areaCols + spacerCols + 4, 
+      {
+        id: "area_table",
+        type: "smartTable",
+        config: {
+          rows: rowCount,
+          cols: areaCols + spacerCols + 4,
           cellPadding: '8px',
           borderType: 'none'
-        }, 
-        cells 
+        },
+        cells
       },
       { type: "text", content: `What is the final product of **${n1}** and **${n2}**?`, isVertical: true },
       { type: "text", content: "[[total]]", isVertical: true }
     ];
-    
+
     // Only validate the final total, the rest is "Work Area" scaffolding
-    const validationMap = { 
-      "total": String(n1 * n2) 
+    const validationMap = {
+      "total": String(n1 * n2)
     };
 
     inst.solution = [
@@ -8419,7 +9291,30 @@ function numberToWords(n) {
 
   // Final Type Safety: Never return "template" as the type to the renderer
   if ((inst.type === 'template' || !inst.type) && (inst.logic_type || inst.adaptiveConfig?.logic_type)) {
-     inst.type = 'fillInTheBlank';
+    inst.type = 'fillInTheBlank';
+  }
+
+  // GLOBAL HYDRATION PASS: Catch any missed placeholders in any field
+  const finalVars = inst.adaptiveConfig?.variables || {};
+  if (Object.keys(finalVars).length > 0) {
+    // Hydrate top-level fields
+    // Hydrate top-level fields (only if they contain a placeholder to avoid unnecessary work)
+    if (inst.questionText && String(inst.questionText).includes('{')) inst.questionText = hydrateNode(inst.questionText, finalVars);
+    if (inst.question_text && String(inst.question_text).includes('{')) inst.question_text = hydrateNode(inst.question_text, finalVars);
+    if (inst.solution && (typeof inst.solution !== 'string' || inst.solution.includes('{'))) inst.solution = hydrateNode(inst.solution, finalVars);
+
+    // Ensure both naming conventions for core answer fields are synced and hydrated
+    const rawAns = inst.correctAnswerText || inst.correct_answer_text || inst.adaptiveConfig?.correctAnswerText;
+    if (rawAns) {
+      const hydratedAns = hydrateNode(rawAns, finalVars);
+      inst.correctAnswerText = hydratedAns;
+      inst.correct_answer_text = hydratedAns;
+      inst.adaptiveConfig.correctAnswerText = hydratedAns;
+    }
+
+    // Recurse into parts/options if they exist
+    if (inst.parts) inst.parts = hydrateNode(inst.parts, finalVars);
+    if (inst.options) inst.options = hydrateNode(inst.options, finalVars);
   }
 
   return inst;

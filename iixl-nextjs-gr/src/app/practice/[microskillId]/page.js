@@ -1275,6 +1275,28 @@ export default function PracticePage() {
             </div>
           )}
 
+          {(!isAnswered && (microskill?.lessonSlug || microskill?.guideId)) && (
+            <div className={styles.notReadyContainer}>
+              <h3 className={styles.notReadyHeader}>Not feeling ready yet? These can help:</h3>
+              <ul className={styles.notReadyList}>
+                {microskill?.lessonSlug && (
+                  <li>
+                    <Link href={`/lesson/${microskill.lessonSlug}`} target="_blank" className={styles.notReadyLink}>
+                      <span className={styles.notReadyIcon}>📘</span>Review a lesson: {microskill?.name || 'Related concepts'}
+                    </Link>
+                  </li>
+                )}
+                {microskill?.guideId && (
+                  <li>
+                    <Link href={`/guide/${microskill.guideId}`} target="_blank" className={styles.notReadyLink}>
+                      <span className={styles.notReadyIcon}>📘</span>Read the guide: {microskill?.name || 'Related concepts'}
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
           {submitError && <p className={styles.solution}>{submitError}</p>}
 
           {/* Developer Debug Tools - Only visible with ?debug=true */}

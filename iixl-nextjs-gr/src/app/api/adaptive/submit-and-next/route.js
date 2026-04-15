@@ -327,8 +327,9 @@ export async function POST(req) {
   }
 
   let microskillId = await resolveMicroskillIdByKey(microskillKey);
-  if (!microskillId && microskillKey === 'place-value-auto-intro') {
-    microskillId = 'place-value-auto-intro';
+  const arithmeticJourneyMicroskills = ['addition-step-by-step', 'subtraction-step-by-step', 'multiplication-step-by-step', 'lcm-step-by-step', 'long-division-journey'];
+  if (!microskillId && (microskillKey === 'place-value-auto-intro' || arithmeticJourneyMicroskills.includes(microskillKey))) {
+    microskillId = microskillKey;
   }
 
   if (!microskillId) {
@@ -364,7 +365,7 @@ export async function POST(req) {
 
     let currentQuestion = null;
     let alreadyHydrated = false;
-    if (questionId && (String(questionId).startsWith('generated_pv_') || String(questionId).startsWith('inst_'))) {
+    if (questionId && (String(questionId).startsWith('generated_pv_') || String(questionId).startsWith('inst_') || String(questionId).startsWith('arith_journey_'))) {
       
       // Default fake payload for validation
       currentQuestion = {
@@ -578,19 +579,55 @@ export async function POST(req) {
       nextResult.reason = 'intervention_scaffold';
     }
 
-    if (!nextResult.question || microskillId === 'place-value-auto-intro') {
-      if (microskillId === 'place-value-auto-intro') {
+    const mIdStr = String(microskillId || '');
+    const isLcmStep = mIdStr.includes('lcm-step-by-step') || microskillKey.includes('lcm-step-by-step');
+    const isDivStep = mIdStr.includes('long-division-journey') || microskillKey.includes('long-division-journey');
+    const isArithStep = ['addition-step-by-step', 'subtraction-step-by-step', 'multiplication-step-by-step'].some(k => mIdStr.includes(k) || microskillKey.includes(k));
+
+    if (!nextResult.question || microskillId === 'place-value-auto-intro' || isLcmStep || isDivStep || isArithStep) {
+      if (microskillId === 'place-value-auto-intro' || microskillKey === 'place-value-auto-intro') {
         const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
         nextResult = {
           question: generatePlaceValueQuestion(),
           reason: triggerScaffold ? 'intervention_scaffold' : 'auto_generated'
+        };
+      } else if (isLcmStep) {
+        nextResult = {
+          question: {
+            id: 'arith_journey_lcm_' + Date.now(),
+            type: 'stepwise',
+            logic_type: 'lcm_journey_v1',
+            adaptiveConfig: { variables: {} }
+          },
+          reason: 'auto_generated'
+        };
+      } else if (isDivStep) {
+        nextResult = {
+          question: {
+            id: 'arith_journey_div_' + Date.now(),
+            type: 'stepwise',
+            logic_type: 'long_division_journey_v1',
+            adaptiveConfig: { variables: {} }
+          },
+          reason: 'auto_generated'
+        };
+      } else if (isArithStep) {
+        const opType = microskillKey.includes('addition') ? 'addition' : (microskillKey.includes('subtraction') ? 'subtraction' : 'multiplication');
+        nextResult = {
+          question: {
+            id: 'arith_journey_' + opType + '_' + Date.now(),
+            type: 'arithmetic_journey',
+            logic_type: 'arithmetic_journey_v1',
+            adaptiveConfig: { variables: { type: opType } }
+          },
+          reason: 'auto_generated'
         };
       }
     }
 
     if (nextResult.question) {
       const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
-      nextResult.question = instantiateTemplate(nextResult.question);
+      nextResult.question = instantiateTemplate(nextResult.question, nextResult.question.adaptiveConfig?.variables);
     }
 
     const responsePayload = {

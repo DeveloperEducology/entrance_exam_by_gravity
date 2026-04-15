@@ -13,6 +13,10 @@ import MeasureRenderer from './MeasureRenderer';
 import ShadeGridRenderer from './ShadeGridRenderer';
 import TokenSelectionRenderer from './TokenSelectionRenderer';
 import DragDropRendererV2 from './DragDropRendererV2';
+import GuidedStepRenderer from './GuidedStepRenderer';
+import LongDivisionStepRenderer from './LongDivisionStepRenderer';
+import StepwiseArithmeticRenderer from './StepwiseArithmeticRenderer';
+
 
 const RENDERER_MAP = {
     mcq: MCQRenderer,
@@ -27,9 +31,17 @@ const RENDERER_MAP = {
     measure: MeasureRenderer,
     shadeGrid: ShadeGridRenderer,
     tokenSelection: TokenSelectionRenderer,
+    stepwise: (props) => {
+        if (props.question?.ui_config?.type === 'ladder_focus') {
+            return <LongDivisionStepRenderer {...props} />;
+        }
+        return <GuidedStepRenderer {...props} />;
+    },
     table: FillInTheBlankRenderer,
     smartTable: FillInTheBlankRenderer,
+    arithmetic_journey: StepwiseArithmeticRenderer,
 };
+
 
 export default function QuestionRenderer({
     question,
