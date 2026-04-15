@@ -1,0 +1,151 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1rem;
+    gap: 3rem;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #fff;
+    min-height: 500px;
+}
+
+.ladderGrid {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 2.2rem;
+    font-weight: 800;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    height: 3.5rem;
+    position: relative;
+}
+
+.digitCell {
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.digitInput {
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 2.2rem;
+    font-weight: 800;
+    border: 3px solid currentColor;
+    border-radius: 12px;
+    background: #fff;
+    outline: none;
+    padding: 0;
+    box-sizing: border-box;
+    transition: all 0.2s;
+    animation: cellPulse 1.5s infinite;
+}
+
+.smartCellGroup {
+    display: flex;
+    gap: 0;
+}
+
+.digitSpacer, .divisorSpace, .signCell {
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.signCell {
+    color: #ef4444;
+}
+
+.bracketSpace {
+    width: 1rem;
+}
+
+.houseBracket {
+    width: 1rem;
+    border-right: 3px solid #64748b;
+    height: 100%;
+}
+
+.houseTop {
+    border-top: 4px solid #64748b;
+}
+
+.line {
+    width: 9rem;
+    height: 3px;
+    background: #64748b;
+    margin-left: 4.5rem; /* divisor + bracket + sign offset */
+}
+
+/* Colors from Reference */
+.orange { color: #f97316; }   /* Quotient */
+.purple { color: #6366f1; }   /* Divisor */
+.blue { color: #0ea5e9; }     /* Dividend */
+.red { color: #ef4444; }      /* Multiply Product */
+.yellow { color: #eab308; }   /* Subtraction Remainder */
+.green { color: #22c55e; }    /* Brought down digit */
+
+.arrow {
+    position: absolute;
+    color: #22c55e;
+    font-size: 1.5rem;
+    top: -1.5rem;
+    left: 12.5rem;
+}
+
+/* Card Styling */
+.card {
+    max-width: 500px;
+    width: 100%;
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 28px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.instruction {
+    font-size: 1.25rem;
+    color: #1e293b;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.feedback {
+    min-height: 2rem;
+    color: #10b981;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.btn {
+    background: #0f172a;
+    color: white;
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+@keyframes cellPulse {
+    0% { border-color: currentColor; box-shadow: 0 0 0 0 rgba(0,0,0,0.05); }
+    50% { filter: brightness(1.2); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    100% { border-color: currentColor; box-shadow: 0 0 0 0 rgba(0,0,0,0.05); }
+}

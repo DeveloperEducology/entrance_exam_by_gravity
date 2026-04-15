@@ -1,0 +1,213 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 10px 0;
+}
+
+.stepWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn 0.4s ease-out;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+}
+
+.stepWrapperActive {
+  border-color: #007bff20;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.05);
+}
+
+.stepWrapperCompleted {
+  opacity: 0.8;
+  background: #fafafa;
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stepTitle {
+  font-weight: 700;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.stepPrompt {
+  color: #555;
+  line-height: 1.5;
+}
+
+.stepPrompt b, .stepPrompt strong {
+  color: #007bff;
+}
+
+.inputGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.inputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.multiplesInput {
+  width: 50px;
+  height: 48px;
+  text-align: center;
+  font-size: 1.2em;
+  font-weight: 700;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.2s;
+  background: white;
+}
+
+.multiplesInput:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.multiplesInputCorrect {
+  border-color: #28a745 !important;
+  background-color: #f8fff9 !important;
+  color: #28a745;
+}
+
+.multiplesInputStatic {
+  border-color: #f0f0f0;
+  background-color: #fafafa;
+  color: #333;
+  cursor: default;
+}
+
+.checkButton {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.checkButton:hover {
+  background: #444;
+  transform: translateY(-1px);
+}
+
+.checkButtonDisabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.feedback {
+  font-weight: 600;
+  font-size: 0.95em;
+  padding: 8px 0;
+}
+
+.feedbackSuccess {
+  color: #28a745;
+}
+
+.feedbackError {
+  color: #dc3545;
+}
+
+/* Seek and Find / Twin Spotting Styles */
+.visualComparison {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.comparisonRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rowLabel {
+  width: 140px;
+  font-weight: 600;
+  color: #666;
+}
+
+.tokenList {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px;
+}
+
+.token {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.1em;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+}
+
+.token:hover:not(.tokenStatic) {
+  border-color: #007bff;
+  background: #f0f7ff;
+}
+
+.tokenSelected {
+  background: #007bff !important;
+  border-color: #0056b3 !important;
+  color: white;
+}
+
+.tokenCorrect {
+  background: #28a745 !important;
+  border-color: #1e7e34 !important;
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+
+.tokenStatic {
+  cursor: default;
+}
+
+.lcmFinalInput {
+  width: 100px;
+  height: 56px;
+  font-size: 1.5em;
+  text-align: center;
+  font-weight: 800;
+  border: 3px solid #000;
+  border-radius: 12px;
+  background: #fff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
