@@ -23,7 +23,7 @@ const DigitInput = ({ colIdx, value, onChange, isAnswered, isCorrect, isFirst, i
     value={value || ""}
     onChange={(e) => onChange(colIdx, e.target.value)}
     disabled={isAnswered}
-    className={`w-full h-10 text-center text-2xl font-mono font-bold outline-none transition-all
+    className={`w-full h-10 text-center text-xl font-mono font-bold outline-none transition-all
       ${isFirst ? 'rounded-l-md border-l-2' : 'border-l-2 border-dashed'}
       ${isLast ? 'rounded-r-md border-r-2' : ''}
       border-y-2
@@ -80,7 +80,7 @@ export default function ArithmeticGrid({
   const lastInputGroupIdx = inputIndices[inputIndices.length - 1];
 
   return (
-    <div className="relative flex items-center justify-center p-4 py-8 select-none w-full max-w-lg mx-auto">
+    <div className="relative flex items-center justify-center p-4 py-6 select-none mx-auto">
       {/* Grid Columns */}
       <div className="flex items-end">
         {paddedTop.map((_, colIdx) => {
@@ -89,11 +89,16 @@ export default function ArithmeticGrid({
           const carry = carries?.[colIdx];
           const resultChar = paddedResult[colIdx];
           const isDigitSlot = /[0-9]/.test(resultChar);
-          const isComma = paddedTop[colIdx] === ',' || paddedBottom[colIdx] === ',' || resultChar === ',';
+          
+          const charAtTop = paddedTop[colIdx];
+          const charAtBot = paddedBottom[colIdx];
+          const isSpace = charAtTop === ' ' && charAtBot === ' ' && resultChar === ' ';
+          const isComma = charAtTop === ',' || charAtBot === ',' || resultChar === ',';
+
           const isWithinBox = colIdx >= firstInputGroupIdx && colIdx <= lastInputGroupIdx;
 
           return (
-            <div key={colIdx} className={`flex flex-col items-center ${isComma ? 'min-w-[0.7rem]' : 'min-w-[1.8rem]'}`}>
+            <div key={colIdx} className={`flex flex-col items-center ${isComma || isSpace ? 'w-3' : 'w-7'}`}>
               {/* Carry / Regroup Row */}
               <div className="h-6 flex items-end justify-center w-full">
                 {carry && <Digit char={carry} isBlue={isHighlighted} isCarry />}
@@ -106,7 +111,7 @@ export default function ArithmeticGrid({
               {/* Main Number Row 2 + Operator */}
               <div className="relative w-full">
                 {colIdx === 0 && (
-                   <div className="absolute -left-7 top-0 text-3xl font-light text-slate-800">
+                   <div className="absolute -left-6 top-0 text-2xl font-light text-slate-800">
                      {opChar}
                    </div>
                 )}
@@ -147,7 +152,7 @@ export default function ArithmeticGrid({
                         isLast={colIdx === lastInputGroupIdx}
                       />
                     ) : (
-                      <div className={`h-10 flex items-center justify-center text-xl font-mono border-y-2 border-blue-400 bg-white
+                      <div className={`h-10 flex items-center justify-center text-lg font-mono border-y-2 border-blue-400 bg-white
                         ${colIdx === firstInputGroupIdx ? 'rounded-l-md border-l-2' : 'border-l-2 border-dashed'}
                         ${colIdx === lastInputGroupIdx ? 'rounded-r-md border-r-2' : ''}
                       `}>
