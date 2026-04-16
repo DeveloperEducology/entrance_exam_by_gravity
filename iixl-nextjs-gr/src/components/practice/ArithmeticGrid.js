@@ -80,7 +80,7 @@ export default function ArithmeticGrid({
   const lastInputGroupIdx = inputIndices[inputIndices.length - 1];
 
   return (
-    <div className="relative flex items-center justify-center p-4 select-none mr-8">
+    <div className="relative flex items-center justify-center p-4 py-8 select-none w-full max-w-lg mx-auto">
       {/* Grid Columns */}
       <div className="flex items-end">
         {paddedTop.map((_, colIdx) => {
@@ -89,11 +89,11 @@ export default function ArithmeticGrid({
           const carry = carries?.[colIdx];
           const resultChar = paddedResult[colIdx];
           const isDigitSlot = /[0-9]/.test(resultChar);
-          const isComma = resultChar === ',';
+          const isComma = paddedTop[colIdx] === ',' || paddedBottom[colIdx] === ',' || resultChar === ',';
           const isWithinBox = colIdx >= firstInputGroupIdx && colIdx <= lastInputGroupIdx;
 
           return (
-            <div key={colIdx} className={`flex flex-col items-center ${isComma ? 'min-w-[1.2rem]' : 'min-w-[2.5rem]'}`}>
+            <div key={colIdx} className={`flex flex-col items-center ${isComma ? 'min-w-[0.7rem]' : 'min-w-[1.8rem]'}`}>
               {/* Carry / Regroup Row */}
               <div className="h-6 flex items-end justify-center w-full">
                 {carry && <Digit char={carry} isBlue={isHighlighted} isCarry />}
@@ -106,7 +106,7 @@ export default function ArithmeticGrid({
               {/* Main Number Row 2 + Operator */}
               <div className="relative w-full">
                 {colIdx === 0 && (
-                   <div className="absolute -left-10 top-0 text-3xl font-light text-slate-800">
+                   <div className="absolute -left-7 top-0 text-3xl font-light text-slate-800">
                      {opChar}
                    </div>
                 )}
