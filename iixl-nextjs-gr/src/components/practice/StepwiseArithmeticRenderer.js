@@ -143,9 +143,12 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
 
   if (mode === 'remediation') {
     return (
-      <div className="w-full max-w-4xl mx-auto flex flex-col items-start gap-12 bg-white rounded-2xl overflow-hidden p-6 mb-12">
-        <h3 className="text-3xl font-medium text-slate-900 mb-2 px-2">Correct Solution</h3>
-        <div className="w-full h-px bg-slate-100 mb-4" />
+      <div className="w-full max-w-4xl mx-auto flex flex-col items-start gap-12 bg-white rounded-2xl overflow-hidden p-6 mb-12 border-2 border-slate-50 shadow-sm transition-all duration-700">
+        <div className="flex flex-col gap-2 px-2">
+            <h3 className="text-3xl font-medium text-slate-900">Correct Solution</h3>
+            <p className="text-slate-400 text-sm italic">Detailed walkthrough of the calculation</p>
+        </div>
+        <div className="w-full h-px bg-slate-100" />
         
         {problem.steps.map((currentStep, idx) => {
           const isAdd = opType.includes('addition') || opType === 'add';
@@ -153,7 +156,7 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
           const isMul = opType.includes('multiplication') || opType === 'multiply' || opType === 'mul';
           
           return (
-            <div key={idx} className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div key={idx} className="w-full animate-in fade-in slide-in-from-bottom-4 duration-1000">
               <p className="text-[19px] text-slate-800 mb-8 font-sans antialiased leading-relaxed px-2">
                 {currentStep.description || currentStep.instruction}
               </p>
@@ -193,9 +196,35 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
                  className="px-8 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
              >
                  <RotateCcwIcon />
-                 <span>Back to Problem</span>
+                 <span>Reset Practice</span>
              </button>
         </div>
+      </div>
+    );
+  }
+
+  // If answered and we are NOT in remediation (the showHelp case), 
+  // we show a more compact "Success" or "Review" view for the Question Slot.
+  if (isAnswered) {
+    return (
+      <div className="w-full max-w-4xl mx-auto p-8 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center">
+         <div className="text-slate-400 mb-6 font-medium italic">
+            You have completed this challenge! See the detailed solution below.
+         </div>
+         <ArithmeticGrid 
+            operation={isAdd ? 'addition' : (isSub ? 'subtraction' : (isMul ? 'multiplication' : 'addition'))}
+            operands={problem.operands}
+            result={problem.steps[problem.steps.length-1].result}
+            mode="static"
+            showResult={true}
+          />
+          <button 
+           onClick={reset}
+           className="mt-8 text-blue-600 hover:text-blue-800 flex items-center gap-2 font-medium"
+          >
+            <RotateCcwIcon />
+            <span>Try Again</span>
+          </button>
       </div>
     );
   }
@@ -220,7 +249,7 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
                        className="min-w-[140px] px-8 py-3 rounded-xl text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2 bg-[#50b500] hover:bg-[#469d00] shadow-sm"
                    >
                        <span className="text-xl font-bold">
-                         {isAnswered ? "Retry" : "Submit"}
+                         Submit
                        </span>
                    </button>
 
