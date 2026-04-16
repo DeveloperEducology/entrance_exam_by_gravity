@@ -15,6 +15,7 @@ import NumberPairs from './NumberPairs';
 import NumberLineJumps from './NumberLineJumps';
 import DotsGroupingVisual from './DotsGroupingVisual';
 import DotArrayVisual from './DotArrayVisual';
+import ArithmeticGrid from './ArithmeticGrid';
 
 /**
  * @typedef {Object} QuestionPart
@@ -792,6 +793,23 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                     <NumberPairs
                         key={index}
                         num={Number(part.num || 0)}
+                    />
+                );
+
+            case 'arithmetic_grid':
+            case 'arithmeticGrid':
+                return (
+                    <ArithmeticGrid
+                        key={index}
+                        operation={part.operation || 'addition'}
+                        operands={part.operands || []}
+                        carries={part.carries || {}}
+                        regroups={part.regroups || {}}
+                        result={part.result || []}
+                        highlights={part.highlights || []}
+                        subRows={part.subRows || []}
+                        mode="static"
+                        showResult={part.showResult !== false}
                     />
                 );
 

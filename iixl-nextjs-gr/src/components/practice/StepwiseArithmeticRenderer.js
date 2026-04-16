@@ -13,64 +13,15 @@ const RotateCcwIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
 );
 
-const Digit = ({ char, isBlue, isRed, isGray, hasSlash, isCarry }) => (
-  <div className={`relative flex items-center justify-center w-6 h-8 text-xl font-mono transition-all duration-300
-    ${isBlue ? 'text-blue-600 font-bold scale-110' : isRed ? 'text-red-500' : isGray ? 'text-gray-300' : 'text-slate-800'}
-    ${isCarry ? 'text-sm h-6 italic opacity-80' : ''}
-  `}>
-    {char || " "}
-    {hasSlash && char && char !== " " && (
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[1.5px] h-6 bg-red-400 rotate-[25deg]"></div>
-      </div>
-    )}
-  </div>
-);
-
-const DigitInput = ({ colIdx, value, onChange, isAnswered, isCorrect }) => (
-  <input
-    id={`digit-input-${colIdx}`}
-    type="text"
-    value={value || ""}
-    onChange={(e) => onChange(colIdx, e.target.value)}
-    disabled={isAnswered}
-    className={`w-10 h-12 text-center text-2xl font-mono font-bold border-2 rounded-xl outline-none transition-all
-      ${isAnswered 
-        ? (isCorrect ? 'bg-emerald-50 border-emerald-500 text-emerald-600' : 'bg-red-50 border-red-500 text-red-600')
-        : 'bg-white border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'
-      }
-    `}
-    placeholder="?"
-    autoComplete="off"
-  />
-);
+import ArithmeticGrid from './ArithmeticGrid';
 
 const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, isCorrect, mode, onShowSteps }) => {
   if (!problem || !problem.steps) return null;
   const isRemediation = mode === 'remediation';
   const step = problem.steps[stepIndex] || problem.steps[0];
-  const top = (problem.operands[0] || "").split("");
-  const bottom = (problem.operands[1] || "").split("");
   const isLastStep = stepIndex === problem.steps.length - 1;
   const operation = problem.operation || problem.type;
-  const isMultiplication = operation === 'multiplication';
   
-  const maxLength = Math.max(
-    top.length,
-    bottom.length,
-    step.result?.length || 0,
-    ...(step.subRows?.map(r => r.val.length) || [0])
-  );
-
-  const pad = (arr, len) => {
-    const safeLen = Math.max(0, len - (arr?.length || 0));
-    return [...Array(safeLen).fill(" "), ...(arr || [])];
-  };
-
-  const paddedTop = pad(top, maxLength);
-  const paddedBottom = pad(bottom, maxLength);
-  const paddedResult = pad(step.result || [], maxLength);
-
   return (
     <div className={`flex flex-col items-center p-6 transition-all duration-500 min-h-[300px] w-full rounded-2xl
       ${isRemediation ? 'bg-amber-50/30 border-2 border-amber-100/50' : 'bg-transparent'}
@@ -94,69 +45,21 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
           </div>
       </div>
       
-      <div className="relative flex items-start mb-12">
-        <div className="flex flex-col items-center mr-6 pt-16">
-           <div className="text-4xl h-10 flex items-center text-slate-300 font-light italic">
-             {operation === 'addition' ? '+' : operation === 'subtraction' ? '–' : '×'}
-           </div>
-        </div>
-
-        <div className="flex p-4 rounded-xl">
-          {paddedTop.map((_, colIdx) => {
-            const isHighlighted = step.highlights?.includes(colIdx);
-            const regroup = step.regroups?.[colIdx];
-            const carry = step.carries?.[colIdx];
-            const resultChar = paddedResult[colIdx];
-            const isDigitSlot = /[0-9]/.test(resultChar);
-
-            return (
-              <div key={colIdx} className="flex flex-col items-center min-w-[2.25rem] transition-all duration-300">
-                <div className="h-6 flex items-end justify-center w-full">
-                  {carry && <Digit char={carry} isBlue={isHighlighted || isRemediation} isCarry />}
-                  {regroup && <Digit char={regroup.val} isBlue={isHighlighted || isRemediation} isCarry />}
-                </div>
-
-                <Digit 
-                  char={paddedTop[colIdx]} 
-                  isBlue={isHighlighted} 
-                  hasSlash={regroup?.slash}
-                />
-                <Digit char={paddedBottom[colIdx]} isBlue={isHighlighted} />
-                <div className="w-full h-[2.5px] bg-slate-900 my-2 rounded-full" />
-
-                {isMultiplication && step.subRows?.map((row, rIdx) => {
-                   const paddedRow = pad(row.val, maxLength);
-                   return (
-                     <Digit 
-                        key={rIdx} 
-                        char={paddedRow[colIdx]} 
-                        isBlue={row.active} 
-                        isGray={!row.active && step.subRows.some(sr => sr.active)}
-                     />
-                   );
-                })}
-
-                {isMultiplication && step.subRows?.length > 1 && (
-                   <div className="w-full h-[2.5px] bg-slate-900 my-2 rounded-full" />
-                )}
-
-                {isLastStep && !isRemediation && isDigitSlot ? (
-                  <DigitInput 
-                    colIdx={colIdx} 
-                    value={inputs[colIdx]} 
-                    onChange={onInputChange} 
-                    isAnswered={isAnswered} 
-                    isCorrect={isCorrect} 
-                  />
-                ) : (
-                  <Digit char={resultChar} isBlue={(isRemediation && isHighlighted) || (!isRemediation && (!step.highlights?.length || isHighlighted))} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
+      <ArithmeticGrid 
+        operation={operation}
+        operands={problem.operands}
+        carries={step.carries}
+        regroups={step.regroups}
+        result={step.result}
+        highlights={step.highlights}
+        subRows={step.subRows}
+        mode={isRemediation ? 'static' : 'interactive'}
+        inputs={inputs}
+        onInputChange={onInputChange}
+        isAnswered={isAnswered}
+        isCorrect={isCorrect}
+        isLastStep={isLastStep}
+      />
     </div>
   );
 };
