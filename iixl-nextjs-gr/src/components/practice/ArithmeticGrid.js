@@ -23,7 +23,7 @@ const DigitInput = ({ colIdx, value, onChange, isAnswered, isCorrect, isFirst, i
     value={value || ""}
     onChange={(e) => onChange(colIdx, e.target.value)}
     disabled={isAnswered}
-    className={`w-10 h-10 text-center text-2xl font-mono font-bold outline-none transition-all
+    className={`w-full h-10 text-center text-2xl font-mono font-bold outline-none transition-all
       ${isFirst ? 'rounded-l-md border-l-2' : 'border-l-2 border-dashed'}
       ${isLast ? 'rounded-r-md border-r-2' : ''}
       border-y-2
@@ -75,23 +75,25 @@ export default function ArithmeticGrid({
   const paddedResult = pad(result || [], maxLength);
   const opChar = operation === 'addition' ? '+' : (operation === 'subtraction' ? '–' : '×');
 
-  const inputIndices = paddedResult.map((char, i) => /[0-9]/.test(char) ? i : -1).filter(i => i !== -1);
+  const inputIndices = paddedResult.map((char, i) => (/[0-9]/.test(char) || char === ',') ? i : -1).filter(i => i !== -1);
   const firstInputGroupIdx = inputIndices[0];
   const lastInputGroupIdx = inputIndices[inputIndices.length - 1];
 
   return (
-    <div className="relative flex items-center justify-center p-4 select-none">
+    <div className="relative flex items-center justify-center p-4 select-none mr-8">
       {/* Grid Columns */}
-      <div className="flex">
+      <div className="flex items-end">
         {paddedTop.map((_, colIdx) => {
           const isHighlighted = highlights?.includes(colIdx);
           const regroup = regroups?.[colIdx];
           const carry = carries?.[colIdx];
           const resultChar = paddedResult[colIdx];
           const isDigitSlot = /[0-9]/.test(resultChar);
+          const isComma = resultChar === ',';
+          const isWithinBox = colIdx >= firstInputGroupIdx && colIdx <= lastInputGroupIdx;
 
           return (
-            <div key={colIdx} className="flex flex-col items-center min-w-[2.5rem]">
+            <div key={colIdx} className={`flex flex-col items-center ${isComma ? 'min-w-[1.2rem]' : 'min-w-[2.5rem]'}`}>
               {/* Carry / Regroup Row */}
               <div className="h-6 flex items-end justify-center w-full">
                 {carry && <Digit char={carry} isBlue={isHighlighted} isCarry />}
@@ -104,14 +106,14 @@ export default function ArithmeticGrid({
               {/* Main Number Row 2 + Operator */}
               <div className="relative w-full">
                 {colIdx === 0 && (
-                   <div className="absolute -left-8 top-0 text-3xl font-light text-slate-800">
+                   <div className="absolute -left-10 top-0 text-3xl font-light text-slate-800">
                      {opChar}
                    </div>
                 )}
                 <Digit char={paddedBottom[colIdx]} isBlue={isHighlighted} />
               </div>
               
-              <div className="w-full h-[1.5px] bg-slate-800 my-1 translate-y-0.5" />
+              <div className="w-full h-[1.5px] bg-slate-800" />
 
               {/* Multiplication Sub-Rows (Partial Products) */}
               {operation === 'multiplication' && subRows?.map((row, rIdx) => {
@@ -127,22 +129,31 @@ export default function ArithmeticGrid({
               })}
 
               {operation === 'multiplication' && subRows?.length > 1 && (
-                 <div className="w-full h-[1.5px] bg-slate-800 my-1" />
+                 <div className="w-full h-[1.5px] bg-slate-800" />
               )}
 
               {/* Result Row / Input Row */}
-              <div className="mt-2">
+              <div className="w-full mt-2">
                 {showResult && (
-                  mode === 'interactive' && isLastStep && isDigitSlot ? (
-                    <DigitInput 
-                      colIdx={colIdx} 
-                      value={inputs[colIdx]} 
-                      onChange={onInputChange} 
-                      isAnswered={isAnswered} 
-                      isCorrect={isCorrect} 
-                      isFirst={colIdx === firstInputGroupIdx}
-                      isLast={colIdx === lastInputGroupIdx}
-                    />
+                  mode === 'interactive' && isLastStep && isWithinBox ? (
+                    isDigitSlot ? (
+                      <DigitInput 
+                        colIdx={colIdx} 
+                        value={inputs[colIdx]} 
+                        onChange={onInputChange} 
+                        isAnswered={isAnswered} 
+                        isCorrect={isCorrect} 
+                        isFirst={colIdx === firstInputGroupIdx}
+                        isLast={colIdx === lastInputGroupIdx}
+                      />
+                    ) : (
+                      <div className={`h-10 flex items-center justify-center text-xl font-mono border-y-2 border-blue-400 bg-white
+                        ${colIdx === firstInputGroupIdx ? 'rounded-l-md border-l-2' : 'border-l-2 border-dashed'}
+                        ${colIdx === lastInputGroupIdx ? 'rounded-r-md border-r-2' : ''}
+                      `}>
+                        {resultChar}
+                      </div>
+                    )
                   ) : (
                     <Digit char={resultChar} isBlue={!highlights?.length || isHighlighted} />
                   )
