@@ -20,6 +20,8 @@ const DigitInput = ({ colIdx, value, onChange, isAnswered, isCorrect, isFirst, i
   <input
     id={`digit-input-${colIdx}`}
     type="text"
+    inputMode="numeric"
+    pattern="[0-9]*"
     value={value || ""}
     onChange={(e) => onChange(colIdx, e.target.value)}
     disabled={isAnswered}
