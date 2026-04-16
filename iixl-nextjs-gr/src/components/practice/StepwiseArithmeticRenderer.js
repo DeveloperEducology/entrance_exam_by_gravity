@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 
@@ -24,7 +23,6 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
   const isAdd = opType.includes('addition') || opType === 'add';
   const isSub = opType.includes('subtraction') || opType === 'subtract' || opType === 'sub';
   const isMul = opType.includes('multiplication') || opType === 'multiply' || opType === 'mul';
-  
   const command = isAdd ? 'Add.' : (isSub ? 'Subtract.' : (isMul ? 'Multiply.' : 'Add.'));
 
   return (
@@ -72,6 +70,7 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
   const [inputs, setInputs] = useState({});
   const [showHelp, setShowHelp] = useState(false);
   const mode = (isAnswered && !isCorrect) || showHelp ? 'remediation' : 'challenge';
+  const opType = (problem.operation || problem.data_source?.type || problem.type || "").toLowerCase();
 
   useEffect(() => {
     if (problem?.steps) {
@@ -89,9 +88,6 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
   };
 
   if (!problem || !problem.steps || !problem.operands || problem.operands.length < 2) return <div className="p-8 text-center text-slate-500">Generating problem...</div>;
-  if (!problem.steps || problem.steps.length === 0) return <div className="p-8 text-center text-red-500">Invalid problem structure.</div>;
-
-  const isLastStep = step === problem.steps.length - 1;
 
   const handleNext = () => {
     if (step < problem.steps.length - 1) {
@@ -99,10 +95,6 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
     } else if (onSubmit && mode === 'challenge') {
         onSubmit();
     }
-  };
-
-  const handleBack = () => {
-    if (step > 0) setStep(step - 1);
   };
 
   const reset = () => {
@@ -149,6 +141,65 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
     if (onAnswer) onAnswer(fullAnswer);
   };
 
+  if (mode === 'remediation') {
+    return (
+      <div className="w-full max-w-4xl mx-auto flex flex-col items-start gap-12 bg-white rounded-2xl overflow-hidden p-6 mb-12">
+        <h3 className="text-3xl font-medium text-slate-900 mb-2 px-2">Correct Solution</h3>
+        <div className="w-full h-px bg-slate-100 mb-4" />
+        
+        {problem.steps.map((currentStep, idx) => {
+          const isAdd = opType.includes('addition') || opType === 'add';
+          const isSub = opType.includes('subtraction') || opType === 'subtract' || opType === 'sub';
+          const isMul = opType.includes('multiplication') || opType === 'multiply' || opType === 'mul';
+          
+          return (
+            <div key={idx} className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <p className="text-[19px] text-slate-800 mb-8 font-sans antialiased leading-relaxed px-2">
+                {currentStep.description || currentStep.instruction}
+              </p>
+              
+              <div className="flex justify-start px-2">
+                <ArithmeticGrid 
+                  operation={isAdd ? 'addition' : (isSub ? 'subtraction' : (isMul ? 'multiplication' : 'addition'))}
+                  operands={problem.operands}
+                  carries={currentStep.carries}
+                  regroups={currentStep.regroups}
+                  result={currentStep.result}
+                  highlights={currentStep.highlights}
+                  subRows={currentStep.subRows}
+                  mode="static"
+                  showResult={true}
+                />
+              </div>
+
+              {idx < problem.steps.length - 1 && (
+                <div className="w-full h-px bg-slate-100 mt-12 mb-4" />
+              )}
+            </div>
+          );
+        })}
+
+        {problem.footer && (
+          <div className="mt-8 pt-8 border-t border-slate-200 w-full mb-8">
+            <p className="text-xl font-medium text-slate-800 italic px-2">
+              {problem.footer}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-8 flex justify-start pb-12 px-2">
+             <button
+                 onClick={reset}
+                 className="px-8 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
+             >
+                 <RotateCcwIcon />
+                 <span>Back to Problem</span>
+             </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-500">
         <div className="overflow-hidden">
@@ -166,44 +217,22 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
           <div className="mt-8 flex items-center justify-start gap-4">
                    <button
                        onClick={handleNext}
-                       className={`min-w-[140px] px-8 py-3 rounded-xl text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2
-                           ${mode === 'remediation' 
-                             ? (isLastStep ? 'bg-slate-800' : 'bg-[#50b500] hover:bg-[#469d00]')
-                             : (isAnswered ? 'bg-slate-800' : 'bg-[#50b500] hover:bg-[#469d00] shadow-sm')
-                           }
-                       `}
+                       className="min-w-[140px] px-8 py-3 rounded-xl text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2 bg-[#50b500] hover:bg-[#469d00] shadow-sm"
                    >
                        <span className="text-xl font-bold">
-                         {mode === 'remediation' 
-                           ? (isLastStep ? (showHelp ? "Back to Problem" : "Got it") : "Next Step")
-                           : (isAnswered ? "Retry" : "Submit")
-                         }
+                         {isAnswered ? "Retry" : "Submit"}
                        </span>
-                      {mode === 'remediation' && !isLastStep && <ChevronRightIcon />}
-                  </button>
+                   </button>
 
-                  <div className="flex items-center gap-2">
-                      {mode === 'remediation' && (
-                            <button
-                                disabled={step === 0}
-                                onClick={handleBack}
-                                className="px-6 py-3 rounded-full bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-2"
-                            >
-                                <ChevronLeftIcon />
-                                <span className="text-sm font-bold">Back</span>
-                            </button>
-                      )}
-
-                      <button
-                          onClick={reset}
-                          className="flex items-center justify-center w-12 h-12 rounded-full text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 transition-all group ml-4"
-                          title="Reset problem"
-                      >
-                          <div className="group-hover:rotate-180 transition-transform duration-500">
-                              <RotateCcwIcon />
-                          </div>
-                      </button>
-                  </div>
+                   <button
+                       onClick={reset}
+                       className="flex items-center justify-center w-12 h-12 rounded-full text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 transition-all group ml-4"
+                       title="Reset problem"
+                   >
+                       <div className="group-hover:rotate-180 transition-transform duration-500">
+                           <RotateCcwIcon />
+                       </div>
+                   </button>
           </div>
         </div>
     </div>
