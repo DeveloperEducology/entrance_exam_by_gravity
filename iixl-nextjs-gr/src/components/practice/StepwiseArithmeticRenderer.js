@@ -49,7 +49,7 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
       </div>
       
       <ArithmeticGrid 
-        operation={operation}
+        operation={isAdd ? 'addition' : (isSub ? 'subtraction' : (isMul ? 'multiplication' : 'addition'))}
         operands={problem.operands}
         carries={step.carries}
         regroups={step.regroups}
