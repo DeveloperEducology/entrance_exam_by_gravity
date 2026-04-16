@@ -22,25 +22,25 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
   const isLastStep = stepIndex === problem.steps.length - 1;
   const operation = problem.operation || problem.type;
   
+  const command = operation === 'addition' ? 'Add.' : operation === 'subtraction' ? 'Subtract.' : 'Multiply.';
+
   return (
-    <div className={`flex flex-col items-center p-6 transition-all duration-500 min-h-[300px] w-full rounded-2xl
+    <div className={`flex flex-col items-start p-6 transition-all duration-500 min-h-[300px] w-full rounded-2xl
       ${isRemediation ? 'bg-amber-50/30 border-2 border-amber-100/50' : 'bg-transparent'}
     `}>
-      <div className="w-full flex justify-between items-center mb-10 pb-4 border-b border-slate-50">
-          <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-            {isRemediation ? "Step-by-Step Solution" : problem.title}
+      <div className="w-full flex justify-between items-center mb-6">
+          <h3 className="text-3xl font-medium text-slate-900 tracking-tight">
+            {isRemediation ? "Step-by-Step Solution" : command}
           </h3>
           <div className="flex items-center gap-2">
-            {!isRemediation ? (
+            {!isRemediation && (
               <button 
                 onClick={onShowSteps}
-                className="group flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-xs font-bold rounded-full uppercase tracking-wider"
+                className="group flex items-center gap-1 text-blue-600 hover:underline transition-all text-sm font-medium"
               >
                 <span>Show steps</span>
                 <ChevronRightIcon />
               </button>
-            ) : (
-                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase">Reviewing</span>
             )}
           </div>
       </div>
@@ -161,21 +161,21 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
           />
           
           <div className="mt-8 flex items-center justify-start gap-4">
-                  <button
-                      onClick={handleNext}
-                      className={`min-w-[180px] px-10 py-4 rounded-full text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2
-                          ${mode === 'remediation' 
-                            ? (isLastStep ? 'bg-slate-800' : 'bg-emerald-500 hover:bg-emerald-600')
-                            : (isAnswered ? 'bg-slate-800' : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-200/50')
-                          }
-                      `}
-                  >
-                      <span className="text-base font-bold">
-                        {mode === 'remediation' 
-                          ? (isLastStep ? (showHelp ? "Back to Problem" : "Got it") : "Next Step")
-                          : (isAnswered ? "Retry" : "Submit Answer")
-                        }
-                      </span>
+                   <button
+                       onClick={handleNext}
+                       className={`min-w-[140px] px-8 py-3 rounded-xl text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2
+                           ${mode === 'remediation' 
+                             ? (isLastStep ? 'bg-slate-800' : 'bg-[#50b500] hover:bg-[#469d00]')
+                             : (isAnswered ? 'bg-slate-800' : 'bg-[#50b500] hover:bg-[#469d00] shadow-sm')
+                           }
+                       `}
+                   >
+                       <span className="text-xl font-bold">
+                         {mode === 'remediation' 
+                           ? (isLastStep ? (showHelp ? "Back to Problem" : "Got it") : "Next Step")
+                           : (isAnswered ? "Retry" : "Submit")
+                         }
+                       </span>
                       {mode === 'remediation' && !isLastStep && <ChevronRightIcon />}
                   </button>
 

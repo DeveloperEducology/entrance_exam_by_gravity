@@ -16,20 +16,23 @@ const Digit = ({ char, isBlue, isRed, isGray, hasSlash, isCarry }) => (
   </div>
 );
 
-const DigitInput = ({ colIdx, value, onChange, isAnswered, isCorrect }) => (
+const DigitInput = ({ colIdx, value, onChange, isAnswered, isCorrect, isFirst, isLast }) => (
   <input
     id={`digit-input-${colIdx}`}
     type="text"
     value={value || ""}
     onChange={(e) => onChange(colIdx, e.target.value)}
     disabled={isAnswered}
-    className={`w-10 h-12 text-center text-2xl font-mono font-bold border-2 rounded-xl outline-none transition-all
+    className={`w-10 h-10 text-center text-2xl font-mono font-bold outline-none transition-all
+      ${isFirst ? 'rounded-l-md border-l-2' : 'border-l-2 border-dashed'}
+      ${isLast ? 'rounded-r-md border-r-2' : ''}
+      border-y-2
       ${isAnswered 
         ? (isCorrect ? 'bg-emerald-50 border-emerald-500 text-emerald-600' : 'bg-red-50 border-red-500 text-red-600')
-        : 'bg-white border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'
+        : 'bg-white border-blue-400 focus:bg-blue-50'
       }
     `}
-    placeholder="?"
+    placeholder=""
     autoComplete="off"
   />
 );
@@ -42,7 +45,7 @@ export default function ArithmeticGrid({
   result = [], 
   highlights = [],
   subRows = [],
-  mode = 'static', // 'static' | 'interactive'
+  mode = 'static', 
   inputs = {},
   onInputChange,
   isAnswered,
@@ -72,15 +75,12 @@ export default function ArithmeticGrid({
   const paddedResult = pad(result || [], maxLength);
   const opChar = operation === 'addition' ? '+' : (operation === 'subtraction' ? '–' : '×');
 
-  return (
-    <div className="relative flex items-start p-4">
-      {/* Operation Symbol */}
-      <div className="flex flex-col items-center mr-6 pt-16">
-         <div className="text-4xl h-10 flex items-center text-slate-300 font-light italic">
-           {opChar}
-         </div>
-      </div>
+  const inputIndices = paddedResult.map((char, i) => /[0-9]/.test(char) ? i : -1).filter(i => i !== -1);
+  const firstInputGroupIdx = inputIndices[0];
+  const lastInputGroupIdx = inputIndices[inputIndices.length - 1];
 
+  return (
+    <div className="relative flex items-center justify-center p-4 select-none">
       {/* Grid Columns */}
       <div className="flex">
         {paddedTop.map((_, colIdx) => {
@@ -91,18 +91,27 @@ export default function ArithmeticGrid({
           const isDigitSlot = /[0-9]/.test(resultChar);
 
           return (
-            <div key={colIdx} className="flex flex-col items-center min-w-[2.25rem] transition-all duration-300">
+            <div key={colIdx} className="flex flex-col items-center min-w-[2.5rem]">
               {/* Carry / Regroup Row */}
               <div className="h-6 flex items-end justify-center w-full">
                 {carry && <Digit char={carry} isBlue={isHighlighted} isCarry />}
                 {regroup && <Digit char={regroup.val} isBlue={isHighlighted} isCarry />}
               </div>
 
-              {/* Main Number Rows */}
+              {/* Main Number Row 1 */}
               <Digit char={paddedTop[colIdx]} isBlue={isHighlighted} hasSlash={regroup?.slash} />
-              <Digit char={paddedBottom[colIdx]} isBlue={isHighlighted} />
               
-              <div className="w-full h-[2.5px] bg-slate-900 my-2 rounded-full" />
+              {/* Main Number Row 2 + Operator */}
+              <div className="relative w-full">
+                {colIdx === 0 && (
+                   <div className="absolute -left-8 top-0 text-3xl font-light text-slate-800">
+                     {opChar}
+                   </div>
+                )}
+                <Digit char={paddedBottom[colIdx]} isBlue={isHighlighted} />
+              </div>
+              
+              <div className="w-full h-[1.5px] bg-slate-800 my-1 translate-y-0.5" />
 
               {/* Multiplication Sub-Rows (Partial Products) */}
               {operation === 'multiplication' && subRows?.map((row, rIdx) => {
@@ -118,23 +127,27 @@ export default function ArithmeticGrid({
               })}
 
               {operation === 'multiplication' && subRows?.length > 1 && (
-                 <div className="w-full h-[2.5px] bg-slate-900 my-2 rounded-full" />
+                 <div className="w-full h-[1.5px] bg-slate-800 my-1" />
               )}
 
               {/* Result Row / Input Row */}
-              {showResult && (
-                mode === 'interactive' && isLastStep && isDigitSlot ? (
-                  <DigitInput 
-                    colIdx={colIdx} 
-                    value={inputs[colIdx]} 
-                    onChange={onInputChange} 
-                    isAnswered={isAnswered} 
-                    isCorrect={isCorrect} 
-                  />
-                ) : (
-                  <Digit char={resultChar} isBlue={!highlights?.length || isHighlighted} />
-                )
-              )}
+              <div className="mt-2">
+                {showResult && (
+                  mode === 'interactive' && isLastStep && isDigitSlot ? (
+                    <DigitInput 
+                      colIdx={colIdx} 
+                      value={inputs[colIdx]} 
+                      onChange={onInputChange} 
+                      isAnswered={isAnswered} 
+                      isCorrect={isCorrect} 
+                      isFirst={colIdx === firstInputGroupIdx}
+                      isLast={colIdx === lastInputGroupIdx}
+                    />
+                  ) : (
+                    <Digit char={resultChar} isBlue={!highlights?.length || isHighlighted} />
+                  )
+                )}
+              </div>
             </div>
           );
         })}
