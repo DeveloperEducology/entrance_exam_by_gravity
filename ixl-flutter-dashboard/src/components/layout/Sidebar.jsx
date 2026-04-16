@@ -10,6 +10,7 @@ export function Sidebar() {
         { label: 'Grades', icon: BookOpen, to: '/grades' },
         { label: 'Subjects', icon: Book, to: '/subjects' },
         { label: 'Units', icon: LayoutDashboard, to: '/units' },
+        { label: 'Lessons', icon: BookOpen, to: '/lessons' },
         { label: 'Visual Editor', icon: Edit3, to: '/visual-editor' },
         { label: 'Equations', icon: Sigma, to: '/equation-reference' },
         { label: 'Micro Skills', icon: Users, to: '/micro-skills' },

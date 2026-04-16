@@ -1,0 +1,67 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  margin: 20px 0 30px;
+  max-width: 550px;
+  font-family: 'Open Sans', var(--font-body), sans-serif;
+}
+
+.topLabelsRow {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.cornerLabel {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.topLabel {
+  text-align: center;
+  font-size: 15px;
+  color: #111;
+}
+
+.gridArea {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gridRow {
+  display: flex;
+  gap: 4px;
+  /* Minimum row height so blocks look chunky */
+  min-height: 60px;
+}
+
+.leftLabel {
+  width: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+  font-size: 15px;
+  color: #111;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fallback color if none matches */
+  background-color: #eee;
+}
+
+.cellValue {
+  font-weight: 700;
+  font-size: 18px;
+  color: #111;
+}
+
+/* Colors matching IXL */
+.bg_yellow { background-color: #fce462; }
+.bg_cyan { background-color: #7ae2cf; }
+.bg_orange { background-color: #f0b889; }
+.bg_pink { background-color: #ffa2d4; }

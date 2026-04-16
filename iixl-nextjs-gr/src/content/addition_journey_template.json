@@ -1,0 +1,16 @@
+
+{
+  "id": "addition_journey_v1_tpl",
+  "logic_type": "arithmetic_journey_v1",
+  "data_source": {
+    "type": "addition",
+    "carry": true,
+    "range": [10000, 99999]
+  },
+  "parts": [
+    {
+      "type": "text",
+      "content": "Step through this multidigit addition problem to understand how we add numbers with carries."
+    }
+  ]
+}

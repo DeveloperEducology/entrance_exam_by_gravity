@@ -1,0 +1,199 @@
+.container {
+  min-height: 100vh;
+  background-color: #f6f8fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #24292e;
+}
+
+.header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e1e4e8;
+  padding: 15px 30px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.navBar {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.backLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  transition: color 0.15s ease;
+}
+
+.backLink:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 18px;
+  color: #28a745;
+  letter-spacing: -0.5px;
+}
+
+.mainContent {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.articleCard {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 50px 60px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid #e1e4e8;
+}
+
+/* Markdown Scoped Styles */
+.markdownBody {
+  line-height: 1.7;
+  font-size: 17px;
+  color: #333;
+}
+
+.markdownBody h1 {
+  font-size: 2.2em;
+  padding-bottom: 0.4em;
+  border-bottom: 2px solid #f0f0f0;
+  margin-top: 24px;
+  margin-bottom: 20px;
+  color: #007bff;
+  font-weight: 800;
+}
+
+.markdownBody h2 {
+  font-size: 1.6em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #f0f0f0;
+  margin-top: 40px;
+  margin-bottom: 18px;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.markdownBody h3 {
+  font-size: 1.3em;
+  margin-top: 30px;
+  margin-bottom: 16px;
+  color: #34495e;
+  font-weight: 600;
+}
+
+.markdownBody p {
+  margin-bottom: 1.2em;
+}
+
+.markdownBody ul, .markdownBody ol {
+  padding-left: 2em;
+  margin-bottom: 1.4em;
+}
+
+.markdownBody li {
+  margin-bottom: 0.6em;
+}
+
+.markdownBody strong {
+  font-weight: 600;
+  color: #222;
+}
+
+.markdownBody hr {
+  height: 1px;
+  background-color: #eee;
+  border: none;
+  margin: 40px 0;
+}
+
+/* Table Styles */
+.markdownBody table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 30px 0;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.markdownBody table thead {
+  background-color: #f8f9fa;
+}
+
+.markdownBody table th {
+  padding: 14px 20px;
+  font-weight: 700;
+  text-align: center;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.markdownBody table th:last-child {
+  border-right: none;
+}
+
+.markdownBody table td {
+  padding: 12px 20px;
+  border-bottom: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+  color: #444;
+  vertical-align: middle;
+}
+
+.markdownBody table td:last-child {
+  border-right: none;
+}
+
+.markdownBody table tr:last-child td {
+  border-bottom: none;
+}
+
+.markdownBody table tr:nth-child(even) {
+  background-color: #fdfdfd;
+}
+
+.markdownBody table tr:hover {
+  background-color: #f5f9ff;
+}
+
+.markdownBody table strong {
+  color: #007bff;
+}
+
+/* Math Override Styles */
+.markdownBody [class*="katex-display"] {
+  margin: 25px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 0;
+}
+
+.markdownBody [class*="katex"] {
+  color: #c0392b;
+  font-size: 1.05em;
+}
+
+@media (max-width: 768px) {
+  .articleCard {
+    padding: 30px 20px;
+  }
+}

@@ -35,6 +35,7 @@ function App() {
           <Route path="grades" element={<ResourceList title="Grades" tableName="grades" columns={['id', 'name', 'sort_order', 'color_hex']} sortBy="sort_order" sortAscending={true} />} />
 
           <Route path="units" element={<ResourceList title="Units" tableName="units" columns={['id', 'name', 'code', 'sort_order', 'subject_id']} sortBy="sort_order" sortAscending={true} relationships={{ subject_id: 'subjects' }} filterColumn="subject_id" upstreamFilter={{ filterColumn: 'subject_id', parentTable: 'grades', parentColumn: 'grade_id', parentLabel: 'Grade' }} />} />
+          <Route path="lessons" element={<ResourceList title="Lessons" tableName="lessons" columns={['id', 'slug', 'title', 'microskillId']} sortBy="title" sortAscending={true} />} />
           <Route path="micro-skills" element={<MicroSkills />} />
 
           <Route path="subjects" element={<ResourceList title="Subjects" tableName="subjects" columns={['id', 'name', 'slug', 'grade_id']} sortBy="name" sortAscending={true} relationships={{ grade_id: 'grades' }} filterColumn="grade_id" />} />

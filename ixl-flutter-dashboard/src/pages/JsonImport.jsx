@@ -11,7 +11,7 @@ export function JsonImport() {
     const [loading, setLoading] = useState(false);
     
     // Import Mode
-    const [importMode, setImportMode] = useState('questions'); // 'questions' | 'micro_skills' | 'full'
+    const [importMode, setImportMode] = useState('questions'); // 'questions' | 'micro_skills' | 'lessons' | 'full'
 
     // State for Cascading Dropdowns
     const [grades, setGrades] = useState([]);
@@ -150,6 +150,7 @@ export function JsonImport() {
             drag_items,
             data_source,
             scaffold,
+            concepts: q.concepts || q.concept_list || [],
             solution,
             correct_answer_text,
             show_submit_button: q.show_submit_button ?? q.showSubmitButton ?? q.layout_config?.show_submit ?? true,
@@ -233,6 +234,28 @@ export function JsonImport() {
                 setStatus({ type: 'success', message: `Successfully imported ${payload.length} questions!` });
                 setJsonInput('');
             }
+
+            // LESSONS MODE
+            if (importMode === 'lessons') {
+                const items = (Array.isArray(parsedData) ? parsedData : [parsedData]).flat();
+                
+                const payload = items.map(item => ({
+                    ...item,
+                    microskillId: selectedSkill || item.microskillId,
+                    id: item.id || crypto.randomUUID()
+                }));
+ 
+                const res = await fetch('/api/lessons/upsert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to import lessons');
+                
+                setStatus({ type: 'success', message: `Successfully imported ${payload.length} lessons!` });
+                setJsonInput('');
+                return;
+            }
  
             // TEMPLATES MODE
             if (importMode === 'templates') {
@@ -293,6 +316,7 @@ export function JsonImport() {
                                 { id: 'questions', label: 'Questions', icon: HelpCircle },
                                 { id: 'micro_skills', label: 'Micro Skills', icon: Code },
                                 { id: 'templates', label: 'Templates', icon: Layers },
+                                { id: 'lessons', label: 'Lessons', icon: Layers },
                                 { id: 'full', label: 'Whole Repository', icon: FileJson }
                             ].map(mode => (
                                 <button
@@ -344,7 +368,7 @@ export function JsonImport() {
                                     </select>
                                 </div>
 
-                                {['questions', 'templates'].includes(importMode) && (
+                                {['questions', 'templates', 'lessons'].includes(importMode) && (
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Micro Skill</label>
                                         <select value={selectedSkill} onChange={(e) => setSelectedSkill(e.target.value)} disabled={!selectedUnit} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50">
@@ -392,7 +416,8 @@ export function JsonImport() {
                             placeholder={
                                 importMode === 'questions' ? "// Paste Questions Array here..." :
                                 importMode === 'micro_skills' ? "// Paste Micro Skills Array here (e.g. { name: '..', code: '..' })" :
-                                "// Paste Whole DB Object here { grades: [], units: [], ... }"
+                                importMode === 'lessons' ? "// Paste Lessons Array here..." :
+                                " // Paste Whole DB Object here { grades: [], units: [], ... }"
                             }
                         />
                         <div className="absolute top-6 right-6 opacity-20 group-hover:opacity-40 transition-opacity">

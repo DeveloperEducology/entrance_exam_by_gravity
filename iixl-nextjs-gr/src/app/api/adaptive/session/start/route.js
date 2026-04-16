@@ -36,8 +36,8 @@ export async function POST(req) {
   }
 
   let microskillId = await resolveMicroskillIdByKey(microskillKey);
-  if (!microskillId && microskillKey === 'place-value-auto-intro') {
-    microskillId = 'place-value-auto-intro';
+  if (!microskillId && (microskillKey === 'place-value-auto-intro' || microskillKey === 'lcm-step-by-step' || microskillKey === 'long-division-journey')) {
+    microskillId = microskillKey;
   }
 
   if (!microskillId) {

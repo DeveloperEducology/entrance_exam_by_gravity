@@ -173,7 +173,9 @@ export function generateSubtractionJourney(v1, v2) {
     id: `arith_journey_subtraction_${Date.now()}`,
     type: "arithmetic_journey",
     operation: "subtraction",
-    title: `Subtraction: ${formatIndian(n1)} – ${formatIndian(n2)}`,
+    // title: `Subtraction`,
+        title: `Subtraction: ${formatIndian(n1)} – ${formatIndian(n2)}`,
+
     operands: [s1Full, s2Full],
     steps,
     footer: `The difference is ${formatIndian(res)}.`

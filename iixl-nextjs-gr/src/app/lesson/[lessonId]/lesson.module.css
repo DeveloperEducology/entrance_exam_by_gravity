@@ -1,0 +1,290 @@
+.container {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  font-family: var(--font-body), sans-serif;
+  color: #333;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 10px;
+  margin-bottom: 25px;
+}
+
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.title {
+  font-family: var(--font-body), sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #008ecc;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.printBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  display: flex;
+  align-items: center;
+  padding: 5px;
+}
+.printBtn:hover {
+  color: #666;
+}
+
+.shareArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.shareIcons {
+  display: flex;
+  gap: 5px;
+}
+
+.iconLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: white;
+  text-decoration: none;
+}
+.iconLink.link { background-color: #7bc143; }
+.iconLink.fb { background-color: #3b5998; }
+.iconLink.x { background-color: #000000; }
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 40px;
+  align-items: start;
+}
+
+.leftCol {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.sidebarArea {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.returnBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  padding: 10px 16px;
+  border: 2px solid #57c6e6;
+  border-radius: 25px;
+  background-color: white;
+  color: #57c6e6;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  line-height: 1.2;
+}
+.returnBtn:hover {
+  background-color: #f0fafd;
+}
+.returnBtnIcon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.relatedBox {
+  background-color: #f5f8fc;
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.relatedTitle {
+  font-weight: 700;
+  font-size: 18px;
+  color: #333;
+  margin: 0 0 15px 0;
+}
+
+.relatedSection {
+  margin-bottom: 20px;
+}
+.relatedSection:last-child {
+  margin-bottom: 0;
+}
+
+.relatedSectionTitle {
+  font-weight: 700;
+  color: #008ecc;
+  font-size: 14px;
+  margin: 0 0 10px 0;
+}
+
+.relatedList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.relatedList li a {
+  text-decoration: none;
+  color: #008ecc;
+  font-size: 14px;
+}
+.relatedList li a:hover {
+  text-decoration: underline;
+}
+
+.videoThumb {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  overflow: hidden;
+  background-color: #e0f2f1;
+  position: relative;
+}
+.videoThumb::after {
+  content: "▶";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  background: rgba(0,0,0,0.4);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.textBlock {
+  margin-bottom: 20px;
+  color: #111;
+}
+
+.highlight {
+  font-weight: 700;
+}
+
+.linkText {
+  color: #008ecc;
+  text-decoration: underline;
+}
+
+.mathBlock {
+  margin: 20px 0;
+  padding-left: 20px;
+  font-weight: 600;
+}
+
+.pvTable {
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+.pvTable td, .pvTable th {
+  border: 1px solid #ccc;
+  text-align: center;
+  padding: 12px 18px;
+  min-width: 60px;
+}
+.pvTable th {
+  background-color: #fef5b5;
+  font-weight: 400;
+  font-size: 12px;
+  color: #333;
+}
+.pvTable td {
+  font-size: 20px;
+  font-weight: 700;
+  background-color: white;
+}
+
+.cPink { color: #d232a9; }
+.cGreen { color: #008f51; }
+.cBlue { color: #007bc0; }
+.cPurple { color: #763cd3; }
+.cTeal { color: #00968f; }
+
+.tryBtnContainer {
+  margin-top: 40px;
+}
+
+.tryTitle {
+  color: #57c6e6;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.practiceCard {
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 400px;
+}
+
+.practiceContent {
+  padding: 20px;
+  background: white;
+}
+
+.practiceInput {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 8px;
+  margin-top: 15px;
+}
+
+.practiceFooter {
+  background-color: #f5f8fc;
+  padding: 10px 20px;
+  font-size: 12px;
+  border-top: 1px solid #ccc;
+}
+.practiceFooter a {
+  color: #008ecc;
+  text-decoration: none;
+}
+.practiceFooter a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}

@@ -878,16 +878,11 @@ if (logic === 'read_table_generic_comparison_v1') {
     inst.solution = [
       { type: 'text', content: `### Step-by-Step Solution`, isVertical: true },
       { type: 'text', content: `To find how many ₹${noteFmt} notes are in ₹${amountFmt}, we look at the **Tens** place and everything to its left.`, isVertical: true },
-      
-      // TEST: Using our new arithmetic_grid component here!
       { 
-        type: 'arithmetic_grid', 
-        operation: 'addition', 
-        operands: [String(totalAmount), '0'], // Using 0 as second operand just to show the format
-        highlights: [Math.max(0, String(totalAmount).length - 2)], // Highlight the Tens place
-        showResult: false
+        type: 'text', 
+        content: `| Thousands | Hundreds | Tens | Ones |\n| :---: | :---: | :---: | :---: |\n| ${Math.floor(totalAmount/1000)} | ${Math.floor((totalAmount%1000)/100)} | **${Math.floor((totalAmount%100)/10)}** | ${totalAmount%10} |`, 
+        isVertical: true 
       },
-
       { type: 'text', content: `1. **Identify the place value:** ₹${noteFmt} notes correspond to the Tens place.`, isVertical: true },
       { type: 'text', content: `2. **Include everything to the left:** We count all thousands, hundreds, and tens together.`, isVertical: true },
       { type: 'text', content: `3. **Calculate:** There are **${totalNotes}** tens in the number ${totalAmount}.`, isVertical: true },

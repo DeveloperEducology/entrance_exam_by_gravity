@@ -22,22 +22,22 @@ import SafeImage from './SafeImage';
 
 const POOL_ID = '__pool__';
 
-function DraggableItem({ 
-  id, 
-  item, 
-  isSelected, 
-  onSelect, 
-  isOverlay, 
-  isAnswered, 
-  isCorrect, 
-  disabled 
+function DraggableItem({
+  id,
+  item,
+  isSelected,
+  onSelect,
+  isOverlay,
+  isAnswered,
+  isCorrect,
+  disabled
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id,
     disabled: disabled
   });
 
-  const style = { 
+  const style = {
     transform: CSS.Translate.toString(transform),
     touchAction: 'none',
     zIndex: isDragging ? 40 : undefined
@@ -84,13 +84,13 @@ function DraggableItem({
   );
 }
 
-function DropZone({ 
-  id, 
-  children, 
-  isTarget, 
-  onSlotClick, 
-  hint, 
-  className, 
+function DropZone({
+  id,
+  children,
+  isTarget,
+  onSlotClick,
+  hint,
+  className,
   isBucket = false,
   disabled
 }) {
@@ -229,22 +229,22 @@ export default function DragDropRendererV2({
     setSelectedId(null);
   };
 
-  const activeItem = useMemo(() => 
+  const activeItem = useMemo(() =>
     dragItems.find(item => item.id === activeId),
     [activeId, dragItems]
   );
 
-  const requiredItemIds = useMemo(() => 
+  const requiredItemIds = useMemo(() =>
     dragItems.filter(item => item.targetGroupId && item.targetGroupId.trim() !== '').map(item => item.id),
     [dragItems]
   );
 
-  const canSubmit = requiredItemIds.length === 0 || 
+  const canSubmit = requiredItemIds.length === 0 ||
     requiredItemIds.every(id => !!placements[id]);
 
   return (
     <div className={styles.container} onClick={() => setSelectedId(null)}>
-      <motion.div 
+      <motion.div
         className={styles.questionCard}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -254,13 +254,13 @@ export default function DragDropRendererV2({
         </div>
 
         <div className={styles.title}>
-           <QuestionParts parts={question.parts} />
+          <QuestionParts parts={question.parts} />
         </div>
 
-        <DndContext 
+        <DndContext
           sensors={sensors}
           collisionDetection={rectIntersection}
-          onDragStart={handleDragStart} 
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
@@ -273,18 +273,18 @@ export default function DragDropRendererV2({
             {dragItems.map((item, idx) => {
               const isPlaced = !!placements[item.id];
               return (
-                <DropZone 
-                  key={`slot-${idx}`} 
-                  id={`slot-${idx}`} 
+                <DropZone
+                  key={`slot-${idx}`}
+                  id={`slot-${idx}`}
                   className={styles.slot}
                   onSlotClick={() => handleZoneClick(POOL_ID)}
                   isTarget={!!selectedId && placements[selectedId]}
                   disabled={isAnswered}
                 >
                   {!isPlaced && (
-                    <DraggableItem 
-                      id={item.id} 
-                      item={item} 
+                    <DraggableItem
+                      id={item.id}
+                      item={item}
                       isSelected={selectedId === item.id}
                       onSelect={handleItemSelect}
                       isAnswered={isAnswered}
@@ -302,8 +302,8 @@ export default function DragDropRendererV2({
             {dropGroups.map((group) => (
               <div key={group.id} className={styles.dropGroup}>
                 <div className={styles.groupLabel}>{group.label}</div>
-                <DropZone 
-                  id={group.id} 
+                <DropZone
+                  id={group.id}
                   className={styles.bucket}
                   isBucket
                   onSlotClick={handleZoneClick}
@@ -313,9 +313,9 @@ export default function DragDropRendererV2({
                 >
                   {getItemsInGroup(group.id).map(item => (
                     <div key={item.id} className={styles.bucketItemWrap}>
-                      <DraggableItem 
-                        id={item.id} 
-                        item={item} 
+                      <DraggableItem
+                        id={item.id}
+                        item={item}
                         isSelected={selectedId === item.id}
                         onSelect={handleItemSelect}
                         isAnswered={isAnswered}
@@ -339,7 +339,7 @@ export default function DragDropRendererV2({
 
         <div className={styles.footer}>
           {!isAnswered ? (
-            <button 
+            <button
               className={styles.submitButton}
               disabled={!canSubmit}
               onClick={() => onSubmit()}

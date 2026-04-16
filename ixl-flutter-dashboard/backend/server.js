@@ -79,6 +79,7 @@ const questionSchema = new Schema({
     complexity: Number,
     show_submit_button: { type: Boolean, default: false },
     adaptive_config: Schema.Types.Mixed,
+    concepts: { type: [Schema.Types.Mixed], default: [] },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
 }, { _id: false });
@@ -101,6 +102,19 @@ const templateSchema = new Schema({
     id: String,
     name: String,
     config: Schema.Types.Mixed,
+    concepts: { type: [Schema.Types.Mixed], default: [] },
+    created_at: { type: Date, default: Date.now },
+    updated_at: { type: Date, default: Date.now },
+}, { _id: false, strict: false });
+
+const lessonSchema = new Schema({
+    _id: { type: String, required: true, default: () => crypto.randomUUID() },
+    id: String,
+    slug: String,
+    title: String,
+    microskillId: String,
+    contentBlocks: { type: [Schema.Types.Mixed], default: [] },
+    relatedItems: Schema.Types.Mixed,
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
 }, { _id: false, strict: false });
@@ -112,6 +126,7 @@ const MicroSkill = mongoose.model('MicroSkill', microSkillSchema, 'micro_skills'
 const Question = mongoose.model('Question', questionSchema, 'questions');
 const Media = mongoose.model('Media', mediaSchema, 'media');
 const Template = mongoose.model('Template', templateSchema, 'templates');
+const Lesson = mongoose.model('Lesson', lessonSchema, 'lessons');
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 // uuid is replaced by crypto.randomUUID (no external dep needed)
@@ -279,6 +294,7 @@ api.use('/micro_skills', makeCrudRouter(MicroSkill));
 api.use('/questions', makeCrudRouter(Question));
 api.use('/media', makeCrudRouter(Media));
 api.use('/templates', makeCrudRouter(Template));
+api.use('/lessons', makeCrudRouter(Lesson));
 
 // ─── Special: Questions with micro_skills join ─────────────────────────────────
 api.get('/questions_with_skills', async (req, res) => {

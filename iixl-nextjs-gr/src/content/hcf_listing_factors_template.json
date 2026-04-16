@@ -1,0 +1,100 @@
+{
+  "id": "hcf_listing_factors_template",
+  "type": "stepwise",
+  "logic_type": "hcf_listing_factors_v1",
+  "template_id": "hcf_listing_basic",
+  "difficulty": "medium",
+  "marks": 1,
+  "show_submit_button": true,
+  "is_multi_select": false,
+  "is_vertical": false,
+  "question_text": "Find the HCF of {numA} and {numB} using the Listing Factors method.",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Find the HCF of **{numA}** and **{numB}** by listing their factors."
+    }
+  ],
+  "adaptiveConfig": {
+    "data_source": {
+      "range": [12, 100],
+      "max_factors": 12
+    },
+    "variables": {}
+  },
+  "steps": [
+    {
+      "step_number": 1,
+      "type": "input_array",
+      "instruction": "List all the factors of **{numA}** in ascending order.",
+      "placeholder": "Factor",
+      "expected_answer": "{factorsA}",
+      "feedback": {
+        "success": "Correct! Those are all the factors of {numA}.",
+        "fail": "Remember, a factor is a number that divides {numA} exactly without a remainder."
+      }
+    },
+    {
+      "step_number": 2,
+      "type": "input_array",
+      "instruction": "Now, list all the factors of **{numB}** in ascending order.",
+      "placeholder": "Factor",
+      "expected_answer": "{factorsB}",
+      "feedback": {
+        "success": "Great! You've listed all the factors of {numB}.",
+        "fail": "Check if you missed any numbers that divide {numB} evenly."
+      }
+    },
+    {
+      "step_number": 3,
+      "type": "multi_select",
+      "instruction": "Identify the **common factors** that appear in both lists.",
+      "ui_layout": "side_by_side_lists",
+      "data_source": {
+        "list_1": { "label": "Factors of {numA}", "values": "{factorsA}" },
+        "list_2": { "label": "Factors of {numB}", "values": "{factorsB}" }
+      },
+      "expected_answer": "{commonFactors}",
+      "feedback": {
+        "success": "Exactly! {commonFactors} are the factors common to both numbers.",
+        "fail": "Look for numbers that are present in both the factor lists above."
+      }
+    },
+    {
+      "step_number": 4,
+      "type": "single_input",
+      "instruction": "The HCF is the largest of these common factors. What is the **HCF** of {numA} and {numB}?",
+      "expected_answer": "{hcf}",
+      "feedback": {
+        "success": "Excellent! The Highest Common Factor (HCF) is {hcf}. 🌟",
+        "fail": "Look at your list of common factors. Which one is the greatest?"
+      }
+    }
+  ],
+  "solution": [
+    {
+      "type": "paragraph",
+      "content": "To find the HCF of {numA} and {numB}:"
+    },
+    {
+      "type": "paragraph",
+      "content": "1. **List the factors of {numA}:** {factorsA_joined}"
+    },
+    {
+      "type": "paragraph",
+      "content": "2. **List the factors of {numB}:** {factorsB_joined}"
+    },
+    {
+      "type": "paragraph",
+      "content": "3. **Common Factors:** The numbers appearing in both lists are {commonFactors_joined}."
+    },
+    {
+      "type": "paragraph",
+      "content": "4. **Highest Common Factor:** The greatest among these common factors is {hcf}."
+    },
+    {
+      "type": "paragraph",
+      "content": "**Hence, HCF({numA}, {numB}) = {hcf}.**"
+    }
+  ]
+}

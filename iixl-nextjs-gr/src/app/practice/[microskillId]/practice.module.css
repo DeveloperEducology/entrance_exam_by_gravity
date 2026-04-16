@@ -1451,3 +1451,48 @@
     font-size: 1.25rem;
     font-weight: 800;
 }
+
+.notReadyContainer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px dashed #d4e8f7;
+    width: 100%;
+}
+
+.notReadyHeader {
+    color: #637a94;
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.8rem 0;
+}
+
+.notReadyList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.notReadyLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #0f6ea8;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.notReadyLink:hover {
+    color: #0369A1;
+    text-decoration: underline;
+}
+
+.notReadyIcon {
+    opacity: 0.7;
+}

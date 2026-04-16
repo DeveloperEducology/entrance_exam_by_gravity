@@ -1,0 +1,17 @@
+
+{
+  "id": "multiplication_journey_v1_tpl",
+  "logic_type": "arithmetic_journey_v1",
+  "data_source": {
+    "type": "multiplication",
+    "carry": true,
+    "range_top": [100, 999],
+    "range_bottom": [20, 99]
+  },
+  "parts": [
+    {
+      "type": "text",
+      "content": "Step through this multiplication problem to see how partial products are calculated and added."
+    }
+  ]
+}

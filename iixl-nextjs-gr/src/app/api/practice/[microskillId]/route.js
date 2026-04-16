@@ -69,7 +69,9 @@ function toPublicQuestion(question) {
     items: question.items ?? [],
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
+    problem: question.problem ?? null,
     adaptiveConfig: question.adaptiveConfig ?? null,
+    ui_config: question.ui_config ?? null,
     correctAnswerText: question.correctAnswerText ?? '',
     solution: question.solution ?? '',
     measureTarget: getMeasureTarget(question),
@@ -81,6 +83,7 @@ function toPublicQuestion(question) {
     showSubmitButton: Boolean(question.showSubmitButton),
     tokens: question.tokens ?? [],
     concepts: question.concepts ?? [],
+    steps: question.steps ?? [],
   };
 }
 
@@ -89,9 +92,23 @@ export async function GET(_req, { params }) {
   const { microskillId: microskillKey } = await params;
   const microskillId = await resolveMicroskillIdByKey(microskillKey);
 
-  if (!microskillId && microskillKey === 'place-value-auto-intro') {
-    const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
-    const generatedQuestion = generatePlaceValueQuestion();
+  const isLcmStep = microskillKey === 'lcm-step-by-step' || microskillId === 'lcm-step-by-step';
+  if (!microskillId && (microskillKey === 'place-value-auto-intro' || isLcmStep)) {
+    let generatedQuestion;
+    if (microskillKey === 'place-value-auto-intro') {
+      const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
+      generatedQuestion = generatePlaceValueQuestion();
+    } else {
+      generatedQuestion = {
+        id: 'lcm_journey_' + Date.now(),
+        type: 'stepwise',
+        logic_type: 'lcm_journey_v1',
+        adaptiveConfig: { variables: {} }
+      };
+      // Must instantiate it before returning to public
+      const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
+      generatedQuestion = toPublicQuestion(instantiateTemplate(generatedQuestion));
+    }
     
     serverLog('api.practice.get', 'auto-generated question returned', { microskillKey });
     return NextResponse.json({
