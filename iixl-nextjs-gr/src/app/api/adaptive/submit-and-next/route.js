@@ -247,6 +247,15 @@ function buildBasicFeedback(question, selectedAnswer = null) {
       const idx = Number(question.correctAnswerIndex);
       return Number.isFinite(idx) ? [idx] : [];
     })(),
+    // Attach arithmetic journey details if applicable so Remediation/Feedback shows them
+    ...(type === 'arithmetic_journey' || question.logic_type === 'arithmetic_journey_v1' ? {
+        steps: question.steps,
+        operands: question.operands,
+        operation: question.operation,
+        title: question.title,
+        footer: question.footer,
+        type: 'arithmetic_journey'
+    } : {})
   };
 }
 

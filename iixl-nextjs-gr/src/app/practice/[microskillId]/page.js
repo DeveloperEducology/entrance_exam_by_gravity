@@ -1428,9 +1428,9 @@ export default function PracticePage() {
               <div className={styles.reviewCard}>
                 <h4 className={styles.reviewTitle}>Question</h4>
                 <div className={styles.reviewQuestion}>
-                  {currentQuestion?.type === 'fillInTheBlank' || currentQuestion?.type === 'gridArithmetic' || currentQuestion?.type === 'shadeGrid' ? (
+                  {['fillintheblank', 'gridarithmetic', 'shadegrid', 'arithmetic_journey'].includes(String(currentQuestion?.type || '').toLowerCase()) ? (
                     <QuestionRenderer
-                      question={reviewQuestion}
+                      question={currentQuestion?.type === 'arithmetic_journey' ? feedbackData : reviewQuestion}
                       userAnswer={
                         currentQuestion?.type === 'shadeGrid' ? shadeGridCorrectAnswer :
                           (isFillInTheBlankType && correctFillInTheBlankAnswer) ? correctFillInTheBlankAnswer :
@@ -1475,7 +1475,16 @@ export default function PracticePage() {
 
               {/* Step 3: Explanation */}
               <h3 className={styles.explanationHeading}>Explanation</h3>
-              {hasStructuredSolution ? (
+              {currentQuestion?.type === 'arithmetic_journey' ? (
+                <div className={styles.solution} style={{ padding: '0' }}>
+                   <QuestionRenderer 
+                     question={feedbackData}
+                     isAnswered
+                     isCorrect={false}
+                     showHelp={true}
+                   />
+                </div>
+              ) : hasStructuredSolution ? (
                 <div className={styles.solutionSections}>
                   {solutionSections.map((section, idx) => (
                     (() => {
