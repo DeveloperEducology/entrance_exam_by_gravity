@@ -20,9 +20,10 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
   const isRemediation = mode === 'remediation';
   const step = problem.steps[stepIndex] || problem.steps[0];
   const isLastStep = stepIndex === problem.steps.length - 1;
-  const operation = problem.operation || problem.type;
-  
-  const command = operation === 'addition' ? 'Add.' : operation === 'subtraction' ? 'Subtract.' : 'Multiply.';
+  const operation = problem.operation || problem.type || 'addition';
+  const command = operation.includes('addition') ? 'Add.' : 
+                  operation.includes('subtraction') ? 'Subtract.' : 
+                  operation.includes('multiplication') ? 'Multiply.' : 'Add.';
 
   return (
     <div className={`flex flex-col items-start p-6 transition-all duration-500 min-h-[300px] w-full rounded-2xl
