@@ -20,7 +20,7 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
   const isRemediation = mode === 'remediation';
   const step = problem.steps[stepIndex] || problem.steps[0];
   const isLastStep = stepIndex === problem.steps.length - 1;
-  const opType = (problem.operation || problem.type || "").toLowerCase();
+  const opType = (problem.operation || problem.data_source?.type || problem.type || "").toLowerCase();
   const isAdd = opType.includes('addition') || opType === 'add';
   const isSub = opType.includes('subtraction') || opType === 'subtract' || opType === 'sub';
   const isMul = opType.includes('multiplication') || opType === 'multiply' || opType === 'mul';
