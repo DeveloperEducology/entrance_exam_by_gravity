@@ -963,16 +963,26 @@ if (logic === 'regrouping_multi_blank_v1') {
       { 
         type: 'pair', 
         parts: contentParts, 
-        isVertical: false, // Set to false so they stay in a row until they need to wrap
+        isVertical: false,
         style: { 
-            marginTop: '20px', 
-            fontSize: '22px', 
+            marginTop: '24px', 
+            fontSize: '24px', 
             display: 'flex', 
-            flexWrap: 'wrap', // Essential for Mobile
-            alignItems: 'center' 
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px',
+            lineHeight: '2.5'
         } 
       }
     ];
+
+    // Ensure inputs in this logic type are appropriately sized
+    contentParts.forEach(p => {
+      if (p.type === 'input') {
+        p.style = { width: '60px', height: '45px', margin: '0 4px' };
+      }
+    });
 
     inst.solution = [
       { type: 'text', content: `### Step 1: Normal Place Value`, isVertical: true },
