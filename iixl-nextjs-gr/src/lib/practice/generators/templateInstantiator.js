@@ -878,11 +878,16 @@ if (logic === 'read_table_generic_comparison_v1') {
     inst.solution = [
       { type: 'text', content: `### Step-by-Step Solution`, isVertical: true },
       { type: 'text', content: `To find how many ₹${noteFmt} notes are in ₹${amountFmt}, we look at the **Tens** place and everything to its left.`, isVertical: true },
+      
+      // TEST: Using our new arithmetic_grid component here!
       { 
-        type: 'text', 
-        content: `| Thousands | Hundreds | Tens | Ones |\n| :---: | :---: | :---: | :---: |\n| ${Math.floor(totalAmount/1000)} | ${Math.floor((totalAmount%1000)/100)} | **${Math.floor((totalAmount%100)/10)}** | ${totalAmount%10} |`, 
-        isVertical: true 
+        type: 'arithmetic_grid', 
+        operation: 'addition', 
+        operands: [String(totalAmount), '0'], // Using 0 as second operand just to show the format
+        highlights: [Math.max(0, String(totalAmount).length - 2)], // Highlight the Tens place
+        showResult: false
       },
+
       { type: 'text', content: `1. **Identify the place value:** ₹${noteFmt} notes correspond to the Tens place.`, isVertical: true },
       { type: 'text', content: `2. **Include everything to the left:** We count all thousands, hundreds, and tens together.`, isVertical: true },
       { type: 'text', content: `3. **Calculate:** There are **${totalNotes}** tens in the number ${totalAmount}.`, isVertical: true },
@@ -897,12 +902,11 @@ if (logic === 'read_table_generic_comparison_v1') {
   }
 
 
-if (logic === 'regrouping_multi_blank_v1') {
+
+  if (logic === 'regrouping_multi_blank_v1') {
     const config = inst.adaptiveConfig || {};
     const ds = inst.data_source || config.data_source || {};
-    const range = ds.range || [2000, 9999];
-    
-    const regroupMode = ds.regroup_mode || 'th_to_h'; 
+    const range = ds.range || [1000, 9999];
     
     let num;
     if (overrideVariables) {
@@ -911,96 +915,133 @@ if (logic === 'regrouping_multi_blank_v1') {
       num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
     }
 
+    // Standard extraction of digits
     const th = Math.floor(num / 1000);
     const h = Math.floor((num % 1000) / 100);
     const t = Math.floor((num % 100) / 10);
     const o = num % 10;
 
-    let rTh = th, rH = h, rT = t, rO = o;
-    let stepDescription = "";
-    let mathBreakdown = "";
+    inst.adaptiveConfig.variables = { num, th, h, t, o };
 
-    // FIXED LOGIC: Correcting the th_to_h calculation
-    if (regroupMode === 'th_to_h') {
-      rTh = th - 1; 
-      rH = h + 10;
-      stepDescription = `We moved **1 Thousand** to the Hundreds place.`;
-      mathBreakdown = `Since **1 Thousand = 10 Hundreds**, we add 10 to the original ${h} hundreds:\n**10 + ${h} = ${rH} Hundreds**`;
-    } else if (regroupMode === 'h_to_t') {
-      rH = h - 1; 
-      rT = t + 10;
-      stepDescription = `We moved **1 Hundred** to the Tens place.`;
-      mathBreakdown = `Since **1 Hundred = 10 Tens**, we add 10 to the original ${t} tens:\n**10 + ${t} = ${rT} Tens**`;
-    } else if (regroupMode === 't_to_o') {
-      rT = t - 1; 
-      rO = o + 10;
-      stepDescription = `We moved **1 Ten** to the Ones place.`;
-      mathBreakdown = `Since **1 Ten = 10 Ones**, we add 10 to the original ${o} ones:\n**10 + ${o} = ${rO} Ones**`;
-    }
-
-    inst.adaptiveConfig.variables = { num, rTh, rH, rT, rO, th, h, t, o };
-
-    const blanks = ds.blanks || ["h"]; 
+    // Define which digits are blanks based on JSON (e.g., ["th", "h"])
+    const blanks = ds.blanks || ["th", "h", "t", "o"]; 
     
-    const contentParts = [{ type: 'text', content: `**${num.toLocaleString('en-IN')}** = ` }];
-
-    const addSegment = (val, key, label, isLast) => {
-      if (blanks.includes(key)) {
-        contentParts.push({ type: 'input', id: `ans_${key}`, size: 'small' });
-      } else {
-        contentParts.push({ type: 'text', content: ` ${val}` });
-      }
-      contentParts.push({ type: 'text', content: ` ${label}${isLast ? '' : ' + '}` });
-    };
-
-    addSegment(rTh, 'th', 'Thousand', false);
-    addSegment(rH, 'h', 'Hundreds', false);
-    addSegment(rT, 't', 'Tens', false);
-    addSegment(rO, 'o', 'Ones', true);
+    const getVal = (val, key) => blanks.includes(key) ? `[[ans_${key}]]` : `${val}`;
 
     inst.parts = [
-      { type: 'text', content: "Fill in the blanks to complete the regrouping:", isVertical: true },
+      { type: 'text', content: "Write the number in standard place value form:", isVertical: true },
       { 
-        type: 'pair', 
-        parts: contentParts, 
-        isVertical: false,
-        style: { 
-            marginTop: '24px', 
-            fontSize: '24px', 
-            display: 'flex', 
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '4px',
-            lineHeight: '2.5'
-        } 
+        type: 'text', 
+        content: `### ${num.toLocaleString('en-IN')} = ${getVal(th, 'th')} Thousands + ${getVal(h, 'h')} Hundreds + ${getVal(t, 't')} Tens + ${getVal(o, 'o')} Ones`, 
+        isVertical: true,
+        style: { marginTop: '20px', fontSize: '22px' } 
       }
     ];
 
-    // Ensure inputs in this logic type are appropriately sized
-    contentParts.forEach(p => {
-      if (p.type === 'input') {
-        p.style = { width: '60px', height: '45px', margin: '0 4px' };
-      }
-    });
-
     inst.solution = [
-      { type: 'text', content: `### Step 1: Normal Place Value`, isVertical: true },
-      { type: 'text', content: `Standard form for **${num.toLocaleString('en-IN')}**:\n- Thousands: **${th}**\n- Hundreds: **${h}**\n- Tens: **${t}**\n- Ones: **${o}**`, isVertical: true },
-      { type: 'text', content: `### Step 2: The Regrouping`, isVertical: true },
-      { type: 'text', content: stepDescription, isVertical: true },
-      { type: 'text', content: mathBreakdown, isVertical: true },
-      { type: 'text', content: `### Final Result`, isVertical: true },
-      { type: 'text', content: `**${rTh}** Thousand + **${rH}** Hundreds + **${rT}** Tens + **${rO}** Ones`, isVertical: true }
+      { type: 'text', content: `### How to find Standard Form`, isVertical: true },
+      { type: 'text', content: `Place the number **${num.toLocaleString('en-IN')}** into a place value chart:`, isVertical: true },
+      { 
+        type: 'text', 
+        content: `| Thousands | Hundreds | Tens | Ones |\n| :---: | :---: | :---: | :---: |\n| **${th}** | **${h}** | **${t}** | **${o}** |`, 
+        isVertical: true 
+      },
+      { type: 'text', content: `### Final Answer`, isVertical: true },
+      { type: 'text', content: `**${th}** Thousands + **${h}** Hundreds + **${t}** Tens + **${o}** Ones`, isVertical: true }
     ];
 
     inst.type = 'fillInTheBlank';
     const finalAnswers = {};
     blanks.forEach(key => {
-      if (key === 'th') finalAnswers.ans_th = String(rTh);
-      if (key === 'h') finalAnswers.ans_h = String(rH);
-      if (key === 't') finalAnswers.ans_t = String(rT);
-      if (key === 'o') finalAnswers.ans_o = String(rO);
+      if (key === 'th') finalAnswers.ans_th = String(th);
+      if (key === 'h') finalAnswers.ans_h = String(h);
+      if (key === 't') finalAnswers.ans_t = String(t);
+      if (key === 'o') finalAnswers.ans_o = String(o);
+    });
+    inst.correctAnswerText = JSON.stringify(finalAnswers);
+    
+    return inst;
+  }
+
+
+  if (logic === 'expanded_form_universal_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    const range = ds.range || [100, 999];
+    const mode = ds.mode || 'to_expanded'; // 'to_expanded' or 'to_number'
+    
+    let num;
+    if (overrideVariables) {
+      num = Number(overrideVariables.num);
+    } else {
+      num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+    }
+
+    // Breakdown values
+    const th = Math.floor(num / 1000) * 1000;
+    const h = Math.floor((num % 1000) / 100) * 100;
+    const t = Math.floor((num % 100) / 10) * 10;
+    const o = num % 10;
+
+    // Filter out zero places for the equation
+    const parts_raw = [
+      { val: th, key: 'th', label: 'Thousands' },
+      { val: h, key: 'h', label: 'Hundreds' },
+      { val: t, key: 't', label: 'Tens' },
+      { val: o, key: 'o', label: 'Ones' }
+    ].filter(p => p.val > 0 || p.key === 'o');
+
+    inst.adaptiveConfig.variables = { num, th, h, t, o };
+
+    const blanks = ds.blanks || (mode === 'to_number' ? ['num'] : ['h', 't', 'o']);
+    
+    // Build Question UI
+    const equationParts = [];
+    if (blanks.includes('num')) {
+      equationParts.push({ type: 'input', id: 'ans_num', size: 'small' });
+    } else {
+      equationParts.push({ type: 'text', content: `**${num.toLocaleString('en-IN')}**` });
+    }
+    
+    equationParts.push({ type: 'text', content: ' = ' });
+
+    parts_raw.forEach((p, idx) => {
+      if (blanks.includes(p.key)) {
+        equationParts.push({ type: 'input', id: `ans_${p.key}`, size: 'small' });
+      } else {
+        equationParts.push({ type: 'text', content: `${p.val.toLocaleString('en-IN')}` });
+      }
+      if (idx < parts_raw.length - 1) equationParts.push({ type: 'text', content: ' + ' });
+    });
+
+    inst.parts = [
+      { type: 'text', content: mode === 'to_number' ? "Write the number for the expanded form:" : "Write the number in expanded form:", isVertical: true },
+      { 
+        type: 'pair', 
+        parts: equationParts, 
+        isVertical: false,
+        style: { marginTop: '20px', fontSize: '24px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' } 
+      }
+    ];
+
+    // Solution Logic
+    inst.solution = [
+      { type: 'text', content: `### Step-by-Step Breakdown`, isVertical: true },
+      { type: 'text', content: `We look at the place value of each digit in **${num.toLocaleString('en-IN')}**:`, isVertical: true },
+      { 
+        type: 'text', 
+        content: parts_raw.map(p => `- ${p.val / (p.val === 0 ? 1 : Math.pow(10, Math.log10(p.val)))} in ${p.label} place = **${p.val.toLocaleString('en-IN')}**`).join('\n'), 
+        isVertical: true 
+      },
+      { type: 'text', content: `### Final Expanded Form`, isVertical: true },
+      { type: 'text', content: `**${parts_raw.map(p => p.val).join(' + ')} = ${num}**`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    const finalAnswers = {};
+    if (blanks.includes('num')) finalAnswers.ans_num = String(num);
+    parts_raw.forEach(p => {
+      if (blanks.includes(p.key)) finalAnswers[`ans_${p.key}`] = String(p.val);
     });
     inst.correctAnswerText = JSON.stringify(finalAnswers);
     
