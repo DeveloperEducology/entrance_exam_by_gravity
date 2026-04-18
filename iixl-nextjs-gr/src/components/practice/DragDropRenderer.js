@@ -18,6 +18,7 @@ import styles from './DragDropRenderer.module.css';
 import QuestionParts from './QuestionParts';
 import { getImageSrc, isImageUrl, isInlineSvg } from './contentUtils';
 import SafeImage from './SafeImage';
+import { isRawLatex } from './latexUtils';
 
 const POOL_ID = '__pool__';
 
@@ -132,7 +133,16 @@ function ItemVisual({ item }) {
     );
   }
 
-  return hasVisualContent ? null : <div className={styles.itemLabel}>{contentText}</div>;
+  return hasVisualContent ? null : (
+    <div className={styles.itemLabel}>
+      <QuestionParts 
+        parts={[{ 
+          type: isRawLatex(contentText) ? 'mathLatex' : 'text', 
+          content: contentText 
+        }]} 
+      />
+    </div>
+  );
 }
 
 export default function DragDropRenderer({

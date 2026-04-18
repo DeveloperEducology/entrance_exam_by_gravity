@@ -5,7 +5,7 @@ import styles from './QuestionParts.module.css';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SpeakerButton from './SpeakerButton';
 import SafeImage from './SafeImage';
-import { latexWithPlaceholderBoxes, renderLatexToHtml } from './latexUtils';
+import { latexWithPlaceholderBoxes, renderLatexToHtml, isRawLatex } from './latexUtils';
 import FractionModelVisual from './FractionModelVisual';
 import ArithmeticBlock from './ArithmeticBlock';
 import BaseTenBlocks from './BaseTenBlocks';
@@ -16,6 +16,11 @@ import NumberLineJumps from './NumberLineJumps';
 import DotsGroupingVisual from './DotsGroupingVisual';
 import DotArrayVisual from './DotArrayVisual';
 import ArithmeticGrid from './ArithmeticGrid';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 
 /**
  * @typedef {Object} QuestionPart
@@ -28,9 +33,39 @@ import ArithmeticGrid from './ArithmeticGrid';
  * @property {number} [count] - Repeat image part this many times.
  */
 
-function renderInlineMarkdown(value) {
+function renderInlineMarkdown(value, isVertical = false) {
     const normalized = String(value ?? '');
     if (!normalized) return null;
+
+    // Detect if this is likely block-level markdown (headings, lists, blockquotes, horizontal rules)
+    const hasBlockElements = isVertical || /^(#|\*|-|>|---)/m.test(normalized);
+
+    if (hasBlockElements) {
+        return (
+            <div className={styles.fullMarkdown}>
+                <ReactMarkdown
+                    remarkPlugins={[remarkMath, remarkGfm]}
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
+                    components={{
+                        p: ({ children }) => <div className={styles.markdownPara}>{children}</div>,
+                        // Ensure LaTeX inside Markdown works
+                        span: ({ node, ...props }) => <span {...props} />
+                    }}
+                >
+                    {normalized}
+                </ReactMarkdown>
+            </div>
+        );
+    }
+
+    // Handle the case where the entire string is raw LaTeX (e.g., from some generators)
+    if (isRawLatex(normalized)) {
+        return (
+            <span 
+                dangerouslySetInnerHTML={{ __html: renderLatexToHtml(normalized) }} 
+            />
+        );
+    }
 
     const renderTextWithBoxes = (text, keyPrefix = '') => {
         const tokens = text.split(/(\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)/g).filter(Boolean);
@@ -648,9 +683,9 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                                 dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
                             />
                         ) : (
-                            <span className={styles.text}>
-                                {renderInlineMarkdown(part.content)}
-                            </span>
+                            <div className={styles.text}>
+                                {renderInlineMarkdown(part.content, part.isVertical || defaultVertical)}
+                            </div>
                         )}
                     </div>
                 );

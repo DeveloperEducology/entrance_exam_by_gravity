@@ -24,6 +24,7 @@ import styles from './SortingRenderer.module.css';
 import QuestionParts from './QuestionParts';
 import { isImageUrl, isInlineSvg } from './contentUtils';
 import SafeImage from './SafeImage';
+import { isRawLatex } from './latexUtils';
 
 const POOL_ID = 'pool';
 const SLOT_PREFIX = 'slot-';
@@ -139,7 +140,15 @@ export default function SortingRenderer({
     const content = item.content || '';
     if (isInlineSvg(content)) return <div className={styles.itemMedia} dangerouslySetInnerHTML={{ __html: content }} />;
     if (isImageUrl(content)) return <SafeImage src={content} alt={`Sorted item ${itemId}`} className={styles.itemImage} width={80} height={60} sizes="(max-width: 768px) 20vw, 80px" />;
-    return <span>{content}</span>;
+    
+    return (
+      <QuestionParts 
+        parts={[{ 
+          type: isRawLatex(content) ? 'mathLatex' : 'text', 
+          content 
+        }]} 
+      />
+    );
   };
 
   const handleDragStart = (event) => {

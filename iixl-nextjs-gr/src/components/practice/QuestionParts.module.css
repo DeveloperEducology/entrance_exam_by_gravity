@@ -9,6 +9,45 @@
     white-space: normal;
 }
 
+.fullMarkdown {
+    display: block;
+    width: 100%;
+    margin: 0.5rem 0;
+    line-height: 1.6;
+}
+
+.markdownPara {
+    margin-bottom: 1rem;
+}
+
+.fullMarkdown h1, .fullMarkdown h2, .fullMarkdown h3, .fullMarkdown h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+    color: var(--text-heading, #1e293b);
+}
+
+.fullMarkdown h3 { font-size: 1.4rem; }
+.fullMarkdown h4 { font-size: 1.25rem; }
+
+.fullMarkdown ul, .fullMarkdown ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.fullMarkdown li {
+    margin-bottom: 0.5rem;
+}
+
+.fullMarkdown blockquote {
+    border-left: 4px solid #cbd5e1;
+    padding-left: 1rem;
+    color: #475569;
+    font-style: italic;
+    margin-left: 0;
+    margin-bottom: 1rem;
+}
+
 .partWrapper {
     display: inline-flex;
     align-items: center;

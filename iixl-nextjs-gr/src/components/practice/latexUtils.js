@@ -48,3 +48,12 @@ export function renderLatexToHtml(latex, displayMode = false) {
         return expression;
     }
 }
+
+/**
+ * Detects if a string likely contains raw LaTeX (backslashes)
+ * but lacks standard delimiters (\( or $).
+ */
+export function isRawLatex(str) {
+    if (typeof str !== 'string') return false;
+    return str.includes('\\') && !str.includes('\\(') && !str.includes('$');
+}

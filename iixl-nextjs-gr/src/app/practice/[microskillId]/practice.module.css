@@ -424,6 +424,10 @@
     padding: 0 0.7rem 0.75rem;
 }
 
+.fullWidthLayout {
+    grid-template-columns: 1fr !important;
+}
+
 .tokens {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

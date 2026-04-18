@@ -2,13 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
+import { MDXRemote } from 'next-mdx-remote/rsc';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import styles from './guide.module.css';
 import lessonStyles from '../../lesson/[lessonId]/lesson.module.css';
+import InteractivePractice from '../../../components/guide/InteractivePractice';
 
 
 export async function generateMetadata({ params }) {
@@ -21,10 +21,40 @@ export async function generateMetadata({ params }) {
   };
 }
 
+const components = {
+  practice: (props) => <InteractivePractice {...props} />,
+  Practice: (props) => <InteractivePractice {...props} />, // Support capitalized too
+  practiceblock: (props) => {
+    const questionHtml = props.questionhtml || '';
+    const practiceLabel = props.practicelabel || 'Practice now >>';
+    const practiceLink = props.practicelink || '#';
+    
+    return (
+      <div className={lessonStyles.tryBtnContainer}>
+        <h2 className={lessonStyles.tryTitle}>Try some practice problems!</h2>
+        <div className={lessonStyles.practiceCard}>
+          <div className={lessonStyles.practiceContent}>
+            <p dangerouslySetInnerHTML={{ __html: questionHtml }} />
+            <input type="text" className={lessonStyles.practiceInput} disabled={true} />
+          </div>
+          <div className={lessonStyles.practiceFooter}>
+            <Link href={practiceLink}>{practiceLabel}</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+};
+
 export default async function GuidePage({ params }) {
   const resolvedParams = await params;
   const guideId = resolvedParams.guideId;
-  const filePath = path.join(process.cwd(), 'src/content', `${guideId}.md`);
+  
+  // Try .mdx then fallback to .md
+  let filePath = path.join(process.cwd(), 'src/content', `${guideId}.mdx`);
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(process.cwd(), 'src/content', `${guideId}.md`);
+  }
   
   let markdownContent = '';
   try {
@@ -54,40 +84,16 @@ export default async function GuidePage({ params }) {
       <main className={styles.mainContent}>
         <div className={styles.articleCard}>
           <div className={styles.markdownBody}>
-            <ReactMarkdown 
-              remarkPlugins={[remarkMath, remarkGfm]} 
-              rehypePlugins={[rehypeKatex, rehypeRaw]}
-              components={{
-                p: ({ node, ...props }) => {
-                  const hasBlockChild = node?.children?.some?.(
-                    c => c.tagName === 'practiceblock' || c.tagName === 'div'
-                  );
-                  return hasBlockChild ? <div {...props} /> : <p {...props} />;
-                },
-                practiceblock: ({ node, ...props }) => {
-                  const questionHtml = props.questionhtml || '';
-                  const practiceLabel = props.practicelabel || 'Practice now >>';
-                  const practiceLink = props.practicelink || '#';
-                  
-                  return (
-                    <div className={lessonStyles.tryBtnContainer}>
-                      <h2 className={lessonStyles.tryTitle}>Try some practice problems!</h2>
-                      <div className={lessonStyles.practiceCard}>
-                        <div className={lessonStyles.practiceContent}>
-                          <p dangerouslySetInnerHTML={{ __html: questionHtml }} />
-                          <input type="text" className={lessonStyles.practiceInput} disabled={true} />
-                        </div>
-                        <div className={lessonStyles.practiceFooter}>
-                          <Link href={practiceLink}>{practiceLabel}</Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
+            <MDXRemote 
+              source={markdownContent}
+              components={components}
+              options={{
+                mdxOptions: {
+                  remarkPlugins: [remarkMath, remarkGfm],
+                  rehypePlugins: [rehypeKatex],
                 }
               }}
-            >
-              {markdownContent}
-            </ReactMarkdown>
+            />
           </div>
         </div>
       </main>

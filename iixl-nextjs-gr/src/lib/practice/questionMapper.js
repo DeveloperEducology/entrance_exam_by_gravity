@@ -209,5 +209,6 @@ export function mapDbQuestion(row) {
     scaffold: parseMaybeJson(row.scaffold, null),
     tokens: parseMaybeJson(row.tokens, []),
     concepts: parseMaybeJson(row.concepts, []),
+    steps: parseMaybeJson(row.steps, []),
   };
 }

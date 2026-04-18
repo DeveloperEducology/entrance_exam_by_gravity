@@ -896,8 +896,264 @@ if (logic === 'read_table_generic_comparison_v1') {
     return inst;
   }
 
+ if (logic === 'classification_random_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    let numberDisplay, isNatural, rawNumber;
+
+    if (overrideVariables) {
+      numberDisplay = overrideVariables.numberDisplay;
+      isNatural = overrideVariables.isNatural;
+    } else {
+      const types = ['whole', 'fraction', 'decimal'];
+      const chosenType = types[Math.floor(Math.random() * types.length)];
+
+      if (chosenType === 'whole') {
+        const val = Math.floor(Math.random() * 20); 
+        rawNumber = String(val);
+        // Using \text{} for consistent font sizing in LaTeX blocks
+        numberDisplay = `$${val}$`; 
+        isNatural = val > 0; 
+      } else if (chosenType === 'fraction') {
+        const whole = Math.floor(Math.random() * 5) + 1;
+        rawNumber = `${whole} 1/2`;
+        // LaTeX Mixed Fraction formatting
+        numberDisplay = `$${whole} \\frac{1}{2}$`;
+        isNatural = false;
+      } else {
+        const dec = (Math.random() * 10).toFixed(1);
+        rawNumber = String(dec);
+        numberDisplay = `$${dec}$`;
+        isNatural = false;
+      }
+    }
+
+    const targetSet = "natural number";
+    const setDefinition = "counting numbers: $1, 2, 3, \\dots$";
+
+    inst.adaptiveConfig.variables = { numberDisplay, isNatural, targetSet, rawNumber };
+
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Is ${numberDisplay} a **${targetSet}**?`, 
+        isVertical: true,
+        style: { fontSize: '24px', marginBottom: '20px' }
+      }
+    ];
+
+    inst.options = [
+      { label: "yes", content: "yes" },
+      { label: "no", content: "no" }
+    ];
+
+    inst.instructionalFeedback = {
+      remember: {
+        title: "remember",
+        content: `**Natural numbers** are ${setDefinition}.`
+      },
+      solve: {
+        title: "solve",
+        content: `Natural numbers are the numbers you use for counting (like $1, 2, 3$). Since ${numberDisplay} is ${isNatural ? 'a counting number' : 'not a counting number'}, it is ${isNatural ? 'a' : 'not a'} natural number.`
+      }
+    };
+
+    inst.type = 'mcq';
+    inst.correctAnswerIndex = isNatural ? 0 : 1;
+    inst.correctAnswerText = isNatural ? "yes" : "no";
+
+    return inst;
+  }
 
 
+  if (logic === 'universal_number_classifier_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    // Target set from JSON
+    const targetSet = ds.target_set || "whole number";
+    
+    // Data Pools
+    const pools = {
+      natural: ["5", "12", "100", "7", "42"],
+      whole: ["0"], 
+      integer: ["-3", "-10", "-25", "-1"],
+      rational: ["\\frac{1}{9}", "\\frac{3}{5}", "6.136", "0.75", "\\frac{8}{9}"],
+      irrational: ["\\pi", "\\sqrt{2}", "\\sqrt{3}"]
+    };
+
+    let options = [];
+    let correctValue;
+
+    if (overrideVariables) {
+      options = overrideVariables.options;
+      correctValue = overrideVariables.correctValue;
+    } else {
+      // 1. Pick Correct Answer based on targetSet
+      const typeKey = targetSet.split(' ')[0]; // 'natural', 'whole', etc.
+      const correctPool = pools[typeKey];
+      correctValue = correctPool[Math.floor(Math.random() * correctPool.length)];
+
+      // 2. STRICTOR DISTRACTOR LOGIC (The Fix)
+      // We must avoid picking numbers that technically belong to the targetSet
+      let forbiddenKeys = [typeKey];
+      
+      if (targetSet === "whole number") forbiddenKeys.push("natural");
+      if (targetSet === "integer") forbiddenKeys.push("natural", "whole");
+      if (targetSet === "rational number") forbiddenKeys.push("natural", "whole", "integer");
+
+      let availableDistractors = [];
+      Object.keys(pools).forEach(key => {
+        if (!forbiddenKeys.includes(key)) {
+          availableDistractors = [...availableDistractors, ...pools[key]];
+        }
+      });
+      
+      const shuffled = availableDistractors.sort(() => 0.5 - Math.random());
+      options = [correctValue, ...shuffled.slice(0, 3)].sort(() => 0.5 - Math.random());
+    }
+
+    inst.adaptiveConfig.variables = { options, correctValue, targetSet };
+
+    // UI Structure
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Which of the following is a **${targetSet}**?`, 
+        isVertical: true,
+        style: { fontSize: '24px', marginBottom: '30px', textAlign: 'center' }
+      }
+    ];
+
+    inst.options = options.map(opt => ({
+      label: opt.toString(),
+      content: `$${opt}$`
+    }));
+
+    // Improved Solution with Rules
+    const definitions = {
+      "natural number": "counting numbers starting from $1$.",
+      "whole number": "counting numbers that include zero ($0$).",
+      "integer": "whole numbers and their negative opposites.",
+      "rational number": "numbers that can be written as a fraction.",
+      "irrational number": "numbers that cannot be written as simple fractions."
+    };
+
+    inst.solution = [
+      { type: 'text', content: `### Let's Identify the ${targetSet}`, isVertical: true },
+      { type: 'text', content: `A **${targetSet}** is ${definitions[targetSet]}`, isVertical: true },
+      { type: 'text', content: `### Analysis of Choices`, isVertical: true },
+      { type: 'text', content: `- $${correctValue}$ is the only choice that fits this exact group.\n- Other choices like fractions, decimals, or roots belong to different families.`, isVertical: true }
+    ];
+
+    inst.type = 'mcq';
+    inst.correctAnswerIndex = options.indexOf(correctValue);
+    inst.correctAnswerText = String(correctValue);
+
+    return inst;
+  }
+
+if (logic === 'digit_arrangement_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    const digitCount = ds.digit_count || 3;
+    const goal = ds.goal || "greatest"; 
+
+    let digits;
+    if (overrideVariables) {
+      digits = overrideVariables.digits;
+    } else {
+      digits = [];
+      while (digits.length < digitCount) {
+        let d = Math.floor(Math.random() * 10);
+        if (!digits.includes(d)) digits.push(d);
+      }
+    }
+
+    // Use a copy to avoid mutating the original digits array
+    let sortedDesc = [...digits].sort((a, b) => b - a);
+    const greatestNum = parseInt(sortedDesc.join(''));
+    
+    let sortedAsc = [...digits].sort((a, b) => a - b);
+    if (sortedAsc[0] === 0 && sortedAsc.length > 1) {
+      for (let i = 1; i < sortedAsc.length; i++) {
+        if (sortedAsc[i] !== 0) {
+          [sortedAsc[0], sortedAsc[i]] = [sortedAsc[i], sortedAsc[0]];
+          break;
+        }
+      }
+    }
+    const smallestNum = parseInt(sortedAsc.join(''));
+
+    const correctValue = goal === "greatest" ? greatestNum : smallestNum;
+    
+    // Improved Distractor Logic using Set to ensure uniqueness
+    const distractorSet = new Set();
+    distractorSet.add(goal === "greatest" ? smallestNum : greatestNum);
+    
+    let attempts = 0;
+    while (distractorSet.size < 3 && attempts < 50) {
+      attempts++;
+      let shuffled = [...digits].sort(() => Math.random() - 0.5).join('');
+      let val = parseInt(shuffled);
+      if (val !== correctValue) {
+        distractorSet.add(val);
+      }
+    }
+
+    const finalOptions = [correctValue, ...Array.from(distractorSet)].slice(0, 4);
+    // Sort deterministically: Even numbers first, then Odd numbers
+    finalOptions.sort((a, b) => {
+      if (a % 2 === 0 && b % 2 !== 0) return -1;
+      if (a % 2 !== 0 && b % 2 === 0) return 1;
+      return a - b; // Numerical sort within the same group
+    });
+
+    inst.adaptiveConfig.variables = { digits, goal, correctValue, options: finalOptions };
+
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `What is the **${goal}** whole number you can make using all the following digits?`, 
+        isVertical: true,
+        style: { fontSize: '22px', fontWeight: 'bold' }
+      },
+      {
+        type: 'text',
+        content: `### ${digits.join('  ')}`, 
+        isVertical: true,
+        style: { textAlign: 'center', fontSize: '32px', margin: '20px 0', letterSpacing: '10px' }
+      }
+    ];
+
+    inst.options = finalOptions.map(opt => ({
+      label: opt.toString(),
+      content: opt.toString() 
+    }));
+
+    inst.solution = [
+      { type: 'text', content: `### Step-by-Step Solution`, isVertical: true },
+      { 
+        type: 'text', 
+        content: goal === "greatest" 
+          ? `To make the **greatest** number, arrange digits from **largest to smallest**: \n**${sortedDesc.join(' > ')}**`
+          : `To make the **smallest** number, arrange digits from **smallest to largest**: \n**${sortedAsc.join(' < ')}**`,
+        isVertical: true 
+      },
+      { type: 'text', content: `### Final Result`, isVertical: true },
+      { type: 'text', content: `The ${goal} number is **${correctValue}**.`, isVertical: true }
+    ];
+
+    inst.type = 'mcq';
+    inst.correctAnswerIndex = finalOptions.indexOf(correctValue);
+    inst.correctAnswerText = String(correctValue);
+
+    return inst;
+  }
+
+  
   if (logic === 'regrouping_multi_blank_v1') {
     const config = inst.adaptiveConfig || {};
     const ds = inst.data_source || config.data_source || {};

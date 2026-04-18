@@ -5,6 +5,7 @@ import styles from './MCQRenderer.module.css';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SafeImage from './SafeImage';
 import SpeakerButton from './SpeakerButton';
+import { isRawLatex } from './latexUtils';
 
 /**
  * MCQRenderer - Optimized for the "Unique MCQ" Schema
@@ -119,15 +120,21 @@ export default function MCQRenderer({
                                             width={220}
                                             height={140}
                                         />
-                                    ) : (
-                                        <span className={styles.optionText}>
-                                            {hasInlineHtml(labelText) ? (
-                                                <span dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(labelText) }} />
-                                            ) : (
-                                                labelText
-                                            )}
-                                        </span>
-                                    )}
+                                    ) : (() => {
+                                        const isRaw = isRawLatex(labelText);
+                                        
+                                        return (
+                                            <div className={styles.optionParts}>
+                                                <QuestionParts 
+                                                    parts={[{ 
+                                                        type: isRaw ? 'mathLatex' : 'text', 
+                                                        content: labelText 
+                                                    }]} 
+                                                    className={styles.partsInOption} 
+                                                />
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             );
                         })()

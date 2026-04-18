@@ -789,6 +789,7 @@ export default function PracticePage() {
       ? feedbackData.correctAnswerText
       : (parseMaybeJson(feedbackData?.correctAnswerText, feedbackData?.correctAnswerText))
   ) : null;
+  const isJourney = currentQuestion?.type === 'journey_v1';
 
   const reviewQuestion =
     currentQuestion?.type === 'shadeGrid' && shadeGridCorrectAnswer
@@ -1230,13 +1231,15 @@ export default function PracticePage() {
         <span>{microskill?.code || 'Skill'}</span>
       </div>
 
-      <div className={styles.layout}>
+      <div className={`${styles.layout} ${isJourney ? styles.fullWidthLayout : ''}`}>
         <main className={styles.mainContent}>
-          <div className={styles.headerActions}>
-            <button className={styles.exampleButton} onClick={handleFetchExample}>
-              <span className={styles.buttonIcon}>💡</span>Learn with an example
-            </button>
-          </div>
+          {!isJourney && (
+            <div className={styles.headerActions}>
+              <button className={styles.exampleButton} onClick={handleFetchExample}>
+                <span className={styles.buttonIcon}>💡</span>Learn with an example
+              </button>
+            </div>
+          )}
 
           {!isAnswered && (
             <div
@@ -1464,14 +1467,18 @@ export default function PracticePage() {
               </div>
 
               {/* Concepts Section */}
-              {(feedbackData?.concepts || currentQuestion?.concepts) && (
-                <div className={styles.conceptsSection}>
-                  <h3 className={styles.explanationHeading}>Key Concepts</h3>
-                  <div className={styles.conceptsCard}>
-                    <QuestionParts parts={feedbackData?.concepts || currentQuestion?.concepts || []} />
+              {(() => {
+                const concepts = feedbackData?.concepts || currentQuestion?.concepts;
+                if (!Array.isArray(concepts) || concepts.length === 0) return null;
+                return (
+                  <div className={styles.conceptsSection}>
+                    <h3 className={styles.explanationHeading}>Key Concepts</h3>
+                    <div className={styles.conceptsCard}>
+                      <QuestionParts parts={concepts} />
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Step 3: Explanation */}
               <h3 className={styles.explanationHeading}>Explanation</h3>
@@ -1526,25 +1533,29 @@ export default function PracticePage() {
         </main>
 
         <aside className={styles.sidebar}>
-          <div className={styles.sidebarCard}>
-            <div className={styles.sidebarLabel}>🏆 SmartScore</div>
-            <div className={styles.sidebarValue} style={{ color: '#0f6ea8' }}>{smartScore}</div>
-            <div className={styles.badgeContainer}>
-              <span className={styles.levelBadge}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</span>
-              <span className={styles.phaseBadge}>{adaptivePhase}</span>
+          {!isJourney && (
+            <div className={styles.sidebarCard}>
+              <div className={styles.sidebarLabel}>🏆 SmartScore</div>
+              <div className={styles.sidebarValue} style={{ color: '#0f6ea8' }}>{smartScore}</div>
+              <div className={styles.badgeContainer}>
+                <span className={styles.levelBadge}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</span>
+                <span className={styles.phaseBadge}>{adaptivePhase}</span>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className={styles.sidebarCard}>
-            <div className={styles.challengeHeader}>Challenge</div>
-            <div className={styles.stageLabel}>{currentChallengeStage.label}</div>
-            <div className={styles.tokenInfo}>Collect {currentChallengeStage.tokensNeeded} tokens</div>
-            <div className={styles.tokens}>
-              {Array.from({ length: currentChallengeStage.tokensNeeded }).map((_, i) => (
-                <div key={i} className={`${styles.token} ${i < tokensCollected ? styles.collected : ''}`} />
-              ))}
+          {!isJourney && (
+            <div className={styles.sidebarCard}>
+              <div className={styles.challengeHeader}>Challenge</div>
+              <div className={styles.stageLabel}>{currentChallengeStage.label}</div>
+              <div className={styles.tokenInfo}>Collect {currentChallengeStage.tokensNeeded} tokens</div>
+              <div className={styles.tokens}>
+                {Array.from({ length: currentChallengeStage.tokensNeeded }).map((_, i) => (
+                  <div key={i} className={`${styles.token} ${i < tokensCollected ? styles.collected : ''}`} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <Link href={teacherToolsHref} className={styles.teacherTools}>🛠️ Teacher tools ›</Link>
         </aside>

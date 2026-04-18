@@ -16,6 +16,7 @@ import DragDropRendererV2 from './DragDropRendererV2';
 import GuidedStepRenderer from './GuidedStepRenderer';
 import LongDivisionStepRenderer from './LongDivisionStepRenderer';
 import StepwiseArithmeticRenderer from './StepwiseArithmeticRenderer';
+import JourneyRenderer from './JourneyRenderer';
 
 
 const RENDERER_MAP = {
@@ -40,6 +41,7 @@ const RENDERER_MAP = {
     table: FillInTheBlankRenderer,
     smartTable: FillInTheBlankRenderer,
     arithmetic_journey: StepwiseArithmeticRenderer,
+    journey_v1: JourneyRenderer,
 };
 
 
