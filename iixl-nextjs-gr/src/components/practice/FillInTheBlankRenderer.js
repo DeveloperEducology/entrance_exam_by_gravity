@@ -2402,7 +2402,7 @@ export default function FillInTheBlankRenderer({
 
                 {!isAnswered && showKeypad && (
                     <div className={styles.virtualKeypad}>
-                        {(q.adaptiveConfig?.keypadKeys || q.keypadKeys || ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', '>', '<', '=', '⌫']).map((key, i) => {
+                        {(q.adaptiveConfig?.keypadKeys || q.keypadKeys || ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', 'x', '/', '>', '<', '=', '⌫']).map((key, i) => {
                             const label = typeof key === 'object' ? key.label : key;
                             const value = typeof key === 'object' ? key.value : (key === '⌫' ? 'BACKSPACE' : key);
                             const isIcon = typeof key === 'object' && (key.icon || key.image);
