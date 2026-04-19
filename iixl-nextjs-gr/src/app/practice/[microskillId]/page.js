@@ -1053,8 +1053,8 @@ export default function PracticePage() {
       setAdaptivePhase(returnedPhase);
       setAdaptiveMeta(payload?.selectionMeta || null);
 
-      const nextStreak = correct ? streak + 1 : 0;
-      const nextMissStreak = correct ? 0 : missStreak + 1;
+      const nextStreak = payload?.sessionUpdate?.currentStreak ?? (correct ? streak + 1 : 0);
+      const nextMissStreak = payload?.sessionUpdate?.missStreak ?? (correct ? 0 : missStreak + 1);
       setStreak(nextStreak);
       setMissStreak(nextMissStreak);
 
@@ -1188,24 +1188,46 @@ export default function PracticePage() {
     <div className={styles.container}>
       <div className={`${styles.blob} ${styles.blob1}`} />
       <div className={`${styles.blob} ${styles.blob2}`} />
-      <div className={styles.mobileProgress}>
-        <div className={styles.mobileProgressLeft}>
-          <div className={styles.mobileProgressItem}>
-            <span className={styles.mobileProgressLabel}>Questions</span>
-            <span className={styles.mobileProgressValue}>{questionsAnswered}</span>
-          </div>
-          <div className={styles.mobileProgressItem}>
-            <span className={styles.mobileProgressLabel}>Time</span>
-            <span className={styles.mobileProgressValue}>{time.mins}:{time.secs}</span>
-          </div>
+      <div className={styles.mobileHeader}>
+        <div className={styles.mobileBreadcrumbs}>
+          <span>{grade?.name || 'Grade'}</span>
+          <span className={styles.chevron}>›</span>
+          <span>{microskill?.code} {microskill?.name}</span>
         </div>
-        <div className={styles.mobileProgressCenter}>
-          <div className={styles.mobileSkillName}>{microskill?.code || 'Skill'}</div>
-        </div>
-        <div className={styles.mobileProgressRight}>
-          <div className={styles.mobileProgressItem}>
-            <span className={styles.mobileProgressLabel}>SmartScore</span>
-            <span className={styles.mobileProgressValue}>{smartScore}</span>
+        <div className={styles.mobileStatsGrid}>
+          <div className={styles.mobileStatCell} style={{ borderBottomColor: '#68b50b' }}>
+            <label>Questions</label>
+            <div className={styles.mobileStatValue} style={{ color: '#68b50b' }}>{questionsAnswered}</div>
+          </div>
+          <div className={styles.mobileStatCell} style={{ borderBottomColor: '#2f93be' }}>
+            <label>Time</label>
+            <div className={styles.mobileStatValue} style={{ color: '#2f93be' }}>{time.mins}:{time.secs}</div>
+          </div>
+          <div className={styles.mobileStatCell} style={{ borderBottomColor: '#f5821f' }}>
+            <label>
+              {currentQuestion?.difficulty === 'hard' 
+                ? 'Mastery Streak' 
+                : `Get ${currentQuestion?.difficulty === 'medium' ? '10 more' : '5'} correct in a row`}
+            </label>
+            <div className={styles.streakDots}>
+              {(() => {
+                const isMedium = currentQuestion?.difficulty === 'medium';
+                const dotCount = isMedium ? 10 : 5;
+                const offset = isMedium ? 5 : 0;
+                
+                return Array.from({ length: dotCount }).map((_, i) => {
+                  const qNum = offset + i;
+                  let dotClass = styles.streakDot;
+                  if (streak > qNum) {
+                    dotClass = styles.streakDotCorrect;
+                  } else if (streak === qNum) {
+                    dotClass = styles.streakDotActive;
+                  }
+                  
+                  return <div key={i} className={`${styles.streakDot} ${dotClass}`} />;
+                });
+              })()}
+            </div>
           </div>
         </div>
       </div>
@@ -1217,6 +1239,7 @@ export default function PracticePage() {
         </div>
         <div className={styles.topBarStats}>
           <div className={styles.statPill}><span className={styles.statLabel}>Questions</span><strong>{questionsAnswered}</strong></div>
+          <div className={styles.statPill}><span className={styles.statLabel}>Streak</span><strong>{streak}</strong></div>
           <div className={styles.statPill}><span className={styles.statLabel}>Time</span><strong>{time.mins}:{time.secs}</strong></div>
           <div className={styles.statPill}><span className={styles.statLabel}>SmartScore</span><strong>{smartScore}</strong></div>
           <div className={styles.statPill}><span className={styles.statLabel}>Level</span><strong style={{ textTransform: 'capitalize' }}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</strong></div>

@@ -29,8 +29,11 @@ function InlineLatexBlanks({
     getInputConfig,
     inputRefs,
     showKeypad,
-    correctAnswers, // Add this
-    isCorrect // Add this
+    correctAnswers,
+    isCorrect,
+    interactions = {},
+    allBlankIds = [],
+    renderInput 
 }) {
     const wrapperRef = useRef(null);
     const [anchors, setAnchors] = useState([]);
@@ -62,11 +65,9 @@ function InlineLatexBlanks({
         const handle = () => recomputeAnchors();
         window.addEventListener('resize', handle);
         return () => window.removeEventListener('resize', handle);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [html, placeholderIds.join('|')]);
+    }, [html, placeholderIds]);
 
-    const fallbackIds = useMemo(() => placeholderIds, [placeholderIds]);
-    const visibleAnchors = anchors.length > 0 ? anchors : fallbackIds.map((id, i) => ({
+    const visibleAnchors = anchors.length > 0 ? anchors : placeholderIds.map((id, i) => ({
         id,
         top: 0,
         left: i * 90,
@@ -79,47 +80,29 @@ function InlineLatexBlanks({
             <div ref={wrapperRef} className={`${styles.mathLatex} ${styles.mathLatexInteractive}`}>
                 <span dangerouslySetInnerHTML={{ __html: html }} />
                 {visibleAnchors.map((anchor) => {
-                    const inputConfig = getInputConfig({ id: anchor.id, answerType: part?.answerType });
-                    const expected = correctAnswers?.[anchor.id] ?? '';
-                    const defaultMax = expected ? String(expected).length : 8;
-                    const maxLength = Number.isFinite(Number(part?.maxLength)) ? Number(part.maxLength) : defaultMax;
-                    const hasExplicitWidth = part?.blankWidth !== undefined && part?.blankWidth !== null && String(part.blankWidth).trim() !== '';
-                    const autoWidth = maxLength <= 1
-                        ? Math.max(28, Math.min(38, (anchor.width || 36) * 0.6))
-                        : Math.max(40, Math.min(80, (anchor.width || 50) * 0.8));
-                    const width = hasExplicitWidth
-                        ? (typeof part.blankWidth === 'number' ? `${part.blankWidth}px` : String(part.blankWidth))
-                        : `${autoWidth}px`;
                     const height = Math.max(24, Math.min(38, (anchor.height || 34) - 2));
                     const top = anchor.top + Math.max(0, ((anchor.height || height) - height) / 2);
-                    const left = anchor.left + Math.max(0, ((anchor.width || autoWidth) - autoWidth) / 2);
+                    
                     return (
-                        <input
-                            key={`latex-inline-${anchor.id}`}
-                            type="text"
-                            className={`${styles.input} ${styles.latexInlineInput}`}
-                            value={
-                                (typeof userAnswer === 'object' && userAnswer !== null)
-                                    ? (userAnswer[anchor.id] ?? '')
-                                    : (userAnswer != null ? String(userAnswer) : '')
-                            }
-                            onChange={(e) => onInputChange(anchor.id, e.target.value)}
-                            disabled={isAnswered}
-                            aria-label={anchor.id}
-                            inputMode={showKeypad ? 'none' : inputConfig.inputMode}
-                            pattern={inputConfig.pattern}
-                            maxLength={maxLength}
-                            ref={(el) => {
-                                if (el && inputRefs) inputRefs.current[anchor.id] = el;
-                            }}
-                            onFocus={() => onFocus?.(anchor.id)}
+                        <div 
+                            key={`latex-box-${anchor.id}`}
                             style={{
+                                position: 'absolute',
                                 top: `${top}px`,
-                                left: `${left}px`,
-                                width,
+                                left: `${anchor.left}px`,
+                                width: anchor.width,
                                 height: `${height}px`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}
-                        />
+                        >
+                            {renderInput(anchor.id, {
+                                ...(interactions[anchor.id] || {}),
+                                allBlankIds,
+                                style: { width: '100%', height: '100%' }
+                            })}
+                        </div>
                     );
                 })}
             </div>
@@ -148,16 +131,25 @@ export default function FillInTheBlankRenderer({
     const arithmeticCellRefs = useRef({});
     const containerRef = useRef(null);
     const [lastFocusedId, setLastFocusedId] = useState(null);
+    const config = question?.adaptiveConfig || {};
     const [activeArithmeticCellId, setActiveArithmeticCellId] = useState(null);
     const [viewportWidth, setViewportWidth] = useState(null);
     const [showKeypad, setShowKeypad] = useState(false);
 
 
     const getValue = (id) => {
+        let raw = '';
         if (typeof userAnswer === 'object' && userAnswer !== null) {
-            return userAnswer[id] ?? '';
+            raw = userAnswer[id] ?? '';
+        } else {
+            raw = userAnswer != null ? String(userAnswer) : '';
         }
-        return userAnswer != null ? String(userAnswer) : '';
+        
+        // If we accidentally got a metadata object, extract the value string
+        if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'value' in raw) {
+            return String(raw.value);
+        }
+        return String(raw ?? '');
     };
 
     useEffect(() => {
@@ -294,8 +286,18 @@ export default function FillInTheBlankRenderer({
 
     const correctAnswers = parseCorrectAnswers();
     const getExpectedAnswer = (partId) => {
-        if (partId && correctAnswers?.[partId] !== undefined) return correctAnswers[partId];
-        return correctAnswers?.__default ?? '';
+        let raw = '';
+        if (partId && correctAnswers?.[partId] !== undefined) {
+            raw = correctAnswers[partId];
+        } else {
+            raw = correctAnswers?.__default ?? '';
+        }
+
+        // If it's a config object like { value: "6", size: "small" }, return the value
+        if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'value' in raw) {
+            return raw.value;
+        }
+        return raw;
     };
 
     const getInputConfig = (part) => {
@@ -350,6 +352,8 @@ export default function FillInTheBlankRenderer({
     const renderInput = (partId, properties = {}) => {
         const inputConfig = getInputConfig({ id: partId, ...properties });
         const val = getValue(partId);
+        // Hard-sanitized value for the input
+        const displayValue = (typeof val === 'string') ? val : '';
         
         // Dynamic maxLength based on correct result if available
         const expected = getExpectedAnswer(partId);
@@ -357,6 +361,13 @@ export default function FillInTheBlankRenderer({
         const maxLength = Number.isFinite(Number(properties?.maxLength)) 
             ? Number(properties.maxLength) 
             : defaultMax;
+        
+        const isPartCorrect = isAnswered && (
+            Array.isArray(expected) 
+                ? expected.includes(String(val).trim())
+                : String(val).trim() === String(expected).trim()
+        );
+
         const explicitSize = String(properties?.size || '').toLowerCase();
         const sizeClassName = explicitSize === 'small'
             ? styles.inputSmall
@@ -364,27 +375,89 @@ export default function FillInTheBlankRenderer({
                 ? styles.inputMedium
                 : explicitSize === 'large'
                     ? styles.inputLarge
-                    : '';
+                    : explicitSize === 'one-digit'
+                        ? styles.inputOneDigit
+                        : '';
+        
+        const feedbackClass = isAnswered 
+            ? (isPartCorrect ? styles.inputCorrect : styles.inputIncorrect) 
+            : (config.instantFeedback && val 
+                ? (isPartCorrect ? styles.inputCorrect : styles.inputInstantHint) 
+                : '');
+
+        // Guided Mode: Disable input if a previous blank is not yet correct
+        let isLocked = false;
+        if (config.guidedMode) {
+            const allBlankIds = Array.isArray(properties.allBlankIds) ? properties.allBlankIds : [];
+            const myIndex = allBlankIds.indexOf(partId);
+            if (myIndex > 0) {
+                for (let i = 0; i < myIndex; i++) {
+                    const prevId = allBlankIds[i];
+                    const prevExpected = getExpectedAnswer(prevId);
+                    const prevVal = getValue(prevId);
+                    const prevCorrect = Array.isArray(prevExpected) 
+                        ? prevExpected.includes(String(prevVal).trim())
+                        : String(prevVal).trim() === String(prevExpected).trim();
+                    if (!prevCorrect) {
+                        isLocked = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         const resolvedWidth = properties.width
             || (explicitSize
                 ? undefined // Allow CSS to control width for small/medium/large
                 : (maxLength <= 1 ? '52px' : `${Math.max(52, maxLength * 12 + 16)}px`));
 
+        const interaction = properties || {};
+        
+        // Handle MCQ Dropdowns (from metadata or explicit type)
+        const isMcq = interaction.type === 'mcq' || properties.type === 'mcq' || Array.isArray(interaction.options);
+        
+        if (isMcq) {
+            const options = Array.isArray(interaction.options) ? interaction.options : (Array.isArray(properties.options) ? properties.options : []);
+            return (
+                <select
+                    key={`mcq-select-${partId}`}
+                    className={`${styles.select} ${feedbackClass}`.trim()}
+                    value={displayValue}
+                    onChange={(e) => handleInputChange(partId, e.target.value)}
+                    onFocus={() => setLastFocusedId(partId)}
+                    disabled={isAnswered || isLocked}
+                    style={{ opacity: isLocked ? 0.5 : 1 }}
+                >
+                    <option value="">Select...</option>
+                    {options.map((opt, i) => {
+                        const optValue = typeof opt === 'object' ? (opt.value ?? opt.label) : opt;
+                        const optLabel = typeof opt === 'object' ? (opt.label ?? opt.value) : opt;
+                        return (
+                            <option key={i} value={String(optValue)}>
+                                {String(optLabel)}
+                            </option>
+                        );
+                    })}
+                </select>
+            );
+        }
+
+        // Standard Text Input
         return (
             <input
                 key={`raw-input-${partId}`}
                 type="text"
-                className={`${styles.input} ${sizeClassName}`.trim()}
-                value={val}
+                className={`${styles.input} ${sizeClassName} ${feedbackClass}`.trim()}
+                value={displayValue}
                 onChange={(e) => handleInputChange(partId, e.target.value)}
                 onFocus={() => setLastFocusedId(partId)}
                 ref={(el) => {
                     if (el) arithmeticCellRefs.current[partId] = el;
                 }}
-                disabled={isAnswered}
-                placeholder={properties.placeholder || ''}
+                disabled={isAnswered || isLocked}
+                placeholder={isLocked ? '🔒' : (typeof properties.placeholder === 'string' ? properties.placeholder : '')}
                 aria-label={properties.placeholder || partId || 'blank input'}
-                style={{ width: resolvedWidth }}
+                style={{ width: resolvedWidth, opacity: isLocked ? 0.5 : 1 }}
                 inputMode={showKeypad ? 'none' : inputConfig.inputMode}
                 pattern={inputConfig.pattern}
                 maxLength={maxLength}
@@ -417,10 +490,39 @@ export default function FillInTheBlankRenderer({
     };
 
     const renderTextWithBlanks = (text, keyPrefix = '', options = {}) => {
-        const normalized = String(text ?? '');
-        const tokens = normalized.split(/(\[\[.*?\]\]|\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)/g).filter(Boolean);
+        let normalized = String(text ?? '');
+        
+        // Basic Markdown-like preprocessing for headers
+        normalized = normalized.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+        normalized = normalized.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+        normalized = normalized.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+        
+        // Convert newlines to <br/> if not already handled
+        if (!normalized.includes('<br')) {
+            normalized = normalized.replace(/\n/g, '<br/>');
+        }
+
+        const tokens = normalized.split(/(!\[.*?\]\(.*?\)|\[\[.*?\]\]|\[.*?\]|\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)/g).filter(Boolean);
+
+        const allBlankIds = tokens
+            .filter(t => (t.startsWith('[[') && t.endsWith(']]')) || (t.startsWith('[') && t.endsWith(']')))
+            .map(t => t.startsWith('[[') ? t.slice(2, -2).trim() : t.slice(1, -1).trim())
+            .filter(id => id && !id.startsWith('!'));
 
         const renderTokens = (tkns, kp) => tkns.map((token, idx) => {
+            // Handle Markdown Image: ![alt](url)
+            if (token.startsWith('!') && token.includes('[') && token.includes('(')) {
+                const imgMatch = token.match(/!\[(.*?)\]\((.*?)\)/);
+                if (imgMatch) {
+                    const alt = imgMatch[1];
+                    const url = imgMatch[2];
+                    return (
+                        <span key={`${kp}-${idx}`} className={styles.inlineImageWrapper}>
+                            <img src={url} alt={alt} className={styles.inlineImage} />
+                        </span>
+                    );
+                }
+            }
             if ((token.startsWith('[[') && token.endsWith(']]')) || (token.startsWith('[') && token.endsWith(']'))) {
                 let blankId = '';
                 if (token.startsWith('[[') && token.endsWith(']]')) {
@@ -434,7 +536,11 @@ export default function FillInTheBlankRenderer({
                 }
                 return (
                     <span key={`blank-${kp}-${idx}`} className={styles.inlineBlankWrap}>
-                        {renderInput(blankId || `md_p_${kp}_${idx}`, { placeholder: '' })}
+                        {renderInput(blankId || `md_p_${kp}_${idx}`, { 
+                            placeholder: '',
+                            ...(options.interactions?.[blankId] || {}),
+                            allBlankIds
+                        })}
                     </span>
                 );
             }
@@ -465,6 +571,10 @@ export default function FillInTheBlankRenderer({
                                 getInputConfig={getInputConfig}
                                 showKeypad={showKeypad}
                                 correctAnswers={correctAnswers}
+                                isCorrect={isCorrect}
+                                interactions={options.interactions || {}}
+                                allBlankIds={allBlankIds}
+                                renderInput={renderInput}
                             />
                         </div>
                     );
@@ -479,20 +589,20 @@ export default function FillInTheBlankRenderer({
                 );
             }
 
-            if (options.allowHtml) {
-                return (
-                    <span 
-                        key={`html-${kp}-${idx}`}
-                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(token) }}
-                    />
-                );
-            }
-
             const subTokens = token.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g).filter(Boolean);
             return subTokens.map((st, sidx) => {
                 if (st.startsWith('**') && st.endsWith('**')) return <strong key={sidx}>{st.slice(2, -2)}</strong>;
                 if (st.startsWith('*') && st.endsWith('*')) return <em key={sidx}>{st.slice(1, -1)}</em>;
                 if (st.startsWith('`') && st.endsWith('`')) return <code key={sidx}>{st.slice(1, -1)}</code>;
+                
+                if (options.allowHtml) {
+                    return (
+                        <span 
+                            key={sidx}
+                            dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(st) }}
+                        />
+                    );
+                }
                 return <span key={sidx}>{st}</span>;
             });
         });
@@ -1762,13 +1872,13 @@ export default function FillInTheBlankRenderer({
                         {Boolean(part?.hasAudio) && (
                             <SpeakerButton text={part.content} className={styles.inlineSpeaker} />
                         )}
-                        {hasInlineHtml(part.content) ? (
-                            <span
+                        {hasInlineHtml(part.content) && !(part.content.includes('[[') || part.content.includes('[')) ? (
+                            <div
                                 className={styles.text}
                                 dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
                             />
                         ) : (
-                            <span className={styles.text}>
+                            <div className={styles.text}>
                                 {(() => {
                                     const normalized = String(part.content ?? '');
                                     if (!normalized) return null;
@@ -1810,9 +1920,9 @@ export default function FillInTheBlankRenderer({
                                         }
                                     }
 
-                                    return renderTextWithBlanks(normalized, 'main');
+                                    return renderTextWithBlanks(normalized, 'main', { allowHtml: true });
                                 })()}
-                            </span>
+                            </div>
                         )}
                     </span>
                 ));
@@ -1852,7 +1962,70 @@ export default function FillInTheBlankRenderer({
                     </div>
                 ));
 
-            case 'svg':
+            case 'svg': {
+                const content = String(part.content || '');
+                
+                if (content.includes('[[') && content.includes(']]')) {
+                    // Robust SVG Token Overlay System
+                    const blanks = [];
+                    // Regex to find foreignObject tags containing [[id]]
+                    const foRegex = /<foreignObject\s+[^>]*x="([^"]+)"\s+[^>]*y="([^"]+)"\s+[^>]*width="([^"]+)"\s+[^>]*height="([^"]+)"[^>]*>[\s\S]*?\[\[(.*?)]][\s\S]*?<\/foreignObject>/gi;
+                    
+                    let match;
+                    let sanitizedContent = content;
+                    while ((match = foRegex.exec(content)) !== null) {
+                        const [fullMatch, x, y, width, height, blankId] = match;
+                        blanks.push({
+                            id: blankId.trim(),
+                            x: parseFloat(x),
+                            y: parseFloat(y),
+                            w: parseFloat(width),
+                            h: parseFloat(height)
+                        });
+                        // Remove the token from the SVG to prevent double rendering if it's visible
+                        sanitizedContent = sanitizedContent.replace(fullMatch, fullMatch.replace(`[[${blankId}]]`, ''));
+                    }
+
+                    return wrapPart(part, index, (
+                        <div className={styles.svgInteractiveWrapper} style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                            <div 
+                                className={styles.svgBase}
+                                dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(sanitizedContent) }}
+                                style={{ width: '100%' }}
+                            />
+                            {/* Absolute Overlay for Blanks */}
+                            <div className={styles.svgBlanksOverlay} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                                {blanks.map((b, bi) => (
+                                    <div 
+                                        key={`${index}-svg-blank-${bi}`}
+                                        style={{
+                                            position: 'absolute',
+                                            left: `${b.x}px`,
+                                            top: `${b.y}px`,
+                                            width: `${b.w}px`,
+                                            height: `${b.h}px`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            pointerEvents: 'auto'
+                                        }}
+                                    >
+                                        {renderInput(b.id, { size: 'small', placeholder: '' })}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ));
+                }
+
+                return wrapPart(part, index, (
+                    <div
+                        className={styles.svgContainer}
+                        dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(content) }}
+                    />
+                ));
+            }
+
             case 'html': {
                 const content = String(part.content || '');
                 if (content.includes('[') && content.includes(']')) {
@@ -1865,7 +2038,7 @@ export default function FillInTheBlankRenderer({
                 }
                 return wrapPart(part, index, (
                     <div
-                        className={styles.svgContainer}
+                        className={styles.htmlContainer}
                         dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(content) }}
                     />
                 ));
@@ -1949,6 +2122,10 @@ export default function FillInTheBlankRenderer({
                         getInputConfig={getInputConfig}
                         showKeypad={showKeypad}
                         correctAnswers={correctAnswers}
+                        isCorrect={isCorrect}
+                        interactions={{ [part.id]: part }}
+                        allBlankIds={[part.id]}
+                        renderInput={renderInput}
                     />
                 ));
             }

@@ -221,8 +221,11 @@ function buildBasicFeedback(question, selectedAnswer = null) {
 
                 if (answerCells.length > 0) {
                     const joined = answerCells.map(c => {
-                        const val = parsed[c.id];
-                        return Array.isArray(val) ? String(val[0] ?? '') : String(val ?? '');
+                        let e = parsed[c.id];
+                        if (e && typeof e === 'object' && !Array.isArray(e) && 'value' in e) {
+                          e = e.value;
+                        }
+                        return Array.isArray(e) ? String(e[0] ?? '') : String(e ?? '');
                     }).join('');
                     if (joined) return joined;
                 }
@@ -230,7 +233,12 @@ function buildBasicFeedback(question, selectedAnswer = null) {
 
             if (Object.keys(parsed).length === 0) return String(rawText);
             return Object.values(parsed)
-              .map((value) => Array.isArray(value) ? String(value[0] ?? '') : String(value ?? ''))
+              .map((value) => {
+                if (value && typeof value === 'object' && !Array.isArray(value) && 'value' in value) {
+                  return String(value.value);
+                }
+                return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
+              })
               .join(', ');
           }
           return String(rawText);

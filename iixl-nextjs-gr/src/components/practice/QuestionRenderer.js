@@ -17,6 +17,7 @@ import GuidedStepRenderer from './GuidedStepRenderer';
 import LongDivisionStepRenderer from './LongDivisionStepRenderer';
 import StepwiseArithmeticRenderer from './StepwiseArithmeticRenderer';
 import JourneyRenderer from './JourneyRenderer';
+import DotGridRenderer from './DotGridRenderer';
 
 
 const RENDERER_MAP = {
@@ -32,6 +33,7 @@ const RENDERER_MAP = {
     measure: MeasureRenderer,
     shadeGrid: ShadeGridRenderer,
     tokenSelection: TokenSelectionRenderer,
+    dotGrid: DotGridRenderer,
     stepwise: (props) => {
         if (props.question?.ui_config?.type === 'ladder_focus') {
             return <LongDivisionStepRenderer {...props} />;

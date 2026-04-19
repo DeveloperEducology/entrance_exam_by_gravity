@@ -94,6 +94,8 @@ export async function generateMetadata({ params }) {
   };
 }
 
+import InteractiveLessonBlock from '@/components/lessons/InteractiveLessonBlock';
+
 export default async function LessonPage({ params }) {
   const resolvedParams = await params;
   const lesson = await getLesson(resolvedParams.lessonId);
@@ -136,6 +138,9 @@ export default async function LessonPage({ params }) {
         );
 
       case 'paragraph':
+        if (block.interactions) {
+          return <InteractiveLessonBlock key={idx} block={block} idx={idx} />;
+        }
         return (
           <p 
             key={idx} 
@@ -146,6 +151,9 @@ export default async function LessonPage({ params }) {
       
       case 'mathBlock':
       case 'mathSentence':
+        if (block.interactions) {
+          return <InteractiveLessonBlock key={idx} block={block} idx={idx} />;
+        }
         return (
           <p 
             key={idx} 

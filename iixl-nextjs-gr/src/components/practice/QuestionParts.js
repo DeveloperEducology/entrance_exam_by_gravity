@@ -16,6 +16,8 @@ import NumberLineJumps from './NumberLineJumps';
 import DotsGroupingVisual from './DotsGroupingVisual';
 import DotArrayVisual from './DotArrayVisual';
 import ArithmeticGrid from './ArithmeticGrid';
+import SpinnerVisual from './SpinnerVisual';
+import ProbabilityPatch from './ProbabilityPatch';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -794,6 +796,17 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'smartTable':
                 return renderSmartTable(part, index, styles);
 
+            case 'probability_patch':
+            case 'probabilityPatch':
+                return (
+                    <ProbabilityPatch
+                        key={index}
+                        items={part.items}
+                        width={part.width || 300}
+                        height={part.height || 200}
+                    />
+                );
+
             case 'numberLineRounding':
                 return (
                     <NumberLineRounding
@@ -861,6 +874,10 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'dotsGrouping':
             case 'dots_grouping':
                 return <DotsGroupingVisual key={index} part={part} />;
+
+            case 'spinnerVisual':
+            case 'spinner_visual':
+                return <SpinnerVisual key={index} part={part} />;
 
             case 'dotArray':
             case 'dot_array':

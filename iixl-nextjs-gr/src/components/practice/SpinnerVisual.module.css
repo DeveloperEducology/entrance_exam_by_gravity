@@ -1,0 +1,23 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  margin: 10px auto;
+  max-width: fit-content;
+}
+
+.spinnerSvg {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.needleGroup {
+  transition: transform 0.3s ease-out;
+}
+
+.needle {
+  stroke: white;
+  stroke-width: 1px;
+}

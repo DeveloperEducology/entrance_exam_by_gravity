@@ -8,9 +8,11 @@ import MCQRenderer from './MCQRenderer';
 import DragDropRenderer from './DragDropRenderer';
 import DragDropRendererV2 from './DragDropRendererV2';
 import FillInTheBlankRenderer from './FillInTheBlankRenderer';
+import ImageChoiceRenderer from './ImageChoiceRenderer';
 
 const STEP_RENDERERS = {
     'mcq': MCQRenderer,
+    'image_choice': ImageChoiceRenderer,
     'dragAndDrop': DragDropRenderer,
     'dragAndDropv2': DragDropRendererV2,
     'fillInTheBlank': FillInTheBlankRenderer,

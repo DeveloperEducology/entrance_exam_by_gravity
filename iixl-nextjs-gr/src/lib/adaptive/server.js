@@ -454,7 +454,14 @@ export function validateAnswer(question, answer) {
       // Check that all expected answers are correct
       const allCorrect = Object.keys(parsed).every((key) => {
         const actual = String(answer?.[key] ?? '').trim().toLowerCase();
-        const expected = String(parsed[key] ?? '').trim().toLowerCase();
+        
+        let expectedRaw = parsed[key];
+        // Handle config objects like { value: "10", size: "small" }
+        if (expectedRaw && typeof expectedRaw === 'object' && !Array.isArray(expectedRaw) && 'value' in expectedRaw) {
+          expectedRaw = expectedRaw.value;
+        }
+        
+        const expected = String(expectedRaw ?? '').trim().toLowerCase();
         
         // Mathematical leniency: Treat empty string same as "0" for numeric inputs
         if (actual === "" && expected === "0") return true;
@@ -551,6 +558,92 @@ export function validateAnswer(question, answer) {
       }
       
       return true;
+    }
+
+    case 'dotgrid': {
+      const config = question.adaptiveConfig || {};
+      const task = config.taskType || 'right_angle';
+      const lines = Array.isArray(answer?.lines) ? answer.lines : [];
+      
+      if (lines.length === 0) return false;
+
+      const getPos = (id) => {
+        const [r, c] = String(id).split('-').map(Number);
+        return { r, c };
+      };
+
+      const getDistanceSq = (id1, id2) => {
+        const p1 = getPos(id1);
+        const p2 = getPos(id2);
+        return Math.pow(p1.r - p2.r, 2) + Math.pow(p1.c - p2.c, 2);
+      };
+
+      const isPerpendicular = (idA, idB, idC) => {
+        const pA = getPos(idA);
+        const pB = getPos(idB); // vertex
+        const pC = getPos(idC);
+        const v1 = { r: pA.r - pB.r, c: pA.c - pB.c };
+        const v2 = { r: pC.r - pB.r, c: pC.c - pB.c };
+        return (v1.r * v2.r + v1.c * v2.c) === 0;
+      };
+
+      if (task === 'right_angle') {
+        // Check if any two lines share a vertex and are perpendicular
+        for (let i = 0; i < lines.length; i++) {
+          for (let j = i + 1; j < lines.length; j++) {
+            const l1 = lines[i];
+            const l2 = lines[j];
+            const common = l1.find(p => l2.includes(p));
+            if (common) {
+              const pA = l1.find(p => p !== common);
+              const pC = l2.find(p => p !== common);
+              if (isPerpendicular(pA, common, pC)) return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      if (task === 'triangle') {
+        if (lines.length !== 3) return false;
+        // Check if they form a closed loop
+        const points = new Set(lines.flat());
+        if (points.size !== 3) return false;
+        // Each point must appear in exactly 2 lines
+        const counts = {};
+        lines.flat().forEach(p => counts[p] = (counts[p] || 0) + 1);
+        return Object.values(counts).every(c => c === 2);
+      }
+
+      if (task === 'square' || task === 'rectangle') {
+        if (lines.length !== 4) return false;
+        const points = Array.from(new Set(lines.flat()));
+        if (points.size !== 4) return false;
+        
+        const counts = {};
+        lines.flat().forEach(p => counts[p] = (counts[p] || 0) + 1);
+        if (!Object.values(counts).every(c => c === 2)) return false;
+
+        // Check for 4 right angles
+        let rightAngles = 0;
+        for (let i = 0; i < points.length; i++) {
+          const pB = points[i];
+          const connected = lines.filter(l => l.includes(pB)).map(l => l.find(p => p !== pB));
+          if (connected.length === 2 && isPerpendicular(connected[0], pB, connected[1])) {
+            rightAngles++;
+          }
+        }
+        if (rightAngles !== 4) return false;
+
+        // Square: all sides equal
+        const lengths = lines.map(l => getDistanceSq(l[0], l[1]));
+        const allEqual = lengths.every(l => l === lengths[0]);
+        
+        if (task === 'square') return allEqual;
+        if (task === 'rectangle') return !allEqual;
+      }
+
+      return false;
     }
 
     default:
@@ -877,11 +970,8 @@ export function computeMasteryUpdate({
     ? Math.round(((prevAvgLatency * prevAttemptsTotal) + Number(responseMs || 0)) / attemptsTotal)
     : Math.round(Number(responseMs || 0));
 
-  // Difficulty will now be primarily driven by SmartScore in the session update logic,
-  // but we keep a mastery fallback here.
+  // Difficulty is now strictly driven by streaks in computeSessionUpdate
   let difficultyBand = prevDifficulty;
-  if (streak >= 8 && masteryScore > 0.8) difficultyBand = shiftDifficulty(prevDifficulty, 1);
-  if (!isCorrect && masteryScore < 0.3) difficultyBand = shiftDifficulty(prevDifficulty, -1);
 
   const nextReviewHours = masteryScore >= 0.85 ? 72 : (masteryScore >= 0.6 ? 24 : 8);
   const nextReviewAt = new Date(Date.now() + nextReviewHours * 60 * 60 * 1000).toISOString();
@@ -921,19 +1011,18 @@ export function computeSessionUpdate({
   let phase = priorPhase;
   let difficulty = String(prevSession?.active_difficulty || prevSession?.difficulty || 'easy').toLowerCase();
   
-  // Strict Streak-Based Difficulty Implementation:
-  // 5 correct in a row escalates to the next difficulty
-  // 1 wrong falls back to previous difficulty
+  // --- STRICT ADAPTIVE FLOW (User Requested) ---
+  
+  // 1. Difficulty Progression
   if (isCorrect) {
-    if (currentStreak > 0 && currentStreak % 5 === 0) {
-      if (difficulty === 'easy') {
-        difficulty = 'medium';
-      } else if (difficulty === 'medium') {
-        difficulty = 'hard';
-      }
+    if (difficulty === 'easy' && currentStreak >= 5) {
+      difficulty = 'medium';
+    } else if (difficulty === 'medium' && currentStreak >= 15) {
+      // 5 for Easy + 10 for Medium = 15 total streak
+      difficulty = 'hard';
     }
   } else {
-    // Drop one difficulty level immediately on an incorrect answer
+    // 2. Difficulty Regression (Immediate Drop)
     if (difficulty === 'hard') {
       difficulty = 'medium';
     } else if (difficulty === 'medium') {
@@ -941,29 +1030,30 @@ export function computeSessionUpdate({
     }
   }
 
-  // Maintain phase integrity
+  // 3. Phase Management
   if (difficulty === 'hard') {
     phase = priorPhase === 'recovery' ? 'recovery' : 'challenge';
   } else if (difficulty === 'medium') {
-    phase = priorPhase === 'warmup' ? 'core' : priorPhase;
+    phase = priorPhase === 'warmup' ? 'core' : (priorPhase === 'recovery' ? 'recovery' : 'core');
   } else {
-    phase = askedCount < 3 ? 'warmup' : 'core';
+    // Warmup is only for the first 3 questions ever
+    phase = askedCount <= 3 ? 'warmup' : (priorPhase === 'recovery' ? 'recovery' : 'core');
   }
 
-  // Recovery override
+  // 4. Recovery Logic Override
   if (!isCorrect && (priorPhase === 'challenge' || priorPhase === 'core')) {
     phase = 'recovery';
   }
   if (priorPhase === 'recovery' && currentStreak >= 2) {
-    phase = currentSmartScore >= 70 ? 'challenge' : 'core';
+    // Exit recovery after 2 correct in a row
+    phase = currentSmartScore >= 80 ? 'challenge' : 'core';
   }
 
   const accuracy = askedCount > 0 ? correctCount / askedCount : 0;
-  const stableForDone =
-    currentSmartScore >= 98 &&
-    currentStreak >= targetCorrectStreak &&
-    accuracy >= 0.8;
-  if (stableForDone && difficulty === 'hard') phase = 'done';
+  
+  // 5. Completion Logic (Smart Score 100)
+  const isDone = currentSmartScore >= 99 && isCorrect; 
+  if (isDone) phase = 'done';
 
   const recentQuestionIds = [
     ...((prevSession?.recent_question_ids || []).map(String)),
@@ -1023,16 +1113,16 @@ export function computeServerSmartScoreDelta({
   };
 
   if (isCorrect) {
-    // Heavily reduced base gain to target ~4 points per question average
-    const baseGain = 1.2 + (safeMastery * 1.5) + (safeConfidence * 0.8);
-    const streakBoost = Math.min(1.2, 1 + (Math.max(0, streak) * 0.04));
+    // Increased base gain to target ~6-10 points per question
+    const baseGain = 2.5 + (safeMastery * 2.0) + (safeConfidence * 1.5);
+    const streakBoost = Math.min(1.4, 1 + (Math.max(0, streak) * 0.05));
     
-    // Scale weights significantly down
-    const adjDiffWeight = 1.0 + (difficultyWeight - 1) * 0.5; // easy=1.0, med=1.1, hard=1.22
-    const adjPhaseWeight = 1.0 + (phaseWeight - 1) * 0.5;
+    // Higher difficulty impact
+    const adjDiffWeight = 1.0 + (difficultyWeight - 1) * 0.8; 
+    const adjPhaseWeight = 1.0 + (phaseWeight - 1) * 0.8;
 
     const raw = (baseGain * adjDiffWeight * adjPhaseWeight * streakBoost) - (fastGuessPenalty * 0.5);
-    const delta = Math.round(Math.max(1, Math.min(8, raw))); // Cap gain at 8 to prevent jumps
+    const delta = Math.round(Math.max(2, Math.min(12, raw))); // Cap gain at 12
     return {
       delta,
       details: { ...details, mode: 'gain', base: baseGain, streakBoost },

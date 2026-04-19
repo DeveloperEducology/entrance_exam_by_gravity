@@ -1,0 +1,57 @@
+{
+  "id": "more_likely_marble_v1",
+  "type": "mcq",
+  "logic_type": "probability_counts_comparison_v1",
+  "template_id": "probability_more_likely_basic",
+  "difficulty": "easy",
+  "marks": 1,
+  "show_submit_button": true,
+  "question_text": "If you select a marble without looking, which colour are you **more** likely to pick?",
+  "parts": [
+    {
+      "type": "text",
+      "content": "If you select a marble without looking, which colour are you **more** likely to pick?"
+    },
+    {
+      "type": "probability_patch",
+      "items": "{marble_items}"
+    }
+  ],
+  "options": [
+    { "label": "{colorA}", "content": "{colorA}" },
+    { "label": "{colorB}", "content": "{colorB}" },
+    { "label": "neither; {colorA} and {colorB} are equally likely", "content": "neither; {colorA} and {colorB} are equally likely" }
+  ],
+  "adaptiveConfig": {
+    "data_source": {
+      "itemA": { "color": "black", "count": 5 },
+      "itemB": { "color": "purple", "count": 4 },
+      "patch_layout": "random_cluster",
+      "total_items": 9
+    },
+    "variables": {
+      "colorA": "black",
+      "colorB": "purple",
+      "countA": 5,
+      "countB": 4
+    }
+  },
+  "solution": [
+    {
+      "type": "paragraph",
+      "content": "To find out which colour is more likely, we need to count the marbles of each colour."
+    },
+    {
+      "type": "paragraph",
+      "content": "- **Count of {colorA} marbles:** {countA}"
+    },
+    {
+      "type": "paragraph",
+      "content": "- **Count of {colorB} marbles:** {countB}"
+    },
+    {
+      "type": "paragraph",
+      "content": "Since **{countA} > {countB}**, the **{colorA}** marble is more likely to be picked."
+    }
+  ]
+}

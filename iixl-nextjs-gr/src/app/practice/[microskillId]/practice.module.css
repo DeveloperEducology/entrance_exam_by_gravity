@@ -44,69 +44,93 @@
     66% { transform: translate(-20px, 20px) scale(0.9); }
 }
 
-.mobileProgress {
+.mobileHeader {
     display: none;
     width: 100%;
-    max-width: 1180px;
     background: #ffffff;
-    border: 1px solid #d4e8f7;
-    border-radius: 12px;
-    padding: 0.6rem 0.75rem;
-    margin-bottom: 0.5rem;
-    box-shadow: 0 6px 14px rgba(14, 73, 116, 0.08);
-    flex-wrap: wrap;
-    gap: 0.4rem 0.7rem;
+    border-bottom: 1px solid #d4e8f7;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 
-.mobileProgressLeft,
-.mobileProgressCenter,
-.mobileProgressRight {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-}
-
-.mobileProgressCenter {
-    justify-content: center;
-    flex: 1;
-}
-
-.mobileProgressRight {
-    justify-content: flex-end;
-    margin-left: auto;
-}
-
-.mobileProgressItem {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    align-items: center;
-}
-
-.mobileProgressLabel {
-    font-size: 0.62rem;
+.mobileBreadcrumbs {
+    background: #f1f8fc;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #637a94;
-}
-
-.mobileProgressValue {
-    font-size: 0.94rem;
-    font-weight: 800;
-    color: #1f2f46;
-}
-
-.mobileSkillName {
-    font-size: 0.74rem;
-    font-weight: 800;
-    color: #0f6ea8;
-    text-align: center;
-    max-width: 170px;
+    color: #5f7a93;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.mobileBreadcrumbs .chevron {
+    color: #6b9cbc;
+    font-weight: 400;
+}
+
+.mobileStatsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    background: #fff;
+}
+
+.mobileStatCell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0.25rem;
+    border-right: 1px solid #e2eff8;
+    border-bottom: 4px solid #ccc; /* fallback */
+}
+
+.mobileStatCell:last-child {
+    border-right: none;
+}
+
+.mobileStatCell label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #4a637c;
+    margin-bottom: 0.25rem;
+    text-align: center;
+}
+
+.mobileStatValue {
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-family: var(--font-display), sans-serif;
+}
+
+.streakDots {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.streakDot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #e2eaf1;
+    border: 1px solid #cfdbe6;
+}
+
+.streakDotCorrect {
+    background: #68b50b;
+    border-color: #559409;
+    box-shadow: 0 0 4px rgba(104, 181, 11, 0.4);
+}
+
+.streakDotActive {
+    background: #ffc107;
+    border-color: #e6af06;
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.6);
+    transform: scale(1.1); /* Slightly larger to show it's current */
 }
 
 .topBar {
@@ -190,13 +214,15 @@
 .breadcrumb {
     width: 100%;
     max-width: 1180px;
-    margin: 0.7rem auto 0.65rem;
-    color: #2a658f;
-    font-size: 0.78rem;
-    font-weight: 600;
+    margin: 1rem auto 0.5rem;
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.6rem;
 }
 
 .breadcrumb a {
@@ -258,34 +284,34 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    margin-bottom: 0.2rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
 }
 
-.exampleButton,
-.videoButton {
-    border: 1px solid #89c9ec;
+.exampleButton {
+    border: 1.5px solid #89c9ec;
     color: #1174ae;
-    background: #eff8fe;
-    padding: 0.5rem 0.9rem;
+    background: #ffffff;
+    padding: 0.6rem 1.5rem;
     border-radius: 999px;
-    font-size: 0.84rem;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     transition: 0.2s ease;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.6rem;
+    box-shadow: 0 2px 8px rgba(137, 201, 236, 0.2);
 }
 
-.exampleButton:hover,
-.videoButton:hover {
-    background: #e0f2fc;
-    border-color: #5fb5e4;
+.exampleButton:hover {
+    background: #f0f9ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(137, 201, 236, 0.3);
 }
 
 .buttonIcon {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
 }
 
 .orText {
@@ -297,29 +323,28 @@
 .workItOutContainer {
     display: flex;
     justify-content: center;
-    margin-top: 0.1rem;
-}
-
-.inlineWorkPadWrap {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px dashed #d4e8f7;
     width: 100%;
-    margin-top: 0.5rem;
 }
 
 .workItOutButton {
     background: transparent;
     border: none;
     color: #0f6ea8;
-    font-size: 0.88rem;
+    font-size: 1.1rem;
     font-weight: 700;
     cursor: pointer;
     transition: 0.2s ease;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.5rem;
 }
 
 .workItOutButton:hover {
-    text-decoration: underline;
+    color: #0d5c8c;
+    transform: scale(1.02);
 }
 
 .sidebar {
@@ -1499,4 +1524,28 @@
 
 .notReadyIcon {
     opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0;
+    }
+    .mobileHeader {
+        display: block;
+    }
+    .topBar, .breadcrumb {
+        display: none;
+    }
+    .layout {
+        grid-template-columns: 1fr;
+        padding: 0 0.75rem 2rem;
+    }
+    .mainContent {
+        padding: 1.25rem 1rem;
+        border-radius: 20px;
+        min-height: auto;
+    }
+    .comparisonGroup {
+        flex-direction: column;
+    }
 }

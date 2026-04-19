@@ -1,0 +1,64 @@
+{
+  "id": "spinner_description_v1",
+  "type": "mcq",
+  "logic_type": "spinner_description_v1",
+  "template_id": "spinner_description_basic",
+  "difficulty": "easy",
+  "marks": 1,
+  "show_submit_button": true,
+  "question_text": "Which describes the probability of the spinner landing on {targetColor}?",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Which describes the probability of the spinner landing on **{targetColor}**?"
+    },
+    {
+      "type": "spinner_visual",
+      "slices": "{spinner_slices}",
+      "start_rotation": "{start_rotation}",
+      "size": 220
+    }
+  ],
+  "options": [
+    { "label": "certain", "content": "certain" },
+    { "label": "likely", "content": "likely" },
+    { "label": "unlikely", "content": "unlikely" },
+    { "label": "impossible", "content": "impossible" }
+  ],
+  "adaptiveConfig": {
+    "data_source": {
+      "targetColor": { "color": "blue" }
+    },
+    "variables": {
+      "targetColor": "blue",
+      "targetWeight": 3,
+      "totalWeight": 4
+    }
+  },
+  "solution": [
+    {
+      "type": "paragraph",
+      "content": "Look at the spinner to see how much of it is **{targetColor}**."
+    },
+    {
+      "type": "paragraph",
+      "content": "- If the whole spinner is {targetColor}, it is **certain**."
+    },
+    {
+      "type": "paragraph",
+      "content": "- If more than half is {targetColor}, it is **likely**."
+    },
+    {
+      "type": "paragraph",
+      "content": "- If less than half is {targetColor}, it is **unlikely**."
+    },
+    {
+      "type": "paragraph",
+      "content": "- If none of the spinner is {targetColor}, it is **impossible**."
+    },
+    {
+      "type": "paragraph",
+      "content": "On this spinner, **{targetWeight}** out of **{totalWeight}** parts are {targetColor}. This is **{correct_answer}**."
+    }
+  ]
+}

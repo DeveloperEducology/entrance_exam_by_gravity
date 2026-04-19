@@ -1,0 +1,61 @@
+{
+  "id": "spinner_probability_v1",
+  "type": "mcq",
+  "logic_type": "spinner_probability_v1",
+  "template_id": "spinner_probability_basic",
+  "difficulty": "easy",
+  "marks": 1,
+  "show_submit_button": true,
+  "question_text": "On which colour is the spinner **more** likely to land?",
+  "parts": [
+    {
+      "type": "text",
+      "content": "On which colour is the spinner **more** likely to land?"
+    },
+    {
+      "type": "spinner_visual",
+      "slices": "{spinner_slices}",
+      "start_rotation": "{start_rotation}",
+      "size": 220
+    }
+  ],
+  "options": [
+    { "label": "{colorA}", "content": "{colorA}" },
+    { "label": "{colorB}", "content": "{colorB}" },
+    { "label": "{equal_text}", "content": "{equal_text}" }
+  ],
+  "adaptiveConfig": {
+    "data_source": {
+      "itemA": { "color": "white" },
+      "itemB": { "color": "blue" }
+    },
+    "variables": {
+      "colorA": "white",
+      "colorB": "blue",
+      "weightA": 1,
+      "weightB": 3
+    }
+  },
+  "solution": [
+    {
+      "type": "paragraph",
+      "content": "To find out which colour is more likely, we need to compare the space each colour takes up on the spinner."
+    },
+    {
+      "type": "paragraph",
+      "content": "- The **{colorA}** section takes up {weightA} out of {totalWeight} parts."
+    },
+    {
+      "type": "paragraph",
+      "content": "- The **{colorB}** section takes up {weightB} out of {totalWeight} parts."
+    },
+    {
+      "type": "paragraph",
+      "content": "{weightA} is {comparison_word} {weightB}."
+    },
+    {
+      "type": "paragraph",
+      "content": "Therefore, it is **{correct_answer_text}** to land on."
+    }
+  ]
+}

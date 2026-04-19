@@ -1,0 +1,46 @@
+.container {
+  position: relative;
+  background: white;
+  margin: 20px auto;
+  border-radius: 12px;
+  overflow: visible;
+}
+
+.marbleWrapper {
+  position: absolute;
+  width: 45px;
+  height: 45px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
+  transition: transform 0.2s ease-out;
+}
+
+.marbleWrapper:hover {
+  transform: scale(1.05);
+  cursor: pointer;
+}
+
+.marbleSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Optional: animation for entrance */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+  100% { transform: translateY(0px); }
+}
+
+.marbleWrapper {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Staggered animation */
+.marbleWrapper:nth-child(even) {
+  animation-delay: 0.5s;
+}
+
+.marbleWrapper:nth-child(3n) {
+  animation-delay: 1s;
+}

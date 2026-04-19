@@ -3,6 +3,14 @@ import { generatePlaceValueQuestion } from './placeValueGenerator';
 
 export function hydrateNode(node, templateVars) {
   if (typeof node === 'string') {
+    // Check if the node is exactly a single template variable like "{items}"
+    const exactMatch = node.match(/^\{([^}]+)\}$/);
+    if (exactMatch) {
+      const key = exactMatch[1];
+      if (templateVars[key] !== undefined) {
+        return templateVars[key];
+      }
+    }
     return node.replace(/\{([^}]+)\}/g, (match, key) => templateVars[key] !== undefined ? templateVars[key] : match);
   }
   if (Array.isArray(node)) {
@@ -184,6 +192,36 @@ export function instantiateTemplate(question, overrideVariables = null) {
   }
 
 
+  if (logic === 'interactive_paragraph_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const template = dataSource.template || "Solve: [[ans]]";
+    const variables = dataSource.variables || {};
+    
+    // Hydrate the template with variables if they exist
+    const hydratedContent = hydrateNode(template, variables);
+    
+    // If we have override variables (e.g. from a generator), use them
+    const currentVars = { ...variables, ...(overrideVariables || {}) };
+    const finalContent = hydrateNode(hydratedContent, currentVars);
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: finalContent,
+        isVertical: true
+      }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    // If correct answers are provided in dataSource.answers, use them
+    if (dataSource.answers) {
+      inst.correctAnswerText = JSON.stringify(hydrateNode(dataSource.answers, currentVars));
+    }
+    
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...currentVars };
+    return inst;
+  }
+
   if (logic === 'estimate_products_rounding_v2') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
     const range = dataSource.range || [11, 99];
@@ -254,6 +292,163 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.type = 'fillInTheBlank';
     inst.correctAnswerText = JSON.stringify({ ans: String(estimatedProd) });
     inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    return inst;
+  }
+
+  if (logic === 'estimate_products_rounding_v3') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [11, 99];
+
+    let n1, n2;
+    if (overrideVariables) {
+      n1 = Number(overrideVariables.n1);
+      n2 = Number(overrideVariables.n2);
+    } else {
+      do {
+        n1 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+        n2 = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+      } while (n1 % 10 === 0 || n2 % 10 === 0);
+    }
+
+    const round = (num) => Math.round(num / 10) * 10;
+    const r1 = round(n1);
+    const r2 = round(n2);
+    const estimatedProd = r1 * r2;
+
+    const templateVars = {
+      n1, n2, r1, r2,
+      estimated_prod: estimatedProd,
+      estimated_prod_fmt: estimatedProd.toLocaleString('en-IN')
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    inst.parts = [
+      { type: 'text', content: '### Estimate the product', isVertical: true },
+      { type: 'text', content: `Round each factor to the nearest ten to estimate **${n1} &times; ${n2}**.`, isVertical: true },
+      { 
+        type: 'text', 
+        content: `[[r1]] &times; [[r2]] = [[ans]]`,
+        isVertical: true,
+        style: { fontSize: '24px', margin: '20px 0', textAlign: 'center' }
+      }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ 
+      r1: String(r1),
+      r2: String(r2),
+      ans: String(estimatedProd)
+    });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    return inst;
+  }
+
+  if (logic === 'svg_number_line_v1') {
+    const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    const range = dataSource.range || [0, 10];
+    const step = dataSource.step || 1;
+    
+    let target;
+    if (overrideVariables && overrideVariables.target) {
+      target = Number(overrideVariables.target);
+    } else {
+      do {
+        target = Math.floor(Math.random() * (range[1] - range[0] - 1) * 10) / 10 + range[0] + 0.5;
+        target = parseFloat(target.toFixed(1));
+      } while (Number.isInteger(target));
+    }
+    
+    const templateVars = { target, range };
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+    
+    // Generate SVG for a number line
+    const width = 600;
+    const height = 100;
+    const margin = 40;
+    const lineY = 50;
+    const scale = (width - 2 * margin) / (range[1] - range[0]);
+    
+    let ticks = "";
+    for (let i = range[0]; i <= range[1]; i += step) {
+      const x = margin + (i - range[0]) * scale;
+      ticks += `<line x1="${x}" y1="${lineY - 10}" x2="${x}" y2="${lineY + 10}" stroke="#94a3b8" stroke-width="2" />`;
+      ticks += `<text x="${x}" y="${lineY + 30}" text-anchor="middle" font-size="14" font-weight="600" fill="#64748b" font-family="Nunito, sans-serif">${i}</text>`;
+    }
+    
+    const targetX = margin + (target - range[0]) * scale;
+    
+    const svgContent = `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
+        <line x1="${margin}" y1="${lineY}" x2="${width - margin}" y2="${lineY}" stroke="#475569" stroke-width="3" stroke-linecap="round" />
+        ${ticks}
+        <circle cx="${targetX}" cy="${lineY}" r="8" fill="#3b82f6" stroke="white" stroke-width="2" />
+        <foreignObject x="${targetX - 30}" y="${lineY - 55}" width="60" height="45">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+            [[ans]]
+          </div>
+        </foreignObject>
+      </svg>
+    `;
+
+    inst.parts = [
+      { type: 'text', content: dataSource.instruction || `Where is **${target}** on the number line?`, isVertical: true },
+      { type: 'svg', content: svgContent.trim(), isVertical: true },
+      { type: 'text', content: `Round **${target}** to the nearest whole number: [[rounded]]`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ 
+      ans: String(target),
+      rounded: String(Math.round(target))
+    });
+    inst.adaptiveConfig.correctAnswerText = inst.correctAnswerText;
+    return inst;
+  }
+
+  if (logic === 'dot_grid_interaction_v1') {
+    const config = inst.adaptiveConfig || {};
+    const taskType = config.taskType || 'right_angle'; // square, triangle, rectangle, right_angle
+    
+    inst.type = 'dotGrid';
+    inst.adaptiveConfig = {
+      rows: 8,
+      cols: 12,
+      spacing: 40,
+      ...config
+    };
+
+    const instructions = {
+      right_angle: "Draw a **right angle** on the grid.",
+      square: "Draw a **square** of any size.",
+      rectangle: "Draw a **rectangle** (not a square).",
+      triangle: "Draw any **triangle**."
+    };
+
+    inst.questionText = instructions[taskType] || "Draw on the dot grid.";
+
+    // Validation logic (Simplified for template)
+    // In a real system, this would be a backend check, 
+    // but we can provide the logic as a 'correctAnswerText' schema
+    inst.validation = {
+      type: 'geometric',
+      task: taskType
+    };
+
+    // For testing/preview, we can generate a solution shape
+    const solutions = {
+      right_angle: [["2-2", "2-4"], ["2-4", "4-4"]],
+      square: [["2-2", "2-5"], ["2-5", "5-5"], ["5-5", "5-2"], ["5-2", "2-2"]],
+      triangle: [["2-2", "2-6"], ["2-6", "5-4"], ["5-4", "2-2"]],
+      rectangle: [["2-2", "2-7"], ["2-7", "4-7"], ["4-7", "4-2"], ["4-2", "2-2"]]
+    };
+
+    inst.solution = [
+      { type: 'text', content: "### Possible Solution", isVertical: true },
+      { type: 'text', content: `Here is one way to draw the **${taskType.replace('_', ' ')}**:`, isVertical: true },
+      { type: 'dotGrid', adaptiveConfig: { ...inst.adaptiveConfig, initialLines: solutions[taskType] }, isVertical: true }
+    ];
+
     return inst;
   }
 
@@ -527,6 +722,315 @@ if (logic === 'read_table_generic_comparison_v1') {
     inst.type = 'mcq';
     inst.correctAnswerIndex = isMore ? 0 : 1;
     inst.correctAnswerText = correctAnswer;
+    
+    return inst;
+  }
+
+  if (logic === 'probability_counts_comparison_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    let colorA, colorB, countA, countB, marbleItems;
+
+    if (overrideVariables && overrideVariables.marble_items) {
+      colorA = overrideVariables.colorA;
+      colorB = overrideVariables.colorB;
+      countA = Number(overrideVariables.countA);
+      countB = Number(overrideVariables.countB);
+      marbleItems = overrideVariables.marble_items;
+    } else {
+      colorA = ds.itemA?.color || 'black';
+      colorB = ds.itemB?.color || 'purple';
+      const rangeA = ds.itemA?.range || [3, 7];
+      const rangeB = ds.itemB?.range || [3, 7];
+      
+      // Ensure counts are different to have a clear 'more likely' answer
+      do {
+        countA = Math.floor(Math.random() * (rangeA[1] - rangeA[0] + 1)) + rangeA[0];
+        countB = Math.floor(Math.random() * (rangeB[1] - rangeB[0] + 1)) + rangeB[0];
+      } while (countA === countB);
+
+      const items = [];
+      const width = ds.patch_width || 300;
+      const height = ds.patch_height || 200;
+      const marbleSize = 45;
+
+      const generateMarbles = (color, count) => {
+        for (let i = 0; i < count; i++) {
+          items.push({
+            id: `m-${color}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+            color: color,
+            top: Math.floor(Math.random() * (height - marbleSize)),
+            left: Math.floor(Math.random() * (width - marbleSize))
+          });
+        }
+      };
+
+      generateMarbles(colorA, countA);
+      generateMarbles(colorB, countB);
+      marbleItems = items;
+    }
+
+    const isMatch = countA > countB;
+    const correctAnswer = isMatch ? colorA : colorB;
+    
+    const templateVars = {
+      colorA, colorB, countA, countB,
+      marble_items: marbleItems,
+      correct_answer: correctAnswer
+    };
+
+    inst.adaptiveConfig.variables = { 
+        ...(inst.adaptiveConfig.variables || {}), 
+        ...templateVars 
+    };
+
+    inst.parts = hydrateNode(inst.parts || [], templateVars);
+    inst.options = hydrateNode(inst.options || [], templateVars);
+    inst.solution = hydrateNode(inst.solution || [], templateVars);
+
+    inst.type = 'mcq';
+    inst.correctAnswerIndex = isMatch ? 0 : 1;
+    inst.correctAnswerText = correctAnswer;
+    
+    return inst;
+  }
+
+  if (logic === 'spinner_probability_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    const colorPool = [
+      { name: 'blue', hex: '#00CCFF' },
+      { name: 'pink', hex: '#F06292' },
+      { name: 'orange', hex: '#FF9800' },
+      { name: 'green', hex: '#4CAF50' },
+      { name: 'yellow', hex: '#FFEB3B' },
+      { name: 'white', hex: '#FFFFFF' },
+      { name: 'purple', hex: '#9C27B0' }
+    ];
+
+    let colorA, colorB, weightA, weightB;
+
+    if (overrideVariables && overrideVariables.colorA) {
+      // Re-hydration logic
+      const findColor = (name) => colorPool.find(c => c.name === name) || { name, hex: '#ccc' };
+      colorA = typeof overrideVariables.colorA === 'object' ? overrideVariables.colorA : findColor(overrideVariables.colorA);
+      colorB = typeof overrideVariables.colorB === 'object' ? overrideVariables.colorB : findColor(overrideVariables.colorB);
+      weightA = Number(overrideVariables.weightA);
+      weightB = Number(overrideVariables.weightB);
+      // Optional 3rd color
+      if (overrideVariables.colorC) {
+        const colorC = typeof overrideVariables.colorC === 'object' ? overrideVariables.colorC : findColor(overrideVariables.colorC);
+        const weightC = Number(overrideVariables.weightC);
+        // Special multi-color handling if needed, but for now we prioritize 2-color logic
+      }
+    } else {
+      const shuffled = [...colorPool].sort(() => Math.random() - 0.5);
+      colorA = shuffled[0];
+      colorB = shuffled[1];
+      const colorC = shuffled[2];
+
+      const numColors = Math.random() > 0.7 ? 3 : 2; // 30% chance for 3 colors
+
+      if (numColors === 2) {
+        const portionTypes = [[1, 3], [2, 2], [3, 1], [3, 5], [4, 4]];
+        const portions = portionTypes[Math.floor(Math.random() * portionTypes.length)];
+        weightA = portions[0];
+        weightB = portions[1];
+      } else {
+        const portionTypes = [[2, 2, 2], [1, 1, 2], [2, 1, 1], [4, 2, 2]];
+        const portions = portionTypes[Math.floor(Math.random() * portionTypes.length)];
+        weightA = portions[0];
+        weightB = portions[1];
+        const weightC = portions[2];
+        
+        const weights = [weightA, weightB, weightC];
+        const maxWeight = Math.max(...weights);
+        const winners = weights.filter(w => w === maxWeight);
+        
+        const spinnerSlices = [
+          { weight: weightA, color: colorA.hex },
+          { weight: weightB, color: colorB.hex },
+          { weight: weightC, color: colorC.hex }
+        ];
+
+        const isEqual = winners.length === 3;
+        const startRotation = Math.floor(Math.random() * 360);
+        const templateVars = {
+          colorA: colorA.name, colorB: colorB.name, colorC: colorC.name,
+          weightA, weightB, weightC,
+          totalWeight: weightA + weightB + weightC,
+          spinner_slices: spinnerSlices,
+          correct_answer: isEqual ? 'neither' : (weightA === maxWeight ? colorA.name : (weightB === maxWeight ? colorB.name : colorC.name)),
+          equal_text: isEqual 
+            ? `neither; ${colorA.name}, ${colorB.name}, and ${colorC.name} are equally likely`
+            : `neither; ${colorA.name} and ${colorB.name} are equally likely`,
+          start_rotation: startRotation
+        };
+
+        inst.adaptiveConfig.variables = { ...templateVars };
+        inst.parts = hydrateNode(inst.parts || [], templateVars);
+        inst.options = hydrateNode(inst.options || [], templateVars);
+        inst.solution = hydrateNode(inst.solution || [], templateVars);
+        inst.type = 'mcq';
+        
+        // Options for 3 colors
+        inst.options = [
+          { label: colorA.name, content: colorA.name },
+          { label: colorB.name, content: colorB.name },
+          { label: colorC.name, content: colorC.name },
+          { label: templateVars.equal_text, content: templateVars.equal_text }
+        ];
+
+        if (isEqual) inst.correctAnswerIndex = 3;
+        else if (winners.length > 1) inst.correctAnswerIndex = 3; // Mixed equal cases
+        else {
+          const winningIdx = weights.indexOf(maxWeight);
+          inst.correctAnswerIndex = winningIdx;
+        }
+        inst.correctAnswerText = templateVars.correct_answer;
+        return inst;
+      }
+    }
+
+    const totalWeight = weightA + weightB;
+    const isEqual = weightA === weightB;
+    const isAMore = weightA > weightB;
+    
+    let correctAnswer;
+    if (isEqual) {
+      correctAnswer = 'neither';
+    } else {
+      correctAnswer = isAMore ? colorA.name : colorB.name;
+    }
+
+    const spinnerSlices = [
+      { weight: weightA, color: colorA.hex },
+      { weight: weightB, color: colorB.hex }
+    ];
+
+    const templateVars = {
+      colorA: colorA.name,
+      colorB: colorB.name,
+      weightA,
+      weightB,
+      totalWeight,
+      spinner_slices: spinnerSlices,
+      correct_answer: correctAnswer,
+      equal_text: `neither; ${colorA.name} and ${colorB.name} are equally likely`,
+      comparison_word: isEqual ? 'equal to' : (isAMore ? 'greater than' : 'less than'),
+      correct_answer_text: isEqual ? 'equally likely' : `more likely for the spinner to land on ${correctAnswer}`
+    };
+
+    inst.adaptiveConfig.variables = { 
+        ...(inst.adaptiveConfig.variables || {}), 
+        ...templateVars 
+    };
+
+    inst.parts = hydrateNode(inst.parts || [], templateVars);
+    inst.options = hydrateNode(inst.options || [], templateVars);
+    inst.solution = hydrateNode(inst.solution || [], templateVars);
+
+    inst.type = 'mcq';
+    if (isEqual) {
+      inst.correctAnswerIndex = 2; // "neither" is always 3rd option in template
+    } else {
+      inst.correctAnswerIndex = isAMore ? 0 : 1;
+    }
+    inst.correctAnswerText = correctAnswer;
+    
+    return inst;
+  }
+  if (logic === 'spinner_description_v1') {
+    const config = inst.adaptiveConfig || {};
+    
+    const colorPool = [
+      { name: 'blue', hex: '#00CCFF' },
+      { name: 'pink', hex: '#F06292' },
+      { name: 'orange', hex: '#FF9800' },
+      { name: 'green', hex: '#4CAF50' },
+      { name: 'yellow', hex: '#FFEB3B' },
+      { name: 'white', hex: '#FFFFFF' },
+      { name: 'purple', hex: '#9C27B0' }
+    ];
+
+    let targetColor, otherColor, targetWeight, totalWeight;
+
+    if (overrideVariables && overrideVariables.targetColor) {
+      const findColor = (name) => colorPool.find(c => c.name === name) || { name, hex: '#ccc' };
+      targetColor = typeof overrideVariables.targetColor === 'object' ? overrideVariables.targetColor : findColor(overrideVariables.targetColor);
+      otherColor = typeof overrideVariables.otherColor === 'object' ? overrideVariables.otherColor : findColor(overrideVariables.otherColor);
+      targetWeight = Number(overrideVariables.targetWeight);
+      totalWeight = Number(overrideVariables.totalWeight);
+    } else {
+      const shuffled = [...colorPool].sort(() => Math.random() - 0.5);
+      targetColor = shuffled[0];
+      otherColor = shuffled[1];
+
+      // Randomize the total weight (e.g. 100 for percentage-like precision)
+      totalWeight = 100;
+      
+      const scenarioType = Math.floor(Math.random() * 4); // 0: Impossible, 1: Unlikely, 2: Likely, 3: Certain
+      
+      if (scenarioType === 0) {
+        targetWeight = 0;
+      } else if (scenarioType === 3) {
+        targetWeight = 100;
+      } else if (scenarioType === 1) {
+        // Unlikely: between 5% and 45%
+        targetWeight = Math.floor(Math.random() * 40) + 5;
+      } else {
+        // Likely: between 55% and 95%
+        targetWeight = Math.floor(Math.random() * 40) + 55;
+      }
+    }
+
+    let description;
+    if (targetWeight === 0) description = 'impossible';
+    else if (targetWeight === totalWeight) description = 'certain';
+    else if (targetWeight > totalWeight / 2) description = 'likely';
+    else if (targetWeight < totalWeight / 2) description = 'unlikely';
+    else description = 'even chance'; // Handling the 50/50 case just in case
+
+    // Random rotation for the whole spinner (0 to 360 degrees)
+    const startRotation = Math.floor(Math.random() * 360);
+
+    const spinnerSlices = [];
+    if (targetWeight > 0) {
+      spinnerSlices.push({ weight: targetWeight, color: targetColor.hex });
+    }
+    if (totalWeight - targetWeight > 0) {
+      spinnerSlices.push({ weight: totalWeight - targetWeight, color: otherColor.hex });
+    }
+
+    const templateVars = {
+      targetColor: targetColor.name,
+      otherColor: otherColor.name,
+      targetWeight,
+      totalWeight,
+      spinner_slices: spinnerSlices,
+      correct_answer: description,
+      start_rotation: startRotation
+    };
+
+    inst.adaptiveConfig.variables = { 
+        ...(inst.adaptiveConfig.variables || {}), 
+        ...templateVars 
+    };
+
+    inst.parts = hydrateNode(inst.parts || [], templateVars);
+    inst.options = hydrateNode(inst.options || [], templateVars);
+    inst.solution = hydrateNode(inst.solution || [], templateVars);
+
+    inst.type = 'mcq';
+    const options = ['certain', 'likely', 'unlikely', 'impossible'];
+    inst.correctAnswerIndex = options.indexOf(description);
+    if (inst.correctAnswerIndex === -1 && description === 'even chance') {
+        // Fallback for even chance if it appears
+        inst.correctAnswerIndex = 1; // Mark as likely or add option
+    }
+    inst.correctAnswerText = description;
     
     return inst;
   }
@@ -9751,6 +10255,173 @@ if (logic === 'digit_arrangement_v1') {
     };
     inst.correctAnswer = n1 * n2;
     inst.type = 'fillInTheBlank';
+  }
+
+  if (logic === 'ranking_comparison_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    const defaultEntities = ["Virat", "Rohit", "Surya", "Gill", "Rahul", "Pant", "Hardik", "Ishan"];
+    const entities = ds.entities || defaultEntities;
+    const unit = ds.unit || "runs";
+    const context = ds.context || "an IPL match";
+
+    let p1, p2, p3, s1, s2;
+
+    if (overrideVariables && overrideVariables.p1) {
+      // Use existing variables for validation/explanation
+      p1 = overrideVariables.p1;
+      p2 = overrideVariables.p2;
+      p3 = overrideVariables.p3;
+      s1 = overrideVariables.statement1;
+      s2 = overrideVariables.statement2;
+    } else {
+      // First time generation
+      const picked = [...entities].sort(() => Math.random() - 0.5).slice(0, 3);
+      [p1, p2, p3] = picked; // p3 > p1 > p2
+
+      s1 = Math.random() > 0.5 
+        ? `**${p1}** scored more ${unit} than **${p2}**` 
+        : `**${p2}** scored fewer ${unit} than **${p1}**`;
+
+      s2 = Math.random() > 0.5
+        ? `**${p1}** scored fewer ${unit} than **${p3}**`
+        : `**${p3}** scored more ${unit} than **${p1}**`;
+    }
+
+    const variations = [
+      `${p3} > ${p1} > ${p2}`, // Correct
+      `${p2} > ${p1} > ${p3}`, // Reversed
+      `${p1} > ${p3} > ${p2}`, // Swapped highest/middle
+      `${p3} > ${p2} > ${p1}`  // Swapped middle/lowest
+    ];
+
+    const templateVars = {
+      p1, p2, p3,
+      statement1: s1,
+      statement2: s2,
+      context,
+      unit,
+      highest: p3,
+      middle: p1,
+      lowest: p2,
+      chain: variations[0]
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `In ${context}, ${s1}, but ${s2}. Which logical chain correctly ranks their scores from highest to lowest?`,
+        isVertical: true 
+      }
+    ];
+
+    // Only shuffle if we are NOT in validation/explanation mode
+    const shuffled = (overrideVariables && overrideVariables.p1) 
+      ? variations 
+      : [...variations].sort(() => Math.random() - 0.5);
+      
+    const correctIdx = shuffled.indexOf(variations[0]);
+
+    inst.options = shuffled.map(v => ({ label: v, content: v }));
+    inst.correctAnswerIndex = correctIdx;
+    inst.correctAnswerText = variations[0];
+
+    inst.solution = [
+      { type: 'text', content: `To find the correct ranking, let's break down the statements:`, isVertical: true },
+      { type: 'text', content: `1. **${s1.replace(/\*\*/g, '')}**: This means **${p1} > ${p2}**.`, isVertical: true },
+      { type: 'text', content: `2. **${s2.replace(/\*\*/g, '')}**: This means **${p3} > ${p1}**.`, isVertical: true },
+      { type: 'text', content: `### Combined Chain:`, isVertical: true },
+      { type: 'text', content: `Connecting them through **${p1}** (the middle player):`, isVertical: true },
+      { type: 'text', content: `**${p3} (Highest) > ${p1} (Middle) > ${p2} (Lowest)**`, isVertical: true },
+      { type: 'text', content: `Therefore, the correct map is **${variations[0]}**.`, isVertical: true }
+    ];
+
+    inst.type = 'mcq';
+    return inst;
+  }
+
+  if (logic === 'ranking_extreme_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    const defaultEntities = ["GT", "CSK", "MI", "LSG", "RCB", "SRH", "DC", "KKR"];
+    const entities = ds.entities || defaultEntities;
+    const unit = ds.unit || "points";
+    const context = ds.context || "the IPL Points Table logic";
+
+    let p1, p2, p3, p4, s1, s2, s3, targetType;
+
+    if (overrideVariables && overrideVariables.p1) {
+      p1 = overrideVariables.p1;
+      p2 = overrideVariables.p2;
+      p3 = overrideVariables.p3;
+      p4 = overrideVariables.p4;
+      s1 = overrideVariables.statement1;
+      s2 = overrideVariables.statement2;
+      s3 = overrideVariables.statement3;
+      targetType = overrideVariables.targetType;
+    } else {
+      // Pick 4 distinct entities for a longer chain
+      const picked = [...entities].sort(() => Math.random() - 0.5).slice(0, 4);
+      [p1, p2, p3, p4] = picked; // Chain: p4 > p3 > p2 > p1
+
+      // Build the statements
+      s1 = `**${p4}** has more ${unit} than **${p3}**`;
+      s2 = `**${p3}** has more ${unit} than **${p2}**`;
+      s3 = Math.random() > 0.5 
+        ? `**${p2}** has more ${unit} than **${p1}**`
+        : `**${p1}** has fewer ${unit} than **${p2}**`;
+
+      targetType = Math.random() > 0.5 ? 'highest' : 'lowest';
+    }
+
+    const correctAnswer = targetType === 'highest' ? p4 : p1;
+
+    const templateVars = {
+      p1, p2, p3, p4,
+      statement1: s1,
+      statement2: s2,
+      statement3: s3,
+      context,
+      unit,
+      highest: p4,
+      lowest: p1,
+      targetType
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Look at ${context}:\n* ${s1}\n* ${s2}\n* ${s3}\n\nWhich team has the **${targetType === 'highest' ? 'most' : 'least'}** (${targetType === 'highest' ? 'highest' : 'lowest'}) number of ${unit}?`,
+        isVertical: true 
+      }
+    ];
+
+    const displayOrder = (overrideVariables && overrideVariables.p1)
+      ? [p1, p2, p3, p4]
+      : [p1, p2, p3, p4].sort(() => Math.random() - 0.5);
+
+    inst.options = displayOrder.map(v => ({ label: v, content: v }));
+    inst.correctAnswerIndex = displayOrder.indexOf(correctAnswer);
+    inst.correctAnswerText = correctAnswer;
+
+    inst.solution = [
+      { type: 'text', content: `Let's build the ${unit} chain step-by-step:`, isVertical: true },
+      { type: 'text', content: `1. **${p4} > ${p3}**`, isVertical: true },
+      { type: 'text', content: `2. **${p3} > ${p2}**`, isVertical: true },
+      { type: 'text', content: `3. **${p2} > ${p1}** (Since ${s3.replace(/\*\*/g, '')})`, isVertical: true },
+      { type: 'text', content: `### Full Ranking:`, isVertical: true },
+      { type: 'text', content: `**${p4} (1st) > ${p3} (2nd) > ${p2} (3rd) > ${p1} (4th)**`, isVertical: true },
+      { type: 'text', content: `**Conclusion:** **${correctAnswer}** is at the ${targetType === 'highest' ? 'top' : 'bottom'} of the chain, meaning they have the **${targetType === 'highest' ? 'most' : 'least'}** ${unit}.`, isVertical: true }
+    ];
+
+    inst.type = 'mcq';
+    return inst;
   }
 
   // Always provide a unique instance ID if it was hydrated from a template

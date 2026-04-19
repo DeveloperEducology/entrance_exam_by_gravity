@@ -25,7 +25,8 @@ export function latexWithInteractivePlaceholders(latex) {
     return expression.replace(LATEX_PLACEHOLDER_RE, (_, doubleId, singleId) => {
         const id = String(doubleId || singleId || '').trim();
         if (!id) return '\\boxed{\\phantom{00}}';
-        return `\\htmlData{blank-id=${id}}{\\boxed{\\phantom{00}}}`;
+        // Use a transparent phantom box to create the correct dimensions without showing text
+        return `\\htmlData{blank-id=${id}}{\\boxed{\\phantom{\\text{MMMM}}}}`;
     });
 }
 

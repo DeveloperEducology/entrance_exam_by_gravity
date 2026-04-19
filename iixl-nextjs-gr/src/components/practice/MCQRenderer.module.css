@@ -40,80 +40,47 @@
 .optionsGrid {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: var(--mcq-gap, 1rem);
-    margin-bottom: 1.5rem;
-}
-
-.optionsGrid.vertical {
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.optionsGrid.gridMode {
-    display: grid;
-    grid-template-columns: repeat(var(--mcq-columns, 2), minmax(100px, 1fr));
     justify-content: center;
-    width: 100%;
-}
-
-@media (max-width: 480px) {
-    .optionsGrid.gridMode {
-        grid-template-columns: 1fr;
-    }
+    gap: var(--mcq-gap, 0.8rem);
+    margin: 1.5rem auto;
+    max-width: 700px;
 }
 
 .option {
     background: #ffffff;
-    border: 3px solid #9fdcf8;
-    border-radius: var(--border-radius-lg);
-    padding: 0.8rem 1.2rem;
-    font-size: var(--mcq-font-size, 1.1rem);
-    font-weight: 600;
-    color: var(--text-primary);
+    border: 2px solid #89c9ec;
+    border-radius: 24px;
+    padding: 1rem 1.5rem;
+    font-size: var(--mcq-font-size, 1.2rem);
+    font-weight: 700;
+    color: #1e293b;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     gap: 0.75rem;
     text-align: center;
     width: auto;
-    min-width: 100px;
+    min-width: 140px;
     justify-content: center;
     white-space: normal;
     word-break: break-word;
-    flex: 1 1 auto;
-}
-
-.option.selected {
-    background: #e9f8ef;
-    border-color: var(--mcq-accent, #22c55e);
-    font-weight: 600;
-}
-
-.checkbox {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--mcq-accent, #22c55e);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.96rem;
-    color: var(--mcq-accent, #22c55e);
-    flex-shrink: 0;
+    flex: 0 1 auto;
+    box-shadow: 0 2px 4px rgba(137, 201, 236, 0.1);
 }
 
 .option:hover:not(.disabled) {
-    background: #ffffff;
-    border-color: #74c9f2;
+    background: #f0f9ff;
+    border-color: #5fb5e4;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(137, 201, 236, 0.2);
 }
 
 .option.selected {
-    background: #e9f8ef;
-    border-color: #22c55e;
-    font-weight: 600;
+    background: #e0f2fe;
+    border-color: #0f6ea8;
+    color: #0369a1;
+    box-shadow: 0 4px 15px rgba(15, 110, 168, 0.15);
 }
 
 .option.disabled {
