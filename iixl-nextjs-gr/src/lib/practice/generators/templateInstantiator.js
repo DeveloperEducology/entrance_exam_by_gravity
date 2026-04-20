@@ -3,15 +3,16 @@ import { generatePlaceValueQuestion } from './placeValueGenerator';
 
 export function hydrateNode(node, templateVars) {
   if (typeof node === 'string') {
-    // Check if the node is exactly a single template variable like "{items}"
-    const exactMatch = node.match(/^\{([^}]+)\}$/);
+    // Check if the node is exactly a single template variable like "{items}" or "{{items}}"
+    const exactMatch = node.match(/^\{\{?([^}]+)\}\}?$/);
     if (exactMatch) {
       const key = exactMatch[1];
       if (templateVars[key] !== undefined) {
         return templateVars[key];
       }
     }
-    return node.replace(/\{([^}]+)\}/g, (match, key) => templateVars[key] !== undefined ? templateVars[key] : match);
+    // Match both {{var}} and {var}
+    return node.replace(/\{\{?([^}]+)\}\}?/g, (match, key) => templateVars[key] !== undefined ? templateVars[key] : match);
   }
   if (Array.isArray(node)) {
     return node.map(n => hydrateNode(n, templateVars));
@@ -1034,6 +1035,42 @@ if (logic === 'read_table_generic_comparison_v1') {
     }
     inst.correctAnswerText = description;
     
+    return inst;
+  }
+
+  if (logic === 'division_journey_v1') {
+    const { generateDivisionJourney } = require('@/lib/practice/generators/math/divisionJourneyGenerator');
+    const generated = generateDivisionJourney();
+    const templateVars = overrideVariables || generated.variables;
+
+    inst.adaptiveConfig.variables = { 
+        ...(inst.adaptiveConfig.variables || {}), 
+        ...templateVars 
+    };
+
+    // DEEP RECOVERY: Find parts anywhere they might be hiding
+    const rawParts = (Array.isArray(inst.parts) && inst.parts.length > 0) 
+        ? inst.parts 
+        : (inst.data_source?.parts || inst.adaptiveConfig?.data_source?.parts || []);
+    
+    inst.parts = hydrateNode(rawParts, templateVars);
+    
+    // Ensure data_source exists and is hydrated
+    const ds = inst.data_source || inst.adaptiveConfig?.data_source || {};
+    inst.data_source = hydrateNode(ds, templateVars);
+    inst.data_source.parts = inst.parts; // Keep them synced
+    
+    // Explicitly hydrate question text for the UI
+    inst.questionText = hydrateNode(inst.questionText || '', templateVars);
+
+    // Deeply hydrate answers for the validation engine
+    const rawAnswers = inst.answers || inst.data_source?.answers || inst.adaptiveConfig?.data_source?.answers || {};
+    if (Object.keys(rawAnswers).length > 0) {
+       const hydratedAnswers = hydrateNode(rawAnswers, templateVars);
+       inst.correctAnswerText = JSON.stringify(hydratedAnswers);
+    }
+
+    inst.solution = hydrateNode(inst.solution || [], templateVars);
     return inst;
   }
 

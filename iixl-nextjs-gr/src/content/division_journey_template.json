@@ -1,0 +1,75 @@
+{
+  "id": "tpl_division_discovery_{{total}}_{{groups}}",
+  "type": "fillInTheBlank",
+  "logic_type": "division_journey_v1",
+  "questionText": "Division Discovery: {{theme_name}} Journey",
+  "data_source": {
+    "parts": [
+      {
+        "type": "text",
+        "content": "### Step 1: The Discovery\nYou found **{{total}} {{items_name}}**! You need to {{action_verb}} among **{{groups}} {{groups_name}}**.",
+        "isVertical": true
+      },
+      {
+        "type": "image",
+        "content": "{{imageUrl}}",
+        "width": 38,
+        "count": "{{total}}",
+        "label": "{{total}} {{items_name}} to share",
+        "isVertical": true
+      },
+      {
+        "type": "markdown",
+        "content": "How many **{{groups_name}}** are we dividing these into?\n[[vault_mcq]]",
+        "isVertical": true
+      },
+      {
+        "type": "markdown",
+        "content": "---\n### Step 2: Sharing Lab\n**Tap a {{item_name}}** to pick it up, then **tap a {{group_name}}** to {{place_verb}}. Share all {{total}} equally!",
+        "isVertical": true
+      },
+      {
+        "type": "sharing_drag_drop",
+        "id": "sharing_lab",
+        "count": "{{total}}",
+        "groupCount": "{{groups}}",
+        "imageUrl": "{{imageUrl}}",
+        "isVertical": true
+      },
+      {
+        "type": "markdown",
+        "content": "---\n### Step 3: Mission Report\nOnce shared equally, how many **{{items_name}}** are in each **{{group_name}}**?\n\n\\( {{total}} \\div {{groups}} = [[ans]] \\)",
+        "isVertical": true
+      }
+    ],
+    "answers": {
+      "vault_mcq": {
+        "type": "mcq",
+        "options": [
+          { "label": "{{groups}} {{groups_name}}", "value": "{{groups}}" },
+          { "label": "{{total}} {{groups_name}}", "value": "{{total}}" }
+        ],
+        "value": "{{groups}}"
+      },
+      "ans": { "value": "{{ans}}", "size": "one-digit" }
+    }
+  },
+  "adaptiveConfig": {
+    "logic_type": "division_journey_v1",
+    "guidedMode": true,
+    "instantFeedback": true,
+    "showKeypad": true
+  },
+  "solution": [
+    {
+      "type": "text",
+      "content": "### Division Breakdown",
+      "isVertical": true
+    },
+    {
+      "type": "text",
+      "content": "1. **Total {{theme_name}} Items**: {{total}}\n2. **Target Groups**: {{groups}}\n3. **Calculation**: Sharing {{total}} into {{groups}} groups means ${{total}} \\div {{groups}} = {{ans}}$. Each {{group_name}} holds **{{ans}} {{items_name}}**.",
+      "isVertical": true
+    }
+  ]
+}
