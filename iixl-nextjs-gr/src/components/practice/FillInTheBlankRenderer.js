@@ -17,6 +17,9 @@ import BaseTenBlocks from './BaseTenBlocks';
 import NumberLineRounding from './NumberLineRounding';
 import DotsGroupingVisual from './DotsGroupingVisual';
 import DotArrayVisual from './DotArrayVisual';
+import SharingDragDrop from './SharingDragDrop';
+import ImageChoiceRenderer from './ImageChoiceRenderer';
+import MCQRenderer from './MCQRenderer';
 
 function InlineLatexBlanks({
     part,
@@ -193,6 +196,8 @@ export default function FillInTheBlankRenderer({
 
     const q = useMemo(() => {
         if (!question) return { type: 'fillInTheBlank', parts: [] };
+        
+        console.log("DEBUG: Raw Question from DB:", question);
 
         const normalize = (obj, inheritedVars = null) => {
             if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
@@ -216,23 +221,28 @@ export default function FillInTheBlankRenderer({
             if (res.correct_answer_index !== undefined && res.correctAnswerIndex === undefined) res.correctAnswerIndex = res.correct_answer_index;
             if (res.micro_skill_id !== undefined && res.microSkillId === undefined) res.microSkillId = res.micro_skill_id;
 
-            // Handle stringified parts
-            if (typeof res.parts === 'string') {
-                try {
-                    res.parts = JSON.parse(res.parts);
-                } catch {
-                    res.parts = [];
-                }
-            }
-
             const currentVars = res.adaptiveConfig?.variables || inheritedVars;
 
+            // PRO FIX: Resolve parts from ANY nested structure (root, data_source, or content_data)
+            let rawParts = res.parts || res.data_source?.parts || res.data_source?.content_data?.parts || [];
+            
+            // If no parts found but a template exists, convert template to a single part for consistent rendering
+            if ((!rawParts || rawParts.length === 0) && (res.template || res.data_source?.template)) {
+                rawParts = [{ type: 'markdown', content: res.template || res.data_source.template, isVertical: true }];
+            }
+
+            res.parts = Array.isArray(rawParts) ? rawParts : [];
+
             // Recursively normalize parts
-            if (Array.isArray(res.parts)) {
-                res.parts = res.parts.map(p => normalize(p, currentVars));
-            } else if (res.parts === undefined || res.parts === null) {
-                // If it's a table-type question without parts, it's effectively its own part
-                res.parts = [];
+            if (res.parts.length > 0) {
+                res.parts = res.parts.map(p => {
+                    const normalized = normalize(p, currentVars);
+                    // Bridge 'content' to type-specific fields if needed (image, etc.)
+                    if (normalized.content && normalized.type === 'image' && !normalized.imageUrl) {
+                        normalized.imageUrl = normalized.content;
+                    }
+                    return normalized;
+                });
             }
 
 
@@ -252,7 +262,9 @@ export default function FillInTheBlankRenderer({
             return res;
         };
 
-        return normalize(question);
+        const finalQ = normalize(question);
+        console.log("DEBUG: Final Normalized Question (q):", finalQ);
+        return finalQ;
     }, [question]);
 
     useEffect(() => {
@@ -394,6 +406,8 @@ export default function FillInTheBlankRenderer({
                 for (let i = 0; i < myIndex; i++) {
                     const prevId = allBlankIds[i];
                     const prevExpected = getExpectedAnswer(prevId);
+                    if (prevExpected === undefined || prevExpected === null || prevExpected === '') continue;
+                    
                     const prevVal = getValue(prevId);
                     const prevCorrect = Array.isArray(prevExpected) 
                         ? prevExpected.includes(String(prevVal).trim())
@@ -411,7 +425,12 @@ export default function FillInTheBlankRenderer({
                 ? undefined // Allow CSS to control width for small/medium/large
                 : (maxLength <= 1 ? '52px' : `${Math.max(52, maxLength * 12 + 16)}px`));
 
-        const interaction = properties || {};
+        // PRO FIX: If the answer is an object (from an interactive part), return a friendly label or null
+        if (typeof studentAnswer === 'object' && studentAnswer !== null) {
+            return null; // Don't show complex objects in the simple text summary
+        }
+        
+        const interaction = properties || q.data_source?.answers?.[partId] || q.answers?.[partId] || {};
         
         // Handle MCQ Dropdowns (from metadata or explicit type)
         const isMcq = interaction.type === 'mcq' || properties.type === 'mcq' || Array.isArray(interaction.options);
@@ -1927,6 +1946,15 @@ export default function FillInTheBlankRenderer({
                     </span>
                 ));
 
+            case 'markdown':
+            case 'svg':
+                // Treat svg as a text part that will be rendered via renderTextWithBlanks
+                // (which already handles inline SVG detection)
+                return wrapPart(part, index, (
+                    <div className={part.type === 'svg' ? styles.svgContainer : ''}>
+                        {renderTextWithBlanks(part.content || '', `p-${index}`, { allowHtml: true })}
+                    </div>
+                ));
             case 'image':
                 if (isInlineSvg(getImageSrc(part.imageUrl))) {
                     const repeatCount = getRepeatCount(part?.count);
@@ -1943,22 +1971,28 @@ export default function FillInTheBlankRenderer({
                 }
                 const repeatCount = getRepeatCount(part?.count);
                 return wrapPart(part, index, (
-                    <div className={styles.imageContainer}>
-                        {Array.from({ length: repeatCount }).map((_, imageIndex) => (
-                            <SafeImage
-                                key={`img-${index}-${imageIndex}`}
-                                src={getImageSrc(part.imageUrl)}
-                                alt={`Question image ${imageIndex + 1}`}
-                                className={styles.image}
-                                width={220}
-                                height={150}
-                                style={{
-                                    width: part.width ? `${part.width}px` : 'auto',
-                                    height: part.height ? `${part.height}px` : 'auto',
-                                }}
-                                sizes="(max-width: 768px) 44vw, 220px"
-                            />
-                        ))}
+                    <div className={styles.imageGroupWrapper}>
+                        <div className={styles.imageContainer}>
+                            {Array.from({ length: repeatCount }).map((_, imageIndex) => (
+                                <SafeImage
+                                    key={`img-${index}-${imageIndex}`}
+                                    src={getImageSrc(part.imageUrl)}
+                                    alt="visual"
+                                    className={styles.image}
+                                    width={part.width || 48}
+                                    height={part.height || part.width || 48}
+                                    style={{
+                                        width: part.width ? `${part.width}px` : 'auto',
+                                        height: part.height ? `${part.height}px` : 'auto',
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        {part.label && (
+                            <div className={styles.imageGroupLabel} style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '0.4rem', textAlign: 'center', width: '100%' }}>
+                                {part.label}
+                            </div>
+                        )}
                     </div>
                 ));
 
@@ -2324,6 +2358,25 @@ export default function FillInTheBlankRenderer({
             case 'fractionModel':
                 return wrapPart(part, index, <FractionModelVisual part={part} />);
 
+            case 'sharing_drag_drop':
+                return wrapPart(part, index, (
+                    <SharingDragDrop 
+                        part={part} 
+                        studentAnswer={getValue(part.id || `dd-${index}`)}
+                        onChange={(val) => handleInputChange(part.id || `dd-${index}`, val)}
+                    />
+                ));
+            case 'image_choice':
+            case 'imageChoice':
+                return wrapPart(part, index, (
+                    <ImageChoiceRenderer 
+                        question={part} 
+                        userAnswer={getValue(part.id || `ic-${index}`)}
+                        onAnswer={(val) => handleInputChange(part.id || `ic-${index}`, val)}
+                        isAnswered={isAnswered}
+                        isCorrect={isAnswered ? String(getValue(part.id || `ic-${index}`)) === String(part.correctAnswerIndex ?? part.correct_answer_index) : null}
+                    />
+                ));
             default:
                 return null;
         }

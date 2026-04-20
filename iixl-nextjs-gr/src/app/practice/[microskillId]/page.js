@@ -501,9 +501,14 @@ function getSelectedAnswerDisplay(question, answer) {
       return joined || 'No answer';
     }
 
-    const entries = Object.entries(answer).filter(([k]) => !k.startsWith('scaffold_'));
-    if (entries.length === 0) return 'No answer';
-    return entries.map(([k, v]) => `${v}`).join(', ');
+    const entries = Object.entries(answer).filter(([k, v]) => {
+      // Filter out scaffolding and complex state objects (like drag-drop positions)
+      if (k.startsWith('scaffold_')) return false;
+      if (typeof v === 'object' && v !== null) return false;
+      return true;
+    });
+    if (entries.length === 0) return 'Interactive Task';
+    return entries.map(([k, v]) => String(v)).join(', ');
   }
 
   if (type === 'shadegrid') {

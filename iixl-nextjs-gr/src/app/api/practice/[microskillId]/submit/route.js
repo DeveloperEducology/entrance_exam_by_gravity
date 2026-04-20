@@ -209,22 +209,31 @@ function validateAnswer(question, answer) {
       }
       
       const allCorrect = Object.keys(parsed).every((key) => {
-        const actual = String(answer?.[key] ?? '').trim().toLowerCase();
-        const expected = parsed[key];
+        const studentVal = String(answer?.[key] ?? '').trim().toLowerCase();
+        let expected = parsed[key];
         
-        if (Array.isArray(expected)) {
-          return expected.map((value) => String(value ?? '').trim().toLowerCase()).includes(actual);
+        // UNWRAP: If expected is a config object, find the core answer
+        if (expected && typeof expected === 'object' && !Array.isArray(expected)) {
+          expected = expected.value ?? expected.ans ?? expected.correctAnswer ?? expected;
         }
-        return normalizeMathSentence(actual) === normalizeMathSentence(expected);
+        
+        // DEBUG LOG (Server Side)
+        console.log(`VALIDATION [${key}]: Student("${studentVal}") vs Expected("${expected}")`);
+
+        if (Array.isArray(expected)) {
+          return expected.map((v) => String(v ?? '').trim().toLowerCase()).includes(studentVal);
+        }
+        return normalizeMathSentence(studentVal) === normalizeMathSentence(expected);
       });
 
       if (!allCorrect) return false;
 
-      // Anti-guessing check: Ensure NO extra incorrect values were entered in non-mapped inputs
-      // IGNORE scaffold_ keys as they are works-in-progress
+      // Anti-guessing check: Ignore complex state and known keys
       return Object.keys(answer || {}).every((key) => {
           if (key.startsWith('scaffold_')) return true;
           if (parsed[key] !== undefined) return true;
+          if (typeof answer[key] === 'object' && answer[key] !== null) return true;
+          
           const actual = String(answer[key] ?? '').trim().toLowerCase();
           return actual === "" || actual === "0";
       });
@@ -359,6 +368,13 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
   } else if (type === 'fillintheblank' || type === 'gridarithmetic' || type === 'table' || type === 'smarttable') {
     const parsed = parseMaybeJson(question.correctAnswerText, {});
     if (parsed && typeof parsed === 'object') {
+      const unwrap = (val) => {
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+            return val.value ?? val.ans ?? val.correctAnswer ?? val;
+        }
+        return val;
+      };
+
       const arithmeticPart = (question.parts || []).find((part) => part?.type === 'arithmeticLayout');
       const rows = Array.isArray(arithmeticPart?.layout?.rows) ? arithmeticPart.layout.rows : [];
       const answerRow = rows.find((row) => String(row?.kind || '').toLowerCase() === 'answer');
@@ -367,13 +383,16 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
       if (cells.length > 0) {
         const prefix = String(answerRow?.prefix || '');
         const joined = cells.map((cell, idx) => {
-          const value = parsed[cell?.id ?? `cell_${idx}`];
+          const value = unwrap(parsed[cell?.id ?? `cell_${idx}`]);
           return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
         }).join('');
         feedback.correctAnswerDisplay = `${prefix}${joined}`.trim();
       } else {
         feedback.correctAnswerDisplay = Object.values(parsed)
-          .map((value) => Array.isArray(value) ? String(value[0] ?? '') : String(value ?? ''))
+          .map((value) => {
+            const unwrapped = unwrap(value);
+            return Array.isArray(unwrapped) ? String(unwrapped[0] ?? '') : String(unwrapped ?? '');
+          })
           .join(', ');
       }
     }

@@ -194,23 +194,25 @@ export function instantiateTemplate(question, overrideVariables = null) {
 
   if (logic === 'interactive_paragraph_v1') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
-    const template = dataSource.template || "Solve: [[ans]]";
     const variables = dataSource.variables || {};
-    
-    // Hydrate the template with variables if they exist
-    const hydratedContent = hydrateNode(template, variables);
-    
-    // If we have override variables (e.g. from a generator), use them
     const currentVars = { ...variables, ...(overrideVariables || {}) };
-    const finalContent = hydrateNode(hydratedContent, currentVars);
 
-    inst.parts = [
-      {
-        type: 'text',
-        content: finalContent,
-        isVertical: true
-      }
-    ];
+    // PRO FIX: Use parts if present, otherwise fallback to template
+    if (dataSource.parts && Array.isArray(dataSource.parts) && dataSource.parts.length > 0) {
+      inst.parts = hydrateNode(dataSource.parts, currentVars);
+    } else {
+      const template = dataSource.template || "Solve: [[ans]]";
+      const hydratedContent = hydrateNode(template, variables);
+      const finalContent = hydrateNode(hydratedContent, currentVars);
+      
+      inst.parts = [
+        {
+          type: 'text',
+          content: finalContent,
+          isVertical: true
+        }
+      ];
+    }
 
     inst.type = 'fillInTheBlank';
     // If correct answers are provided in dataSource.answers, use them

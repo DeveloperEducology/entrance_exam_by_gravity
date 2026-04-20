@@ -456,21 +456,24 @@ export function validateAnswer(question, answer) {
         const actual = String(answer?.[key] ?? '').trim().toLowerCase();
         
         let expectedRaw = parsed[key];
-        // Handle config objects like { value: "10", size: "small" }
-        if (expectedRaw && typeof expectedRaw === 'object' && !Array.isArray(expectedRaw) && 'value' in expectedRaw) {
-          expectedRaw = expectedRaw.value;
+        // PRO FIX: Deeply unwrap config objects (value, ans, correctAnswer, etc)
+        if (expectedRaw && typeof expectedRaw === 'object' && !Array.isArray(expectedRaw)) {
+          expectedRaw = expectedRaw.value ?? expectedRaw.ans ?? expectedRaw.correctAnswer ?? expectedRaw;
         }
         
         const expected = String(expectedRaw ?? '').trim().toLowerCase();
         
         // Mathematical leniency: Treat empty string same as "0" for numeric inputs
-        if (actual === "" && expected === "0") return true;
+        if (actual === "" && (expected === "0" || expected === "")) return true;
         if (actual === "0" && expected === "") return true;
 
         if (Array.isArray(parsed[key])) {
-          return parsed[key].map((value) => String(value ?? '').trim().toLowerCase()).includes(actual);
+          return parsed[key].map((value) => {
+            const v = (value && typeof value === 'object' && !Array.isArray(value)) ? (value.value ?? value.ans ?? value) : value;
+            return String(v ?? '').trim().toLowerCase();
+          }).includes(actual);
         }
-        return actual === expected;
+        return normalizeMathSentence(actual) === normalizeMathSentence(expected);
       });
 
       if (!allCorrect) return false;
@@ -481,19 +484,20 @@ export function validateAnswer(question, answer) {
           : []),
         ...(Array.isArray(question.adaptiveConfig?.validation?.ignoreExtraAnswerPrefixes)
           ? question.adaptiveConfig.validation.ignoreExtraAnswerPrefixes
-          : [])
+          : []),
+        'scaffold_' // Always ignore scaffold fields
       ]
         .map((prefix) => String(prefix || '').trim())
         .filter(Boolean);
 
       // Anti-guessing check: Ensure NO extra incorrect values were entered in non-mapped inputs
-      // unless the question explicitly marks them as scaffold/work-area fields.
       return Object.keys(answer || {}).every((key) => {
-          // If the key is in parsed, we already checked it
           if (parsed[key] !== undefined) return true;
           if (ignoredExtraPrefixes.some((prefix) => String(key).startsWith(prefix))) return true;
           
-          // If not in parsed, it SHOULD be empty or "0"
+          // PRO FIX: Ignore complex state objects from interactive parts (like sharing_lab)
+          if (typeof answer[key] === 'object' && answer[key] !== null) return true;
+          
           const actual = String(answer[key] ?? '').trim().toLowerCase();
           return actual === "" || actual === "0";
       });

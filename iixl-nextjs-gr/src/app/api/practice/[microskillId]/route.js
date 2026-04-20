@@ -84,6 +84,8 @@ function toPublicQuestion(question) {
     tokens: question.tokens ?? [],
     concepts: question.concepts ?? [],
     steps: question.steps ?? [],
+    data_source: question.data_source ?? null,
+    logic_type: question.logic_type ?? null,
   };
 }
 
@@ -181,7 +183,7 @@ export async function GET(_req, { params }) {
     // Pick a random question from the results to provide variety
     const randomIndex = data && data.length > 0 ? Math.floor(Math.random() * data.length) : 0;
     const selectedQuestion = Array.isArray(data) && data.length > 0
-      ? toPublicQuestion(instantiateTemplate(typeof data[randomIndex]?.type === 'string' ? data[randomIndex] : mapDbQuestion(data[randomIndex])))
+      ? toPublicQuestion(instantiateTemplate(mapDbQuestion(data[randomIndex])))
       : null;
 
     serverLog('api.practice.get', 'request success', {
