@@ -41,6 +41,18 @@ function buildBasicFeedback(question, selectedAnswer = null) {
     return `Option ${index + 1}`;
   };
 
+  const getMcqCorrectIndex = (q) => {
+    const direct = Number(q?.correctAnswerIndex);
+    if (Number.isFinite(direct) && direct >= 0) return direct;
+    if (Array.isArray(q?.correctAnswerIndices) && q.correctAnswerIndices.length > 0) {
+      const first = Number(q.correctAnswerIndices[0]);
+      if (Number.isFinite(first) && first >= 0) return first;
+    }
+    const options = Array.isArray(q?.options) ? q.options : [];
+    const inferred = options.findIndex((option) => option && typeof option === 'object' && Boolean(option.isCorrect ?? option.is_correct));
+    return inferred >= 0 ? inferred : null;
+  };
+
   const parseMaybeJson = (val, fallback = null) => {
     if (val == null) return fallback;
     if (typeof val === 'object') return val;
@@ -79,26 +91,7 @@ function buildBasicFeedback(question, selectedAnswer = null) {
             : [];
           return indices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
         }
-        let idx = Number(question.correctAnswerIndex);
-        
-        // Fallback for dynamic adaptive questions where index might be missing
-        if (!Number.isFinite(idx) || idx < 0) {
-          const parseMaybeJson = (val) => { 
-            try { return JSON.parse(val); } catch { return null; } 
-          };
-          const correctPayload = parseMaybeJson(question.correctAnswerText);
-          const expectedVal = (correctPayload && typeof correctPayload === 'object' && !Array.isArray(correctPayload))
-            ? (correctPayload.ans || correctPayload.value || correctPayload.correctAnswer || correctPayload.correct_answer)
-            : (correctPayload || question.correctAnswerText);
-            
-          if (expectedVal != null) {
-            const options = Array.isArray(question.options) ? question.options : [];
-            idx = options.findIndex(opt => {
-              const label = (typeof opt === 'object') ? (opt.label || opt.text || opt.content || '') : opt;
-              return String(label).trim().toLowerCase() === String(expectedVal).trim().toLowerCase();
-            });
-          }
-        }
+        const idx = getMcqCorrectIndex(question);
 
         if (Number.isFinite(idx) && idx >= 0) {
           return getOptionLabel(question.options?.[idx], idx);
@@ -301,7 +294,17 @@ function buildBasicFeedback(question, selectedAnswer = null) {
       if (question.isMultiSelect && Array.isArray(question.correctAnswerIndices)) {
         return question.correctAnswerIndices.map((i) => Number(i)).filter(Number.isFinite);
       }
-      const idx = Number(question.correctAnswerIndex);
+      const idx = (() => {
+        const direct = Number(question?.correctAnswerIndex);
+        if (Number.isFinite(direct) && direct >= 0) return direct;
+        if (Array.isArray(question?.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
+          const first = Number(question.correctAnswerIndices[0]);
+          if (Number.isFinite(first) && first >= 0) return first;
+        }
+        const options = Array.isArray(question?.options) ? question.options : [];
+        const inferred = options.findIndex((option) => option && typeof option === 'object' && Boolean(option.isCorrect ?? option.is_correct));
+        return inferred >= 0 ? inferred : null;
+      })();
       return Number.isFinite(idx) ? [idx] : [];
     })(),
     // Attach arithmetic journey details if applicable so Remediation/Feedback shows them

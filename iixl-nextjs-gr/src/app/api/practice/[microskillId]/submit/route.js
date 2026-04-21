@@ -111,6 +111,20 @@ function getOptionLabel(option, index) {
   return `Option ${index + 1}`;
 }
 
+function getMcqCorrectIndex(question) {
+  const direct = Number(question?.correctAnswerIndex);
+  if (Number.isFinite(direct) && direct >= 0) return direct;
+
+  if (Array.isArray(question?.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
+    const first = Number(question.correctAnswerIndices[0]);
+    if (Number.isFinite(first) && first >= 0) return first;
+  }
+
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const inferred = options.findIndex((option) => option && typeof option === 'object' && Boolean(option.isCorrect ?? option.is_correct));
+  return inferred >= 0 ? inferred : null;
+}
+
 function formatDragDropAnswerDisplay(question, placementMap) {
   if (!placementMap || typeof placementMap !== 'object' || Array.isArray(placementMap)) return '';
   const dragItems = Array.isArray(question?.dragItems) ? question.dragItems : [];
@@ -147,35 +161,28 @@ function validateAnswer(question, answer) {
         return JSON.stringify(selected) === JSON.stringify(correct);
       }
 
-      // 1. Primary: Validate by Value (Resilient to shuffle desync)
-      const correctText = question.correctAnswerText;
-      const parsedCorrect = parseMaybeJson(correctText, null);
-      const expectedValue = (parsedCorrect && typeof parsedCorrect === 'object' && !Array.isArray(parsedCorrect))
-        ? (parsedCorrect.ans || parsedCorrect.value || parsedCorrect.correctAnswer || parsedCorrect.correct_answer)
-        : (parsedCorrect || correctText);
+      const expectedIdx = getMcqCorrectIndex(question);
+      if (expectedIdx == null) return false;
 
-      const options = Array.isArray(question.options) ? question.options : [];
-      if (expectedValue != null && options.length > 0) {
-        const selectedOption = options[Number(answer)];
-        if (selectedOption) {
-            const selectedLabel = (typeof selectedOption === 'object')
-              ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
-              : selectedOption;
-              
-            // If the text definitely matches, it's correct
-            if (normalizeMathSentence(selectedLabel) === normalizeMathSentence(expectedValue)) {
-                return true;
-            }
-            
-            // If the text definitely DOES NOT match, it's wrong (even if index was coincidentally 'correct')
-            // This prevents "Wrong Answer Getting Right" bugs
-            return false; 
+      const numericAnswer = Number(answer);
+      if (Number.isFinite(numericAnswer) && numericAnswer >= 0) {
+        if (numericAnswer === Number(expectedIdx)) {
+          return true;
         }
       }
 
-      // 2. Secondary: Fallback to Index if value comparison is impossible
-      const hasValidIndex = Number.isFinite(Number(question.correctAnswerIndex)) && Number(question.correctAnswerIndex) >= 0;
-      if (hasValidIndex && Number(answer) === Number(question.correctAnswerIndex)) {
+      const options = Array.isArray(question.options) ? question.options : [];
+      const normalizedAnswer = normalizeMathSentence(answer);
+      if (!normalizedAnswer) return false;
+
+      const selectedIdx = options.findIndex((option) => {
+        const selectedLabel = (typeof option === 'object')
+          ? (option.label || option.text || option.content || '')
+          : option;
+        return normalizeMathSentence(selectedLabel) === normalizedAnswer;
+      });
+
+      if (selectedIdx >= 0 && selectedIdx === Number(expectedIdx)) {
         return true;
       }
 
@@ -359,7 +366,8 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
       feedback.correctOptionIndices = (question.correctAnswerIndices || []).map(Number).filter(Number.isFinite);
       feedback.correctAnswerDisplay = feedback.correctOptionIndices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
     } else {
-      feedback.correctOptionIndices = [Number(question.correctAnswerIndex)].filter(Number.isFinite);
+      const resolvedIdx = getMcqCorrectIndex(question);
+      feedback.correctOptionIndices = Number.isFinite(resolvedIdx) ? [resolvedIdx] : [];
       const resLabel = feedback.correctOptionIndices.length > 0 ? getOptionLabel(question.options?.[feedback.correctOptionIndices[0]], feedback.correctOptionIndices[0]) : '';
       // Failsafe: if we get 'Option X' but have a raw math string, prefer the math string
       if ((resLabel.startsWith('Option ') || !resLabel) && question.correctAnswerText && !question.correctAnswerText.startsWith('{')) {

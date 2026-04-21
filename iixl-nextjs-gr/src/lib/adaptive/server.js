@@ -204,6 +204,25 @@ function normalizeAnswerArray(answer) {
   return [String(answer)];
 }
 
+function getMcqCorrectIndex(question) {
+  const direct = Number(question?.correctAnswerIndex);
+  if (Number.isFinite(direct) && direct >= 0) return direct;
+
+  if (Array.isArray(question?.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
+    const first = Number(question.correctAnswerIndices[0]);
+    if (Number.isFinite(first) && first >= 0) return first;
+  }
+
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const inferred = options.findIndex((option) => {
+    if (option && typeof option === 'object') {
+      return Boolean(option.isCorrect ?? option.is_correct);
+    }
+    return false;
+  });
+  return inferred >= 0 ? inferred : null;
+}
+
 function getQuestionMisconceptionCodes(question) {
   const config = question?.adaptiveConfig ?? {};
   const fromSingle = String(config.misconceptionCode ?? '').trim();
@@ -277,6 +296,7 @@ export function toPublicQuestion(question) {
     concepts: question.concepts ?? [],
     correctAnswerText: question.correctAnswerText,
     correctAnswerIndex: question.correctAnswerIndex,
+    solution: question.solution ?? '',
     validation: question.validation,
     operands: question.operands ?? [],
     title: question.title ?? '',
@@ -391,33 +411,26 @@ export function validateAnswer(question, answer) {
         return expectedIds.includes(selectedIds[0]);
       }
 
-      // 1. Try by Index
-      const hasValidIndex = Number.isFinite(Number(question.correctAnswerIndex)) && Number(question.correctAnswerIndex) >= 0;
-      if (hasValidIndex && Number(answer) === Number(question.correctAnswerIndex)) {
-        return true;
+      const expectedIdx = getMcqCorrectIndex(question);
+      if (expectedIdx == null) return false;
+
+      const numericAnswer = Number(answer);
+      if (Number.isFinite(numericAnswer) && numericAnswer >= 0) {
+        return numericAnswer === Number(expectedIdx);
       }
 
-      // 2. Fallback: Validate by value if index mismatch (common in dynamically generated adaptive questions)
-      const correctText = question.correctAnswerText;
-      const parsedCorrect = parseMaybeJson(correctText, null);
-      const expectedValue = (parsedCorrect && typeof parsedCorrect === 'object' && !Array.isArray(parsedCorrect))
-        ? (parsedCorrect.ans || parsedCorrect.value || parsedCorrect.correctAnswer || parsedCorrect.correct_answer)
-        : (parsedCorrect || correctText);
+      const options = Array.isArray(question.options) ? question.options : [];
+      const normalizedAnswer = stripHtml(String(answer ?? '')).toLowerCase();
+      if (!normalizedAnswer) return false;
 
-      // Only proceed with value comparison if we have a non-empty expected value
-      if (expectedValue != null && String(expectedValue).trim() !== '') {
-        const options = Array.isArray(question.options) ? question.options : [];
-        const selectedOption = options[Number(answer)];
-        if (!selectedOption) return false;
-        
-        const selectedLabel = (typeof selectedOption === 'object')
-          ? (selectedOption.label || selectedOption.text || selectedOption.content || '')
-          : selectedOption;
-          
-        return stripHtml(selectedLabel).toLowerCase() === stripHtml(expectedValue).toLowerCase();
-      }
+      const selectedIdx = options.findIndex((option) => {
+        const label = typeof option === 'object'
+          ? (option.label || option.text || option.content || '')
+          : option;
+        return stripHtml(String(label)).toLowerCase() === normalizedAnswer;
+      });
 
-      return false;
+      return selectedIdx >= 0 && selectedIdx === Number(expectedIdx);
     }
 
     case 'textinput':
