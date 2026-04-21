@@ -37,13 +37,24 @@ function DraggableItem({
     disabled: disabled
   });
 
+  const imageSource = getImageSrc(item.imageUrl || item.content);
+  const hasImage = isInlineSvg(imageSource) || isImageUrl(imageSource);
+  const imageSize = Number(item.imageWidth || item.image_width || item.width || 54);
+  const imageCardHeight = Number.isFinite(imageSize) ? imageSize + 34 : undefined;
+  const imageFrameStyle = Number.isFinite(imageSize)
+    ? { width: `${imageSize}px`, height: `${imageSize}px` }
+    : undefined;
+  const labelText = String(item.label || item.text || item.content || '').trim();
+  const imageTileStyle = hasImage && Number.isFinite(imageSize)
+    ? { width: `${imageSize}px`, height: `${imageCardHeight}px` }
+    : undefined;
   const style = {
     transform: CSS.Translate.toString(transform),
+    transition: isDragging ? 'none' : 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)',
     touchAction: 'none',
-    zIndex: isDragging ? 40 : undefined
+    zIndex: isDragging ? 40 : undefined,
+    ...(imageTileStyle || {})
   };
-
-  const imageSource = getImageSrc(item.imageUrl || item.content);
 
   return (
     <div
@@ -59,6 +70,7 @@ function DraggableItem({
       }}
       className={`
         ${styles.dragItem}
+        ${hasImage ? styles.imageTile : ''}
         ${isDragging ? styles.dragging : ''}
         ${isSelected ? styles.selected : ''}
         ${isAnswered && isCorrect ? styles.correct : ''}
@@ -71,12 +83,23 @@ function DraggableItem({
         </div>
       )}
 
-      {isInlineSvg(imageSource) ? (
-        <div className={styles.itemImage} dangerouslySetInnerHTML={{ __html: imageSource }} />
-      ) : isImageUrl(imageSource) ? (
-        <div className={styles.itemImage}>
-          <SafeImage src={imageSource} alt={item.content || 'Icon'} width={100} height={100} />
-        </div>
+      {hasImage ? (
+        <>
+          <div className={styles.itemImageFrame} style={imageFrameStyle}>
+            {isInlineSvg(imageSource) ? (
+              <div className={styles.itemImage} dangerouslySetInnerHTML={{ __html: imageSource }} />
+            ) : (
+              <SafeImage
+                src={imageSource}
+                alt={item.content || 'Icon'}
+                width={imageSize}
+                height={imageSize}
+                className={styles.itemImage}
+              />
+            )}
+          </div>
+          {labelText ? <div className={styles.itemFooter}>{labelText}</div> : null}
+        </>
       ) : (
         <span className={styles.itemText}>{item.content}</span>
       )}
@@ -166,8 +189,8 @@ export default function DragDropRendererV2({
     return userAnswer;
   }, [userAnswer]);
 
-  const getUnplacedItems = () => dragItems.filter(item => !placements[item.id]);
   const getItemsInGroup = (groupId) => dragItems.filter(item => placements[item.id] === String(groupId));
+  const bankSlots = useMemo(() => dragItems, [dragItems]);
 
   useEffect(() => {
     if (selectedId && !dragItems.some((item) => item.id === selectedId)) {
@@ -265,54 +288,35 @@ export default function DragDropRendererV2({
           onDragCancel={handleDragCancel}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         >
-          {/* Item Bank Slots */}
+          {/* Item Bank */}
           <div
             className={styles.itemsPool}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleZoneClick(POOL_ID);
+            }}
           >
-            {dragItems.map((item, idx) => {
+            {bankSlots.map((item) => {
               const isPlaced = !!placements[item.id];
-              return (
-                <DropZone
-                  key={`slot-${idx}`}
-                  id={`slot-${idx}`}
-                  className={styles.slot}
-                  onSlotClick={() => handleZoneClick(POOL_ID)}
-                  isTarget={!!selectedId && placements[selectedId]}
-                  disabled={isAnswered}
-                >
-                  {!isPlaced && (
-                    <DraggableItem
-                      id={item.id}
-                      item={item}
-                      isSelected={selectedId === item.id}
-                      onSelect={handleItemSelect}
-                      isAnswered={isAnswered}
-                      isCorrect={placements[item.id] === item.targetGroupId}
-                      disabled={isAnswered}
-                    />
-                  )}
-                </DropZone>
-              );
-            })}
-          </div>
-
-          {/* Target Buckets */}
-          <div className={styles.dropGroups}>
-            {dropGroups.map((group) => (
-              <div key={group.id} className={styles.dropGroup}>
-                <div className={styles.groupLabel}>{group.label}</div>
-                <DropZone
-                  id={group.id}
-                  className={styles.bucket}
-                  isBucket
-                  onSlotClick={handleZoneClick}
-                  isTarget={!!selectedId}
-                  hint={group.hint || `Drop here`}
-                  disabled={isAnswered}
-                >
-                  {getItemsInGroup(group.id).map(item => (
-                    <div key={item.id} className={styles.bucketItemWrap}>
+      const imageSource = getImageSrc(item.imageUrl || item.content);
+      const isImageItem = isInlineSvg(imageSource) || isImageUrl(imageSource);
+      const imageCardSize = Number(item.imageWidth || item.image_width || item.width || 54);
+      const imageCardHeight = Number.isFinite(imageCardSize) ? imageCardSize + 34 : 88;
+      return (
+        <motion.div
+          key={`pool-slot-${item.id}`}
+          layout
+          transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+          className={`${styles.poolSlot} ${isImageItem ? styles.poolSlotImage : styles.poolSlotText}`}
+          style={isImageItem ? { width: `${imageCardSize}px`, height: `${imageCardHeight}px` } : undefined}
+        >
+          <div className={`${styles.poolPlaceholder} ${isImageItem ? styles.poolPlaceholderImage : styles.poolPlaceholderText}`} />
+          {!isPlaced ? (
+            <motion.div
+              layout
+                      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                      className={styles.poolItemWrap}
+                    >
                       <DraggableItem
                         id={item.id}
                         item={item}
@@ -322,8 +326,55 @@ export default function DragDropRendererV2({
                         isCorrect={placements[item.id] === item.targetGroupId}
                         disabled={isAnswered}
                       />
-                    </div>
-                  ))}
+                    </motion.div>
+                  ) : null}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Target Buckets */}
+          <div className={styles.dropGroups} style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(3, dropGroups.length || 3))}, minmax(0, 1fr))` }}>
+            {dropGroups.map((group) => (
+              <div key={group.id} className={styles.dropGroup}>
+                <div className={styles.groupHeader}>
+                  <div className={styles.groupLabel}>{group.label}</div>
+                </div>
+                <div className={styles.groupDivider} />
+                  <DropZone
+                  id={group.id}
+                  className={styles.bucket}
+                  isBucket
+                  onSlotClick={handleZoneClick}
+                  isTarget={!!selectedId}
+                  hint={group.hint || `Drop here`}
+                  disabled={isAnswered}
+                >
+                  {getItemsInGroup(group.id).map(item => {
+                    const imageSource = getImageSrc(item.imageUrl || item.content);
+                    const isImageItem = isInlineSvg(imageSource) || isImageUrl(imageSource);
+                    const imageCardSize = Number(item.imageWidth || item.image_width || item.width || 54);
+                    const imageCardHeight = Number.isFinite(imageCardSize) ? imageCardSize + 34 : 88;
+                    return (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                        className={`${styles.bucketItemWrap} ${isImageItem ? styles.bucketItemWrapImage : styles.bucketItemWrapText}`}
+                        style={isImageItem ? { width: `${imageCardSize}px`, height: `${imageCardHeight}px` } : undefined}
+                      >
+                        <DraggableItem
+                          id={item.id}
+                          item={item}
+                          isSelected={selectedId === item.id}
+                          onSelect={handleItemSelect}
+                          isAnswered={isAnswered}
+                          isCorrect={placements[item.id] === item.targetGroupId}
+                          disabled={isAnswered}
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </DropZone>
               </div>
             ))}

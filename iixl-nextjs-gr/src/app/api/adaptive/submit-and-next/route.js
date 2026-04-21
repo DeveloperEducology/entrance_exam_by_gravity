@@ -41,6 +41,17 @@ function buildBasicFeedback(question, selectedAnswer = null) {
     return `Option ${index + 1}`;
   };
 
+  const parseMaybeJson = (val, fallback = null) => {
+    if (val == null) return fallback;
+    if (typeof val === 'object') return val;
+    if (typeof val !== 'string') return fallback;
+    try {
+      return JSON.parse(val);
+    } catch {
+      return fallback;
+    }
+  };
+
   const type = String(question?.type || '').trim().toLowerCase();
   
   // Extract per-option feedback for MCQ if applicable
@@ -149,6 +160,27 @@ function buildBasicFeedback(question, selectedAnswer = null) {
 
       if (type === 'draganddrop' || type === 'draganddropv2') {
           try {
+              const parsed = parseMaybeJson(question.correctAnswerText ?? question.validation?.answer ?? question.validation?.correctAnswerText, null);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  const dragItems = Array.isArray(question.dragItems || question.drag_items) ? (question.dragItems || question.drag_items) : [];
+                  const dropGroups = Array.isArray(question.dropGroups || question.drop_groups) ? (question.dropGroups || question.drop_groups) : [];
+                  const labelByGroupId = Object.fromEntries(
+                    dropGroups.map((group) => [String(group.id), String(group.label || group.id)])
+                  );
+
+                  const summaries = dropGroups.map((group) => {
+                    const items = Object.entries(parsed)
+                      .filter(([, groupId]) => String(groupId) === String(group.id))
+                      .map(([itemId]) => {
+                        const item = dragItems.find((entry) => String(entry.id) === String(itemId));
+                        return item?.content || itemId;
+                      });
+                    return items.length > 0 ? `${labelByGroupId[String(group.id)]}: ${items.join(', ')}` : null;
+                  }).filter(Boolean);
+
+                  if (summaries.length > 0) return summaries.join(' | ');
+              }
+
               const dragItems = Array.isArray(question.dragItems || question.drag_items) ? (question.dragItems || question.drag_items) : [];
               const dropGroups = Array.isArray(question.dropGroups || question.drop_groups) ? (question.dropGroups || question.drop_groups) : [];
               const itemsByGroupId = {};
@@ -167,6 +199,23 @@ function buildBasicFeedback(question, selectedAnswer = null) {
               }).filter(Boolean);
 
               if (summaries.length > 0) return summaries.join(' | ');
+
+              const fallbackMap = question.validation?.answer ?? question.validation?.correctAnswerText;
+              const parsedFallback = parseMaybeJson(fallbackMap, null);
+              if (parsedFallback && typeof parsedFallback === 'object' && !Array.isArray(parsedFallback)) {
+                const groupedByGroupId = new Map();
+                Object.entries(parsedFallback).forEach(([itemId, groupId]) => {
+                  const bucket = String(groupId);
+                  if (!groupedByGroupId.has(bucket)) groupedByGroupId.set(bucket, []);
+                  const item = dragItems.find((entry) => String(entry.id) === String(itemId));
+                  groupedByGroupId.get(bucket).push(item?.content || itemId);
+                });
+                const summariesFromValidation = Array.from(groupedByGroupId.entries()).map(([groupId, items]) => {
+                  const label = labelByGroupId[groupId] || groupId;
+                  return items.length > 0 ? `${label}: ${items.join(', ')}` : null;
+                }).filter(Boolean);
+                if (summariesFromValidation.length > 0) return summariesFromValidation.join(' | ');
+              }
           } catch (err) {
               console.error("[buildFeedback] dragAndDrop failure:", err);
           }

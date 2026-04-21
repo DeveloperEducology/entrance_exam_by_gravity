@@ -73,20 +73,61 @@
   display: flex;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 0.8rem;
+  gap: 0.5rem;
   margin-bottom: 1.6rem;
-  padding: 0.8rem;
-  background: #f8fafc;
+  padding: 0.75rem;
+  background: #ffffff;
   border-radius: 18px;
-  border: 2px dashed #e4ecf7;
-  min-height: 74px;
+  border: 2px solid #8ed0f8;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  min-height: 118px;
   transition: all 0.3s ease;
 }
 
-.itemsPool.isOver {
-  background: #f1f7ff;
-  border-color: #3b82f6;
-  transform: scale(1.01);
+.itemsPool.activeDropTarget {
+  background: #fbfdff;
+  border-color: #7cc4ef;
+  transform: scale(1.005);
+}
+
+.poolItemWrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.poolSlot {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.poolSlotText {
+  width: 56px;
+  height: 56px;
+}
+
+.poolSlotImage {
+  width: 78px;
+  height: 100px;
+}
+
+.poolPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #f8f8f8, #f1f1f1);
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.poolPlaceholderText {
+  border-radius: 10px;
+}
+
+.poolPlaceholderImage {
+  border-radius: 8px;
 }
 
 .instructionPill {
@@ -151,6 +192,29 @@
   z-index: 2;
 }
 
+.dragItem.imageTile {
+  width: 78px;
+  min-width: 78px;
+  height: 100px;
+  padding: 0;
+  background: #ffffff;
+  border: 2px solid #8ed0f8;
+  border-radius: 8px;
+  box-shadow:
+    0 4px 0 #dbeeff,
+    0 8px 14px -4px rgba(59, 130, 246, 0.13);
+  overflow: hidden;
+  justify-content: flex-start;
+}
+
+.dragItem.imageTile:hover {
+  background: #ffffff;
+  border-color: #74bdf4;
+  box-shadow:
+    0 6px 0 #cbe7ff,
+    0 12px 20px -6px rgba(59, 130, 246, 0.14);
+}
+
 .dragItem:hover {
   border-color: #5e97f8;
   box-shadow:
@@ -187,45 +251,93 @@
 }
 
 .itemImage {
-  width: 80%;
-  height: 80%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  display: block;
+}
+
+.itemImageFrame {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 0;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.itemFooter {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3d7be0;
+  color: #ffffff;
+  font-size: 0.7rem;
+  line-height: 1.1;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.35rem 0.45rem;
+  box-sizing: border-box;
 }
 
 /* Drop Groups / Buckets */
 .dropGroups {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: 0.75rem;
   margin-bottom: 1.1rem;
 }
 
 .dropGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.45rem;
+  background: #ffffff;
+  border: 2px solid #8ed0f8;
+  border-radius: 4px;
+  padding: 0.7rem 0.7rem 0.85rem;
+  min-height: 300px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
 }
 
 .groupLabel {
   text-align: center;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  font-size: 0.58rem;
-  color: #a6b4c8;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+  color: #575757;
+}
+
+.groupDivider {
+  height: 2px;
+  background: #8ed0f8;
+  border-radius: 999px;
+  margin: 0 0.1rem;
 }
 
 .bucket {
-  min-height: 122px;
-  background: #fbfdff;
-  border: 2px dashed #deebf7;
-  border-radius: 18px;
-  padding: 0.85rem;
+  min-height: 220px;
+  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  padding: 0.5rem 0.1rem 0 0.1rem;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
   justify-content: flex-start;
-  gap: 0.45rem;
+  gap: 0.5rem;
   position: relative;
   transition:
     background-color 0.18s ease,
@@ -235,10 +347,7 @@
 
 .bucket.isOver {
   background: #fbfdff;
-  border-color: #58aef5;
-  box-shadow:
-    0 0 0 2px rgba(88, 174, 245, 0.14) inset,
-    0 6px 14px rgba(59, 130, 246, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(88, 174, 245, 0.05);
 }
 
 .bucketHint {
@@ -262,9 +371,19 @@
   height: 56px;
 }
 
+.bucketItemWrapImage {
+  width: 78px;
+  height: 98px;
+}
+
+.bucketItemWrapText {
+  width: 56px;
+  height: 56px;
+}
+
 .bucketItemWrap .dragItem {
   font-size: 0.88rem;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 /* Footer / Actions */
@@ -365,26 +484,36 @@
   }
 
   .itemsPool {
-    gap: 0.55rem;
-    padding: 0.55rem;
+    gap: 0.4rem;
+    padding: 0.5rem;
     border-radius: 12px;
     margin-bottom: 1rem;
-    min-height: 62px;
+    min-height: 108px;
   }
 
   .instructionPill {
     display: none;
   }
 
-  .slot {
-    width: 46px;
-    height: 46px;
-    border-radius: 8px;
-  }
-
   .dragItem {
     font-size: 0.78rem;
     border-radius: 7px;
+  }
+
+  .dragItem.imageTile {
+    width: 70px !important;
+    min-width: 70px !important;
+    height: 92px !important;
+    border-radius: 8px;
+  }
+
+  .itemImageFrame {
+    height: 58px !important;
+  }
+
+  .itemFooter {
+    min-height: 34px;
+    font-size: 0.64rem;
   }
 
   .dropGroups {
@@ -395,28 +524,62 @@
 
   .dropGroup {
     gap: 0.35rem;
+    padding: 0.55rem 0.55rem 0.75rem;
+    min-height: 276px;
   }
 
   .groupLabel {
-    font-size: 0.5rem;
-    letter-spacing: 0.12em;
+    font-size: 0.8rem;
+  }
+
+  .groupDivider {
+    height: 1.5px;
   }
 
   .bucket {
-    min-height: 148px;
-    padding: 0.55rem;
-    border-radius: 10px;
-    gap: 0.35rem;
-  }
-
-  .bucketHint {
-    font-size: 0.58rem;
-    padding: 0.75rem;
+    min-height: 180px;
+    padding: 0.45rem 0.05rem 0 0.05rem;
+    gap: 0.38rem;
   }
 
   .bucketItemWrap {
     width: 46px;
     height: 46px;
+  }
+
+  .poolSlot {
+    width: 46px;
+    height: 46px;
+  }
+
+  .poolSlotImage {
+    width: 70px;
+    height: 92px;
+  }
+
+  .bucketItemWrapImage {
+    width: 70px !important;
+    height: 92px !important;
+  }
+
+  .bucketItemWrapText {
+    width: 46px;
+    height: 46px;
+  }
+
+  .poolSlotImage {
+    width: 70px !important;
+    height: 92px !important;
+  }
+
+  .poolPlaceholderImage {
+    width: 70px !important;
+    height: 92px !important;
+  }
+
+  .bucketHint {
+    font-size: 0.58rem;
+    padding: 0.75rem;
   }
 
   .bucketItemWrap .dragItem {

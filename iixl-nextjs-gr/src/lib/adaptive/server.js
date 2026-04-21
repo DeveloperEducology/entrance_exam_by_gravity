@@ -505,6 +505,17 @@ export function validateAnswer(question, answer) {
 
     case 'draganddrop':
     case 'draganddropv2': {
+      const parsed = parseMaybeJson(
+        question.correctAnswerText ?? question.validation?.answer ?? question.validation?.correctAnswerText,
+        null
+      );
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const expectedMap = parsed;
+        const expectedKeys = Object.keys(expectedMap);
+        if (expectedKeys.length === 0) return false;
+        return expectedKeys.every((key) => String(answer?.[key] ?? '') === String(expectedMap[key]));
+      }
+
       const items = (question.dragItems || [])
         .filter((item) => item.targetGroupId != null && String(item.targetGroupId).trim() !== '');
       if (items.length === 0) return false;

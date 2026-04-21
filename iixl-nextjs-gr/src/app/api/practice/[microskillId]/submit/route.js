@@ -37,6 +37,8 @@ function toPublicQuestion(question) {
 }
 
 function parseMaybeJson(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === 'object') return value;
   if (typeof value !== 'string') return fallback;
   try {
     return JSON.parse(value);
@@ -239,6 +241,7 @@ function validateAnswer(question, answer) {
       });
     }
     case 'draganddrop':
+    case 'draganddropv2':
       {
         const parsed = parseMaybeJson(question.correctAnswerText, null);
         const expectedMap = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
@@ -399,7 +402,12 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
     const fallback = question?.validation?.answer ?? question?.correct_answer_text ?? question?.correctAnswerText;
     if (!feedback.correctAnswerDisplay) feedback.correctAnswerDisplay = String(fallback ?? '');
   } else if (type === 'draganddrop') {
-    const parsed = parseMaybeJson(question.correctAnswerText, null);
+    const parsed = parseMaybeJson(question.correctAnswerText ?? question.validation?.answer ?? question.validation?.correctAnswerText, null);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      feedback.correctAnswerDisplay = formatDragDropAnswerDisplay(question, parsed) || feedback.correctAnswerDisplay;
+    }
+  } else if (type === 'draganddropv2') {
+    const parsed = parseMaybeJson(question.correctAnswerText ?? question.validation?.answer ?? question.validation?.correctAnswerText, null);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       feedback.correctAnswerDisplay = formatDragDropAnswerDisplay(question, parsed) || feedback.correctAnswerDisplay;
     }

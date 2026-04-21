@@ -44,6 +44,99 @@ export function instantiateTemplate(question, overrideVariables = null) {
     };
   }
 
+if (logic === 'division_countdown_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    const divisor = ds.divisor || 3; 
+    const quotient = ds.quotient || 4; 
+    const dividend = divisor * quotient;
+
+    inst.adaptiveConfig.variables = { dividend, divisor, quotient };
+
+    const steps = [];
+    let currentVal = dividend;
+    
+    for (let i = 1; i <= quotient; i++) {
+      const nextVal = currentVal - divisor;
+      steps.push({
+        stepNum: i,
+        equation: `${currentVal} - ${divisor} =`,
+        result: nextVal,
+        id: `step_${i}` // Becomes ans_step_1, ans_step_2, etc.
+      });
+      currentVal = nextVal;
+    }
+
+    // 1. Instructions
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Division is like a countdown. To solve $${dividend} \\div ${divisor}$, we keep taking away **${divisor}** until we hit zero.`, 
+        isVertical: true,
+        style: { marginBottom: '20px', fontSize: '18px' }
+      }
+    ];
+
+    // 2. Vertical Rows (Fixes the horizontal overlap seen in your screenshot)
+    steps.forEach(step => {
+      inst.parts.push({
+        type: 'pair',
+        isVertical: false, // Keep equation and input on same line
+        style: { margin: '12px 0', fontSize: '20px', display: 'flex', alignItems: 'center' },
+        parts: [
+          { type: 'text', content: `**Step ${step.stepNum}:** ${step.equation}`, style: { marginRight: '10px' } },
+          { type: 'input', id: step.id, size: 'small' }
+        ]
+      });
+    });
+
+    inst.parts.push({ type: 'text', content: '---', isVertical: true, style: { margin: '20px 0' } });
+
+    // 3. Result reasoning
+    inst.parts.push({
+      type: 'pair',
+      style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '18px' },
+      parts: [
+        { type: 'text', content: `Since we subtracted **${divisor}** exactly ` },
+        { type: 'input', id: 'total_count', size: 'small', style: { margin: '0 5px' } },
+        { type: 'text', content: ` times to reach zero:` }
+      ]
+    });
+
+    // 4. Final Equation
+    inst.parts.push({
+      type: 'pair',
+      style: { marginTop: '20px', fontSize: '24px', fontWeight: 'bold' },
+      parts: [
+        { type: 'text', content: `$${dividend} \\div ${divisor} = $` },
+        { type: 'input', id: 'final_ans', size: 'small', style: { marginLeft: '10px' } }
+      ]
+    });
+
+    // 5. Correct Answers Mapping (The Grader Fix)
+    const finalAnswers = {};
+    steps.forEach(s => {
+      // Ensure key matches the ID provided in the parts exactly
+      finalAnswers[`ans_${s.id}`] = String(s.result);
+    });
+    finalAnswers.ans_total_count = String(quotient);
+    finalAnswers.ans_final_ans = String(quotient);
+
+    inst.solution = [
+      { type: 'text', content: `### Step-by-Step Countdown`, isVertical: true },
+      { type: 'text', content: `We started at **${dividend}** and took away **${divisor}** groups.`, isVertical: true },
+      { type: 'text', content: `Count of groups: **${quotient}**`, isVertical: true },
+      { type: 'text', content: `So, $${dividend} \\div ${divisor} = ${quotient}$.`, isVertical: true }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify(finalAnswers);
+
+    return inst;
+  }
+
+  
   if (logic === 'drag_drop_v2_sorting_v1') {
     const config = inst.adaptiveConfig || {};
     const taskType = config.taskType || 'prime_composite';
