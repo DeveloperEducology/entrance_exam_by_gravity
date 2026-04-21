@@ -100,19 +100,35 @@
     margin: 0.5rem 0;
 }
 
+.imageBlock {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0.5rem 0;
+    max-width: 100%;
+}
+
+.imageLabel {
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: #334155;
+    font-weight: 600;
+}
+
 .image {
     border-radius: var(--border-radius-sm);
     object-fit: contain;
-    max-width: min(100%, 320px);
-    height: 150px !important;
+    max-width: min(100%, 420px);
+    height: 210px !important;
     width: auto !important;
 }
 
 .urlImage {
     border-radius: var(--border-radius-sm);
     object-fit: contain;
-    max-width: min(100%, 320px);
-    height: 150px !important;
+    max-width: min(100%, 420px);
+    height: 210px !important;
     width: auto !important;
 }
 
@@ -475,12 +491,12 @@
 
     .image,
     .urlImage {
-        max-width: min(100%, 220px);
+        max-width: min(100%, 320px);
     }
 
     .image,
     .urlImage {
-        height: 80px !important;
+        height: 130px !important;
     }
 
     .svgContainer svg {

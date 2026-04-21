@@ -297,6 +297,8 @@ export function toPublicQuestion(question) {
     correctAnswerText: question.correctAnswerText,
     correctAnswerIndex: question.correctAnswerIndex,
     solution: question.solution ?? '',
+    show_example: Boolean(question.show_example ?? question.showExample ?? false),
+    showExample: Boolean(question.show_example ?? question.showExample ?? false),
     validation: question.validation,
     operands: question.operands ?? [],
     title: question.title ?? '',

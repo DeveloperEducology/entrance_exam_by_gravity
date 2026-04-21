@@ -9,7 +9,8 @@ import { backendUrl } from '@/lib/backend/url';
 import QuestionRenderer from '@/components/practice/QuestionRenderer';
 import QuestionParts from '@/components/practice/QuestionParts';
 import WorkPad from '@/components/practice/WorkPad';
-import { hasInlineHtml, sanitizeInlineHtml } from '@/components/practice/contentUtils';
+import SafeImage from '@/components/practice/SafeImage';
+import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from '@/components/practice/contentUtils';
 import styles from './practice.module.css';
 
 const CHALLENGE_STAGES = [
@@ -535,6 +536,77 @@ function getSelectedAnswerDisplay(question, answer) {
   return String(answer ?? '');
 }
 
+function getOptionObject(question, answer) {
+  if (!question) return null;
+  const type = String(question.type || '').trim().toLowerCase();
+  if (type !== 'mcq' && type !== 'imagechoice') return null;
+
+  const options = Array.isArray(question.options) ? question.options : [];
+  if (question.isMultiSelect) {
+    const indices = Array.isArray(answer) ? answer.map(Number).filter(Number.isFinite) : [];
+    return indices.map((idx) => options[idx]).filter(Boolean);
+  }
+
+  const idx = Number(answer);
+  if (Number.isFinite(idx) && idx >= 0) {
+    return options[idx] ?? null;
+  }
+  return null;
+}
+
+function renderOptionPreview(option, fallbackIndex = 0) {
+  if (option == null) return null;
+
+  const actual = Array.isArray(option) && option.length > 0 ? option[0] : option;
+  if (actual && typeof actual === 'object' && Array.isArray(actual.parts)) {
+    return <QuestionParts parts={actual.parts} />;
+  }
+
+  const imageSrc = getImageSrc(actual);
+  if (typeof actual === 'object' && actual !== null) {
+    const inlineSvgMarkup = isInlineSvg(actual.imageUrl || actual.content || actual.src || '') || isInlineSvg(imageSrc)
+      ? (actual.imageUrl || actual.content || actual.src || imageSrc)
+      : null;
+    const label = actual.label || actual.text || actual.content || '';
+
+    if (inlineSvgMarkup) {
+      return <div dangerouslySetInnerHTML={{ __html: inlineSvgMarkup }} />;
+    }
+
+    if (isImageUrl(imageSrc)) {
+      return (
+        <SafeImage
+          src={imageSrc}
+          alt={label || `Option ${fallbackIndex + 1}`}
+          width={160}
+          height={120}
+          sizes="160px"
+        />
+      );
+    }
+
+    if (label) {
+      return renderMaybeInlineHtml(String(label));
+    }
+  }
+
+  if (typeof actual === 'string') {
+    const trimmed = actual.trim();
+    if (isInlineSvg(trimmed)) {
+      return <div dangerouslySetInnerHTML={{ __html: trimmed }} />;
+    }
+    if (isImageUrl(trimmed)) {
+      return <SafeImage src={trimmed} alt={`Option ${fallbackIndex + 1}`} width={160} height={120} sizes="160px" />;
+    }
+    if (hasInlineHtml(trimmed)) {
+      return <span dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(trimmed) }} />;
+    }
+    return <span>{trimmed || `Option ${fallbackIndex + 1}`}</span>;
+  }
+
+  return <span>{`Option ${fallbackIndex + 1}`}</span>;
+}
+
 function getCurrentGuestId() {
   if (typeof window === 'undefined') return null;
   const key = 'wexls_guest_id';
@@ -782,6 +854,7 @@ export default function PracticePage() {
 
   const { microskill, subject, grade } = curriculumContext;
   const skillTitle = microskill ? `${microskill.code} ${microskill.name}` : `Skill ${microskillId}`;
+  const showExampleButton = Boolean(currentQuestion?.show_example ?? currentQuestion?.showExample ?? false);
   const solutionParts = parseSolutionParts(feedbackData?.solution);
   const solutionSections = normalizeSolutionSections(solutionParts);
   const hasStructuredSolution = solutionSections.length > 0;
@@ -815,6 +888,10 @@ export default function PracticePage() {
       ? feedbackData.correctOptionIndices.map((value) => Number(value))
       : []
   );
+  const selectedAnswerOption = getOptionObject(currentQuestion, userAnswer);
+  const correctAnswerOption = currentQuestion?.isMultiSelect
+    ? Array.from(correctIndexSet).map((idx) => currentQuestion?.options?.[idx]).filter(Boolean)
+    : (Number.isFinite(Number(Array.from(correctIndexSet)[0])) ? currentQuestion?.options?.[Number(Array.from(correctIndexSet)[0])] : null);
 
   useEffect(() => {
     let active = true;
@@ -1261,7 +1338,7 @@ export default function PracticePage() {
 
       <div className={`${styles.layout} ${isJourney ? styles.fullWidthLayout : ''}`}>
         <main className={styles.mainContent}>
-          {!isJourney && (
+          {!isJourney && showExampleButton && (
             <div className={styles.headerActions}>
               <button className={styles.exampleButton} onClick={handleFetchExample}>
                 <span className={styles.buttonIcon}>💡</span>Learn with an example
@@ -1444,13 +1521,25 @@ export default function PracticePage() {
                 <div className={`${styles.comparisonItem} ${styles.user}`}>
                   <span className={styles.comparisonLabel}>Your choice</span>
                   <div className={styles.comparisonValue}>
-                    {renderMaybeInlineHtml(selectedAnswerDisplay || 'No choice')}
+                    {selectedAnswerOption ? renderOptionPreview(selectedAnswerOption, 0) : renderMaybeInlineHtml(selectedAnswerDisplay || 'No choice')}
                   </div>
                 </div>
                 <div className={`${styles.comparisonItem} ${styles.correct}`}>
                   <span className={styles.comparisonLabel}>Correct Answer</span>
                   <div className={styles.comparisonValue}>
-                    {renderMaybeInlineHtml(correctAnswerDisplay || '—')}
+                    {correctAnswerOption
+                      ? (
+                        Array.isArray(correctAnswerOption)
+                          ? (
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              {correctAnswerOption.map((option, idx) => (
+                                <span key={`correct-opt-${idx}`}>{renderOptionPreview(option, idx)}</span>
+                              ))}
+                            </div>
+                          )
+                          : renderOptionPreview(correctAnswerOption, 0)
+                      )
+                      : renderMaybeInlineHtml(correctAnswerDisplay || '—')}
                   </div>
                 </div>
               </div>
@@ -1484,7 +1573,7 @@ export default function PracticePage() {
                               className={`${styles.reviewOption} ${selectedIndexSet.has(index) ? styles.reviewSelected : ''} ${correctIndexSet.has(index) ? styles.reviewCorrect : ''}`}
                               style={{ display: 'flex', justifyContent: 'center', textAlign: 'center', padding: '0.75rem' }}
                             >
-                              {renderMaybeInlineHtml(getOptionLabel(option, index), styles.reviewOptionLabel)}
+                              {renderOptionPreview(option, index)}
                             </div>
                           ))}
                         </div>

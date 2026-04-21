@@ -602,45 +602,58 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
         return Math.min(Math.floor(parsed), 24);
     };
 
+    const renderImageLabel = (part) => {
+        const label = String(part?.label || part?.caption || part?.title || '').trim();
+        if (!label) return null;
+        return <div className={styles.imageLabel}>{renderInlineMarkdown(label, false)}</div>;
+    };
+
     const renderImageSet = (imageSrc, part, index) => {
         const repeatCount = getRepeatCount(part?.count);
+        const labelNode = renderImageLabel(part);
         if (isInlineSvg(imageSrc)) {
             return (
-                <div key={index} className={styles.svgContainer}>
-                    {Array.from({ length: repeatCount }).map((_, imageIndex) => (
-                        <div
-                            key={`svg-${index}-${imageIndex}`}
-                            dangerouslySetInnerHTML={{ __html: imageSrc }}
-                        />
-                    ))}
+                <div key={index} className={styles.imageBlock}>
+                    <div className={styles.svgContainer}>
+                        {Array.from({ length: repeatCount }).map((_, imageIndex) => (
+                            <div
+                                key={`svg-${index}-${imageIndex}`}
+                                dangerouslySetInnerHTML={{ __html: imageSrc }}
+                            />
+                        ))}
+                    </div>
+                    {labelNode}
                 </div>
             );
         }
 
         return (
-            <div key={index} className={styles.imageContainer}>
-                {Array.from({ length: repeatCount }).map((_, imageIndex) => (
-                    (() => {
-                        const isAboveFoldImage = index === 0 && imageIndex === 0;
-                        return (
-                            <SafeImage
-                                key={`img-${index}-${imageIndex}`}
-                                src={imageSrc}
-                                alt={`Question image ${imageIndex + 1}`}
-                                className={styles.image}
-                                width={320}
-                                height={150}
-                                style={{
-                                    maxWidth: part.width ? `${part.width}px` : undefined,
-                                    maxHeight: part.height ? `${part.height}px` : undefined,
-                                }}
-                                sizes="(max-width: 768px) 70vw, 320px"
-                                priority={isAboveFoldImage}
-                                loading={isAboveFoldImage ? 'eager' : 'lazy'}
-                            />
-                        );
-                    })()
-                ))}
+            <div key={index} className={styles.imageBlock}>
+                <div className={styles.imageContainer}>
+                    {Array.from({ length: repeatCount }).map((_, imageIndex) => (
+                        (() => {
+                            const isAboveFoldImage = index === 0 && imageIndex === 0;
+                            return (
+                                <SafeImage
+                                    key={`img-${index}-${imageIndex}`}
+                                    src={imageSrc}
+                                    alt={`Question image ${imageIndex + 1}`}
+                                    className={styles.image}
+                                    width={420}
+                                    height={210}
+                                    style={{
+                                        maxWidth: part.width ? `${part.width}px` : '420px',
+                                        maxHeight: part.height ? `${part.height}px` : '210px',
+                                    }}
+                                    sizes="(max-width: 768px) 82vw, 420px"
+                                    priority={isAboveFoldImage}
+                                    loading={isAboveFoldImage ? 'eager' : 'lazy'}
+                                />
+                            );
+                        })()
+                    ))}
+                </div>
+                {labelNode}
             </div>
         );
     };
@@ -662,17 +675,20 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 if (isImageUrl(part.content)) {
                     const isAboveFoldImage = index === 0;
                     return (
-                        <div key={index} className={styles.imageContainer}>
-                            <SafeImage
-                                src={part.content}
-                                alt="Question visual"
-                                className={styles.urlImage}
-                                width={320}
-                                height={150}
-                                sizes="(max-width: 768px) 70vw, 320px"
-                                priority={isAboveFoldImage}
-                                loading={isAboveFoldImage ? 'eager' : 'lazy'}
-                            />
+                        <div key={index} className={styles.imageBlock}>
+                            <div className={styles.imageContainer}>
+                                <SafeImage
+                                    src={part.content}
+                                    alt="Question visual"
+                                    className={styles.urlImage}
+                                    width={420}
+                                    height={210}
+                                    sizes="(max-width: 768px) 82vw, 420px"
+                                    priority={isAboveFoldImage}
+                                    loading={isAboveFoldImage ? 'eager' : 'lazy'}
+                                />
+                            </div>
+                            {renderImageLabel(part)}
                         </div>
                     );
                 }

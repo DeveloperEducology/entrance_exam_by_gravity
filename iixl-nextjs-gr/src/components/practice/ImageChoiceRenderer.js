@@ -4,6 +4,7 @@ import QuestionParts from './QuestionParts';
 import styles from './ImageChoiceRenderer.module.css';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SafeImage from './SafeImage';
+import SpeakerButton from './SpeakerButton';
 
 export default function ImageChoiceRenderer({
     question,
@@ -33,17 +34,29 @@ export default function ImageChoiceRenderer({
         return userAnswer === index;
     };
 
+    const promptParts = Array.isArray(question?.parts) ? question.parts : [];
+    const promptText =
+        String(question?.questionText || promptParts.find((part) => part?.type === 'text')?.content || '').trim();
+    const remainingParts = promptParts.length > 0 ? promptParts.slice(1) : [];
+
     return (
         <div className={styles.container}>
             <div className={styles.questionCard}>
-                {/* Question Parts */}
                 <div className={styles.questionContent}>
-                    <QuestionParts parts={question.parts} />
+                    <div className={styles.promptRow}>
+                        {promptText ? <SpeakerButton text={promptText} className={styles.promptSpeaker} /> : null}
+                        <div className={styles.promptText}>
+                            <QuestionParts parts={[{ type: 'text', content: promptText }]} />
+                        </div>
+                    </div>
+                    {remainingParts.length > 0 ? (
+                        <div className={styles.promptMedia}>
+                            <QuestionParts parts={remainingParts} />
+                        </div>
+                    ) : null}
                 </div>
 
-                {/* Scrollable Content Wrapper */}
                 <div className={styles.contentWrapper}>
-                    {/* Image Options */}
                     <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''}`}>
                         {question.options.map((optionValue, index) => {
                             const actualOption = Array.isArray(optionValue) && optionValue.length > 0 
@@ -82,9 +95,9 @@ export default function ImageChoiceRenderer({
                                             src={src}
                                             alt={`Option ${index + 1}`}
                                             className={styles.optionImage}
-                                            width={220}
-                                            height={140}
-                                            sizes="(max-width: 768px) 44vw, 220px"
+                                            width={420}
+                                            height={300}
+                                            sizes="(max-width: 768px) 88vw, 420px"
                                         />
                                     ) : !src ? (
                                         <span className={styles.optionFallback}>No image</span>
@@ -104,7 +117,6 @@ export default function ImageChoiceRenderer({
                         })}
                     </div>
 
-                    {/* Submit Button (if needed) */}
                     {question.showSubmitButton && userAnswer !== null && !isAnswered && (
                         <button className={styles.submitButton} onClick={() => onSubmit()}>
                             Submit Answer
