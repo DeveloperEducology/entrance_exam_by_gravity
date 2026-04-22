@@ -136,7 +136,81 @@ if (logic === 'division_countdown_v1') {
     return inst;
   }
 
-  
+  if (logic === 'division_by_fixed_divisor_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    let dividend, divisor, quotient;
+    if (overrideVariables && overrideVariables.dividend !== undefined) {
+      dividend = Number(overrideVariables.dividend);
+      divisor = Number(overrideVariables.divisor || 1);
+      quotient = Math.floor(dividend / divisor);
+    } else {
+      divisor = ds.divisor?.value ?? 1;
+      const minQ = ds.quotient?.min ?? 1;
+      const maxQ = ds.quotient?.max ?? 10;
+      quotient = Math.floor(Math.random() * (maxQ - minQ + 1)) + minQ;
+      dividend = quotient * divisor;
+    }
+
+    let tableRows = [];
+    for (let q = 1; q <= 10; q++) {
+      const mult = q * divisor;
+      if (mult === dividend) {
+        tableRows.push(`**${mult} &divide; ${divisor} = ${q}**`);
+      } else {
+        tableRows.push(`${mult} &divide; ${divisor} = ${q}`);
+      }
+    }
+    const solution_table = tableRows.join('<br/>');
+
+    const templateVars = {
+      dividend,
+      divisor,
+      quotient,
+      solution_table
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    inst.parts = [
+      {
+        type: 'text',
+        content: 'Divide:',
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `${dividend} &divide; ${divisor} = [[quotient]]`,
+        isVertical: true,
+        style: { fontSize: '20px', marginTop: '10px' }
+      }
+    ];
+
+    inst.solution = [
+      {
+        type: 'text',
+        content: `Remember how to divide by ${divisor}:`,
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: solution_table,
+        isVertical: true,
+        style: { border: '1px solid #ef4444', padding: '10px', borderRadius: '4px', display: 'inline-block', margin: '10px 0' }
+      },
+      {
+        type: 'text',
+        content: `So, ${dividend} &divide; ${divisor} = **${quotient}**.`,
+        isVertical: true
+      }
+    ];
+
+    inst.type = 'fillInTheBlank';
+    inst.correctAnswerText = JSON.stringify({ quotient: String(quotient) });
+    return inst;
+  }
+
   if (logic === 'drag_drop_v2_sorting_v1') {
     const config = inst.adaptiveConfig || {};
     const taskType = config.taskType || 'prime_composite';
