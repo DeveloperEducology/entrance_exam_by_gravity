@@ -836,6 +836,7 @@ export default function PracticePage() {
   const [loadingExample, setLoadingExample] = useState(false);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [showDebugTable, setShowDebugTable] = useState(false);
+  const [showStats, setShowStats] = useState(true);
 
   const currentChallengeStage = CHALLENGE_STAGES[currentStage];
   const teacherToolsHref = currentStudentId
@@ -1315,16 +1316,34 @@ export default function PracticePage() {
       </div>
 
       <header className={styles.topBar}>
-        <div className={styles.topBarLeft}>
-          <Link href="/" className={styles.logo}><span>WEXLS</span></Link>
-          <div className={styles.skillTag}>{skillTitle}</div>
-        </div>
-        <div className={styles.topBarStats}>
-          <div className={styles.statPill}><span className={styles.statLabel}>Questions</span><strong>{questionsAnswered}</strong></div>
-          <div className={styles.statPill}><span className={styles.statLabel}>Streak</span><strong>{streak}</strong></div>
-          <div className={styles.statPill}><span className={styles.statLabel}>Time</span><strong>{time.mins}:{time.secs}</strong></div>
-          <div className={styles.statPill}><span className={styles.statLabel}>SmartScore</span><strong>{smartScore}</strong></div>
-          <div className={styles.statPill}><span className={styles.statLabel}>Level</span><strong style={{ textTransform: 'capitalize' }}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</strong></div>
+        <div className={styles.topBarInner}>
+          <div className={styles.topBarLeft}>
+            <Link href="/" className={styles.logo}><span>WEXLS</span></Link>
+            <div className={styles.skillTag}>{skillTitle}</div>
+          </div>
+          <div className={styles.topBarStats}>
+            <div className={styles.statPill}><span className={styles.statLabel}>Questions</span><strong>{questionsAnswered}</strong></div>
+            <div className={styles.statPill}>
+              <span className={styles.statLabel}>Streak</span>
+              <strong>{showStats ? streak : '—'}</strong>
+            </div>
+            <div className={styles.statPill}>
+              <span className={styles.statLabel}>Time</span>
+              <strong>{showStats ? `${time.mins}:${time.secs}` : '—:—'}</strong>
+            </div>
+            <div className={styles.statPill}>
+              <span className={styles.statLabel}>SmartScore</span>
+              <strong>{showStats ? smartScore : '—'}</strong>
+            </div>
+            <div className={styles.statPill}><span className={styles.statLabel}>Level</span><strong style={{ textTransform: 'capitalize' }}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</strong></div>
+            <button 
+              className={styles.toggleStatsButton} 
+              onClick={() => setShowStats(!showStats)}
+              title={showStats ? "Hide statistics" : "Show statistics"}
+            >
+              {showStats ? '👁️' : '🙈'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1650,31 +1669,55 @@ export default function PracticePage() {
         </main>
 
         <aside className={styles.sidebar}>
+          {/* Questions Block */}
           {!isJourney && (
-            <div className={styles.sidebarCard}>
-              <div className={styles.sidebarLabel}>🏆 SmartScore</div>
-              <div className={styles.sidebarValue} style={{ color: '#0f6ea8' }}>{smartScore}</div>
-              <div className={styles.badgeContainer}>
-                <span className={styles.levelBadge}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</span>
-                <span className={styles.phaseBadge}>{adaptivePhase}</span>
+            <div className={`${styles.ixlBlock} ${styles.questionsBlock}`}>
+              <div className={styles.ixlHeader}>Questions answered</div>
+              <div className={styles.ixlValue}>{questionsAnswered}</div>
+            </div>
+          )}
+
+          {/* Time Block */}
+          {!isJourney && (
+            <div className={`${styles.ixlBlock} ${styles.timeBlock}`}>
+              <div className={styles.ixlHeader}>Time elapsed</div>
+              <div className={styles.ixlValue}>
+                {time.mins}:{time.secs}
+                <div className={styles.pausedLabel}>PAUSED</div>
               </div>
             </div>
           )}
 
-          {!isJourney && (
-            <div className={styles.sidebarCard}>
-              <div className={styles.challengeHeader}>Challenge</div>
-              <div className={styles.stageLabel}>{currentChallengeStage.label}</div>
-              <div className={styles.tokenInfo}>Collect {currentChallengeStage.tokensNeeded} tokens</div>
-              <div className={styles.tokens}>
-                {Array.from({ length: currentChallengeStage.tokensNeeded }).map((_, i) => (
-                  <div key={i} className={`${styles.token} ${i < tokensCollected ? styles.collected : ''}`} />
-                ))}
+          {/* SmartScore Block */}
+          {!isJourney && showStats && (
+            <div className={`${styles.ixlBlock} ${styles.smartScoreBlock}`}>
+              <div className={styles.ixlHeader}>
+                SmartScore 
+                <span className={styles.headerSub}>out of 100</span>
+                <span className={styles.helpCircle}>?</span>
+              </div>
+              <div className={styles.ixlValue}>{smartScore}</div>
+            </div>
+          )}
+
+          {/* Challenge Block (Retained but styled like IXL) */}
+          {!isJourney && showStats && (
+            <div className={`${styles.ixlBlock} ${styles.challengeBlock}`}>
+              <div className={styles.ixlHeader}>Challenge Stage</div>
+              <div className={styles.ixlValue}>
+                <div className={styles.stageText}>{currentChallengeStage.label}</div>
+                <div className={styles.tokensGrid}>
+                  {Array.from({ length: currentChallengeStage.tokensNeeded }).map((_, i) => (
+                    <div key={i} className={`${styles.ixlToken} ${i < tokensCollected ? styles.ixlCollected : ''}`} />
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          <Link href={teacherToolsHref} className={styles.teacherTools}>🛠️ Teacher tools ›</Link>
+          <Link href={teacherToolsHref} className={styles.teacherTools}>
+            <span className={styles.boltIcon}>⚡</span> Teacher tools ›
+          </Link>
         </aside>
       </div>
 

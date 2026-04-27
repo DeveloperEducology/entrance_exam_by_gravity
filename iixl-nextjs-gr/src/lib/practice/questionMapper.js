@@ -140,6 +140,8 @@ function normalizeQuestionType(value) {
     'token-selection': 'tokenSelection',
     draganddropv2: 'dragAndDropv2',
     drag_and_drop_v2: 'dragAndDropv2',
+    draganddropv3: 'dragAndDropv3',
+    drag_and_drop_v3: 'dragAndDropv3',
   };
 
   if (aliases[lowered]) return aliases[lowered];
@@ -210,5 +212,6 @@ export function mapDbQuestion(row) {
     tokens: parseMaybeJson(row.tokens, []),
     concepts: parseMaybeJson(row.concepts, []),
     steps: parseMaybeJson(row.steps, []),
+    mapUrl: row.mapUrl ?? row.map_url ?? row.imageUrl ?? row.image_url ?? null,
   };
 }

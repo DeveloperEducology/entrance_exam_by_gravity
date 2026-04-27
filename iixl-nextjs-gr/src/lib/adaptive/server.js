@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { mapDbQuestion } from '@/lib/practice/questionMapper';
 
 const SKILL_COLUMNS = ['microSkillId', 'micro_skill_id', 'microskill_id'];
@@ -282,6 +283,8 @@ export function toPublicQuestion(question) {
     items: publicItems,
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
+    mapUrl: question.mapUrl ?? null,
+    map_url: question.map_url ?? null,
     problem: question.problem ?? null,
     adaptiveConfig: question.adaptiveConfig ?? null,
     ui_config: question.ui_config ?? null,
@@ -312,18 +315,64 @@ export function toPublicQuestion(question) {
 export async function fetchQuestionsByMicroskill(db, microskillId) {
   if (!microskillId) return [];
   const cacheKey = String(microskillId);
+  
+  // 1. Check cache
   const cached = questionPoolCache.get(cacheKey);
   if (cached && (Date.now() - cached.ts) < QUESTION_POOL_CACHE_TTL_MS) {
     return cached.rows;
   }
+
+  // 2. Resolve mIdQuery (handle ObjectId)
+  let mIdQuery = microskillId;
+  try {
+    if (typeof microskillId === 'string' && microskillId.length === 24 && mongoose?.Types?.ObjectId?.isValid(microskillId)) {
+      mIdQuery = new mongoose.Types.ObjectId(microskillId);
+    }
+  } catch (e) {
+    // Silently continue if ObjectId resolution fails
+  }
+
   const query = {
-    $or: SKILL_COLUMNS.map(col => ({ [col]: microskillId }))
+    $or: [
+      ...SKILL_COLUMNS.map(col => ({ [col]: microskillId })),
+      ...SKILL_COLUMNS.map(col => ({ [col]: mIdQuery }))
+    ]
   };
-  const rows = await db.collection('questions')
-    .find(query)
-    .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
-    .toArray();
-  const mapped = rows.map(mapDbQuestion);
+
+  let rows = [];
+  try {
+    // 3. Search in 'questions' collection
+    const qRows = await db.collection('questions')
+      .find(query)
+      .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
+      .toArray();
+    rows = [...qRows];
+
+    // 4. Search in 'templates' collection
+    const tRows = await db.collection('templates')
+      .find(query)
+      .sort({ sort_order: 1, sortOrder: 1, idx: 1, created_at: 1, id: 1 })
+      .toArray();
+    
+    if (tRows.length > 0) {
+      rows = [...rows, ...tRows];
+    }
+
+    // 5. Fallback: Search by template_id
+    if (rows.length === 0) {
+      const fallbackQuery = { template_id: microskillId };
+      const fallbackQuestions = await db.collection('questions').find(fallbackQuery).toArray();
+      const fallbackTemplates = await db.collection('templates').find(fallbackQuery).toArray();
+      if (fallbackQuestions.length > 0) rows = [...rows, ...fallbackQuestions];
+      if (fallbackTemplates.length > 0) rows = [...rows, ...fallbackTemplates];
+    }
+  } catch (dbErr) {
+    console.error("[fetchQuestionsByMicroskill] Error fetching from MongoDB:", dbErr);
+    // Re-throw to be caught by the API route handler
+    throw dbErr;
+  }
+
+  const mapped = (rows || []).map(mapDbQuestion);
   questionPoolCache.set(cacheKey, { ts: Date.now(), rows: mapped });
   return mapped;
 }
@@ -519,7 +568,8 @@ export function validateAnswer(question, answer) {
     }
 
     case 'draganddrop':
-    case 'draganddropv2': {
+    case 'draganddropv2':
+    case 'draganddropv3': {
       const parsed = parseMaybeJson(
         question.correctAnswerText ?? question.validation?.answer ?? question.validation?.correctAnswerText,
         null

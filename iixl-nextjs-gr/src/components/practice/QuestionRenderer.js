@@ -18,6 +18,7 @@ import LongDivisionStepRenderer from './LongDivisionStepRenderer';
 import StepwiseArithmeticRenderer from './StepwiseArithmeticRenderer';
 import JourneyRenderer from './JourneyRenderer';
 import DotGridRenderer from './DotGridRenderer';
+import DragDropRendererV3 from './DragDropRendererV3';
 
 
 const RENDERER_MAP = {
@@ -26,8 +27,9 @@ const RENDERER_MAP = {
     textInput: TextInputRenderer,
     fillInTheBlank: FillInTheBlankRenderer,
     gridArithmetic: FillInTheBlankRenderer,
-    dragAndDrop: DragDropRenderer,
-    dragAndDropv2: DragDropRendererV2,
+    draganddrop: DragDropRenderer,
+    draganddropv2: DragDropRendererV2,
+    draganddropv3: DragDropRendererV3,
     sorting: SortingRenderer,
     fourPicsOneWord: FourPicsRenderer,
     measure: MeasureRenderer,
