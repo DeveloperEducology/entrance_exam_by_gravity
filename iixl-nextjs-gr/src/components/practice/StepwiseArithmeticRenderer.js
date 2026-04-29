@@ -26,7 +26,7 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
   const command = isAdd ? 'Add.' : (isSub ? 'Subtract.' : (isMul ? 'Multiply.' : 'Add.'));
 
   return (
-    <div className={`flex flex-col items-start p-6 transition-all duration-500 min-h-[300px] w-full rounded-2xl
+    <div className={`flex flex-col items-start p-6 transition-all duration-500 w-full rounded-2xl
       ${isRemediation ? 'bg-amber-50/30 border-2 border-amber-100/50' : 'bg-transparent'}
     `}>
       <div className="w-full flex justify-between items-center mb-6">
@@ -46,21 +46,23 @@ const ProblemView = ({ problem, stepIndex, inputs, onInputChange, isAnswered, is
           </div>
       </div>
       
-      <ArithmeticGrid 
-        operation={isAdd ? 'addition' : (isSub ? 'subtraction' : (isMul ? 'multiplication' : 'addition'))}
-        operands={problem.operands}
-        carries={step.carries}
-        regroups={step.regroups}
-        result={step.result}
-        highlights={step.highlights}
-        subRows={step.subRows}
-        mode={isRemediation ? 'static' : 'interactive'}
-        inputs={inputs}
-        onInputChange={onInputChange}
-        isAnswered={isAnswered}
-        isCorrect={isCorrect}
-        isLastStep={isLastStep}
-      />
+      <div className="pl-12">
+        <ArithmeticGrid 
+          operation={isAdd ? 'addition' : (isSub ? 'subtraction' : (isMul ? 'multiplication' : 'addition'))}
+          operands={problem.operands}
+          carries={step.carries}
+          regroups={step.regroups}
+          result={step.result}
+          highlights={step.highlights}
+          subRows={step.subRows}
+          mode={isRemediation ? 'static' : 'interactive'}
+          inputs={inputs}
+          onInputChange={onInputChange}
+          isAnswered={isAnswered}
+          isCorrect={isCorrect}
+          isLastStep={isLastStep}
+        />
+      </div>
     </div>
   );
 };
@@ -243,7 +245,7 @@ export default function StepwiseArithmeticRenderer({ question: problem, onAnswer
               onShowSteps={handleShowSteps}
           />
           
-          <div className="mt-8 flex items-center justify-start gap-4">
+          <div className="mt-2 pl-[4.5rem] flex items-center justify-start gap-4">
                    <button
                        onClick={handleNext}
                        className="min-w-[140px] px-8 py-3 rounded-xl text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2 bg-[#50b500] hover:bg-[#469d00] shadow-sm"

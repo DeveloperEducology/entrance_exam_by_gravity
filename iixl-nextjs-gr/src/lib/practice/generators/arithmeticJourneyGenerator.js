@@ -172,9 +172,9 @@ export function generateSubtractionJourney(v1, v2) {
   return {
     id: `arith_journey_subtraction_${Date.now()}`,
     type: "arithmetic_journey",
-    operation: "subtraction",
+    question_text: "subtraction",
     // title: `Subtraction`,
-        title: `Subtraction: ${formatIndian(n1)} – ${formatIndian(n2)}`,
+        // title: `Subtraction: ${formatIndian(n1)} – ${formatIndian(n2)}`,
 
     operands: [s1Full, s2Full],
     steps,

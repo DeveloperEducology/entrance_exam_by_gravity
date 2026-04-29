@@ -602,19 +602,32 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
         return Math.min(Math.floor(parsed), 24);
     };
 
-    const renderImageLabel = (part) => {
+    const renderImageLabel = (part, isCard = false) => {
         const label = String(part?.label || part?.caption || part?.title || '').trim();
         if (!label) return null;
-        return <div className={styles.imageLabel}>{renderInlineMarkdown(label, false)}</div>;
+        return (
+            <>
+                {isCard && <div className={styles.cardDivider} />}
+                <div className={isCard ? styles.imageLabelCard : styles.imageLabel}>
+                    {renderInlineMarkdown(label, false)}
+                </div>
+            </>
+        );
     };
 
     const renderImageSet = (imageSrc, part, index) => {
         const repeatCount = getRepeatCount(part?.count);
-        const labelNode = renderImageLabel(part);
+        const hasLabel = Boolean(String(part?.label || part?.caption || part?.title || '').trim());
+        const isCard = hasLabel;
+        const labelNode = renderImageLabel(part, isCard);
+        
+        const blockClass = isCard ? styles.imageCard : styles.imageBlock;
+        const containerClass = isCard ? styles.imageContainerCard : styles.imageContainer;
+
         if (isInlineSvg(imageSrc)) {
             return (
-                <div key={index} className={styles.imageBlock}>
-                    <div className={styles.svgContainer}>
+                <div key={index} className={blockClass}>
+                    <div className={isCard ? styles.imageContainerCard : styles.svgContainer}>
                         {Array.from({ length: repeatCount }).map((_, imageIndex) => (
                             <div
                                 key={`svg-${index}-${imageIndex}`}
@@ -628,8 +641,8 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
         }
 
         return (
-            <div key={index} className={styles.imageBlock}>
-                <div className={styles.imageContainer}>
+            <div key={index} className={blockClass}>
+                <div className={containerClass}>
                     {Array.from({ length: repeatCount }).map((_, imageIndex) => (
                         (() => {
                             const isAboveFoldImage = index === 0 && imageIndex === 0;
@@ -639,11 +652,12 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                                     src={imageSrc}
                                     alt={`Question image ${imageIndex + 1}`}
                                     className={styles.image}
-                                    width={420}
-                                    height={210}
+                                    width={part.width || 420}
+                                    height={part.height || 210}
                                     style={{
-                                        maxWidth: part.width ? `${part.width}px` : '420px',
-                                        maxHeight: part.height ? `${part.height}px` : '210px',
+                                        '--image-width': part.width ? `${part.width}px` : '420px',
+                                        '--image-width-mobile': part.mobileWidth ? `${part.mobileWidth}px` : '200px',
+                                        ...part.style
                                     }}
                                     sizes="(max-width: 768px) 82vw, 420px"
                                     priority={isAboveFoldImage}
@@ -674,9 +688,11 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 }
                 if (isImageUrl(part.content)) {
                     const isAboveFoldImage = index === 0;
+                    const hasLabel = Boolean(String(part?.label || part?.caption || part?.title || '').trim());
+                    const isCard = hasLabel;
                     return (
-                        <div key={index} className={styles.imageBlock}>
-                            <div className={styles.imageContainer}>
+                        <div key={index} className={isCard ? styles.imageCard : styles.imageBlock}>
+                            <div className={isCard ? styles.imageContainerCard : styles.imageContainer}>
                                 <SafeImage
                                     src={part.content}
                                     alt="Question visual"
@@ -688,7 +704,7 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                                     loading={isAboveFoldImage ? 'eager' : 'lazy'}
                                 />
                             </div>
-                            {renderImageLabel(part)}
+                            {renderImageLabel(part, isCard)}
                         </div>
                     );
                 }

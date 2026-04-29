@@ -1,0 +1,67 @@
+mdx
+# Dynamic Template Creation Guide
+This guide explains how to build automated, randomized MCQ questions using images and dynamic logic.
+## 🏗️ The 2-Step Architecture
+The system relies on two parts working together:
+1. **JSON Template (Database)**: Defines the layout and placeholders.
+2. **Logic Generator (Backend)**: Randomly selects data and fills the placeholders.
+---
+## 📝 Step 1: Create the JSON Template
+In your database, create a question with a unique `logic_type`. Use `{{variable_name}}` for any content that should be random.
+### Example: Action Verbs
+```json
+{
+  "type": "mcq",
+  "logic_type": "english_action_verbs_v1",
+  "question_text": "Which image shows the action: **{{action}}**?",
+  "options": [
+    [{ "type": "image", "imageUrl": "{{opt0_url}}" }],
+    [{ "type": "image", "imageUrl": "{{opt1_url}}" }],
+    [{ "type": "image", "imageUrl": "{{opt2_url}}" }],
+    [{ "type": "image", "imageUrl": "{{opt3_url}}" }]
+  ],
+  "solution": [
+    { "type": "text", "content": "This image shows someone {{action}}." }
+  ]
+}
+⚙️ Step 2: Implement the Logic
+Add a new block to src/lib/practice/generators/templateInstantiator.js.
+
+⚠️ Critical: Handling Validation (The "Moving Target" Bug)
+When a student submits an answer, the backend calls your generator again to verify it. You must check for overrideVariables to ensure the correct answer doesn't change during validation.
+
+javascript
+if (logic === 'your_logic_id') {
+  // 1. Check if we are re-validating an existing question
+  if (overrideVariables && overrideVariables.opt0_url && !String(overrideVariables.opt0_url).includes('{{')) {
+    // RECONSTRUCT from previous state
+    const correctIdx = parseInt(overrideVariables.correct_index);
+    inst.adaptiveConfig.variables = overrideVariables;
+    inst.correctAnswerIndex = correctIdx;
+  } else {
+    // GENERATE NEW random state
+    const selected = pickRandomFromPool(pool, 4);
+    const correctIdx = Math.floor(Math.random() * 4);
+    
+    inst.adaptiveConfig.variables = {
+      action: selected[correctIdx].name,
+      opt0_url: selected[0].url,
+      // ...
+      correct_index: correctIdx // ALWAYS STORE THIS!
+    };
+    inst.correctAnswerIndex = correctIdx;
+  }
+  inst.type = 'mcq';
+}
+🖼️ Working with Images
+Storage: You can use external URLs (Unsplash, FlatIcon) or local paths.
+Dimensions: The standard width for MCQ image options is 160.
+Alt Text: Always provide a label placeholder for accessibility if the image isn't purely decorative.
+🧪 Best Practices
+Uniqueness: When picking 4 items, use a Set or filter by name to ensure no two images are the same.
+Round Numbers: For math/money, use (Math.random() * range) + min and round to the nearest 5 or 10.
+Variable Names: Keep variable names consistent (e.g., opt0_url, opt1_url) so you can reuse template structures.
+📁 Key Files
+Logic Location: src/lib/practice/generators/templateInstantiator.js
+Frontend Renderer: src/components/practice/MCQRenderer.jsx
+API Handler: src/app/api/adaptive/submit-and-next/route.js

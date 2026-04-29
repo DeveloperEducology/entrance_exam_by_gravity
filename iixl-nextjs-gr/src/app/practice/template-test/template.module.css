@@ -1,0 +1,136 @@
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.header {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 1rem;
+}
+
+.header h1 {
+    font-size: 28px;
+    color: #1e293b;
+    margin: 0 0 0.5rem 0;
+}
+
+.header p {
+    color: #64748b;
+    margin: 0;
+}
+
+.split {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.editorPanel {
+    flex: 1;
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.previewPanel {
+    flex: 1.2;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    min-height: 400px;
+}
+
+.field {
+    margin-bottom: 1.5rem;
+}
+
+.field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #334155;
+}
+
+.input, .textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+    font-size: 16px;
+}
+
+.button:hover {
+    background: #2563eb;
+}
+
+.error {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fef2f2;
+    color: #dc2626;
+    border-radius: 4px;
+    border: 1px solid #fca5a5;
+    font-size: 14px;
+}
+
+.debug {
+    margin-top: 2rem;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.debug h3 {
+    margin: 0 0 1rem 0;
+    color: #94a3b8;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.debug pre {
+    margin: 0;
+    font-size: 12px;
+}
+
+.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.rendererWrapper {
+    margin-top: 1rem;
+    /* Ensure the renderer looks like it does in actual practice mode */
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+}

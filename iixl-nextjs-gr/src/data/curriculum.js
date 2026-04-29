@@ -12,7 +12,7 @@ export const grades = [
 ];
 
 export const subjects = [
-    { "id": "32d28536-b8c3-4db3-adaa-5cbc44b0c42b", "grade_id": "9cd8b0f3-5d36-46ce-b278-c48f506bb8c6", "name": "Mathamatics", "slug": "math", "created_at": "2026-01-31 12:34:47.340061+00" },
+    { "id": "32d28536-b8c3-4db3-adaa-5cbc44b0c42b", "grade_id": "9cd8b0f3-5d36-46ce-b278-c48f506bb8c6", "name": "Mathematics", "slug": "math", "created_at": "2026-01-31 12:34:47.340061+00" },
     { "id": "331c169a-ea39-4491-8586-403eec509473", "grade_id": "4e186e49-cd6f-41e3-aa67-31cd709fd386", "name": "Science", "slug": "science", "created_at": "2026-01-27 18:13:20.771251+00" },
     { "id": "4b44fa0b-c19b-4abb-b36e-15f06203b7da", "grade_id": "4e186e49-cd6f-41e3-aa67-31cd709fd386", "name": "English", "slug": "english", "created_at": "2026-01-27 18:13:20.771251+00" },
     { "id": "520daaef-416b-45be-be33-c211b17216c2", "grade_id": "9cd8b0f3-5d36-46ce-b278-c48f506bb8c6", "name": "SCIENCE", "slug": "science", "created_at": "2026-02-07 15:06:43.00824+00" },

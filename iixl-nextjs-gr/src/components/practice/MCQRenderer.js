@@ -28,7 +28,7 @@ export default function MCQRenderer({
         '--mcq-accent': layout.accentColor || layout.theme || '#22c55e',
         '--mcq-font-size': layout.fontSize || '1.1rem',
         '--mcq-gap': layout.gap || '1rem',
-        '--mcq-columns': layout.columns || (question.isGrid ? 2 : 1),
+        '--mcq-columns': layout.columns || (question.isGrid ? 4 : 1),
     };
 
     const handleOptionClick = (index) => {
@@ -59,6 +59,7 @@ export default function MCQRenderer({
                 {/* 2. Top-Level Content Wrapper with Audio Support */}
                 <div className={styles.questionHeader}>
                     <div className={styles.questionContent}>
+                        <p>{question?.title || ""}</p>
                         <QuestionParts parts={question.parts} isVertical={question.isVertical} />
                     </div>
                     {question.hasAudio && (
@@ -73,7 +74,7 @@ export default function MCQRenderer({
                 <div className={`
                     ${styles.optionsGrid} 
                     ${question.isVertical ? styles.vertical : ''} 
-                    ${question.isGrid || layout.columns > 1 ? styles.gridMode : ''}
+                    ${(question.isGrid !== false) ? styles.gridMode : ''}
                 `}>
                     {question.options.map((option, index) => (
                         (() => {

@@ -1,0 +1,237 @@
+.gameContainer {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  height: 500px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #4A3A73 0%, #2A1B43 100%);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', sans-serif;
+  border: 4px solid #fff;
+}
+
+.sky {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.1) 2px, transparent 2px);
+  background-size: 100px 100px;
+  pointer-events: none;
+}
+
+.lane {
+  position: absolute;
+  width: 100%;
+  height: 33.33%;
+  border-bottom: 8px solid #E87A5D;
+  box-sizing: border-box;
+}
+
+.lane::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 20px,
+    rgba(0, 0, 0, 0.2) 20px,
+    rgba(0, 0, 0, 0.2) 40px
+  );
+}
+
+.laneTop {
+  top: 0;
+}
+
+.laneMiddle {
+  top: 33.33%;
+}
+
+.laneBottom {
+  top: 66.66%;
+}
+
+.player {
+  position: absolute;
+  left: 10%;
+  width: 40px;
+  height: 60px;
+  background-color: transparent;
+  transition: top 0.15s ease-in-out;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 48px;
+  line-height: 1;
+  z-index: 10;
+  /* Adjust player top offset so they stand on the floor */
+  transform: translateY(-8px); 
+}
+
+/* Base top for each lane. 
+  Lane height is 33.33% of 500px = 166.66px
+  Player should be at the bottom of the lane.
+*/
+.playerLane0 { top: calc(33.33% - 60px); }
+.playerLane1 { top: calc(66.66% - 60px); }
+.playerLane2 { top: calc(100% - 60px); }
+
+.doorSet {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+}
+
+.door {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.doorPillar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #C05B4D;
+  border-left: 4px solid #A04A3F;
+  border-right: 4px solid #A04A3F;
+}
+
+.doorCircle {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  background-color: #E87A5D;
+  border: 4px solid #C05B4D;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+  font-weight: 800;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.3);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+
+.doorCircleOdd {
+  /* No special color difference unless we want to hint, but the screenshot doesn't hint. 
+     Let's keep them identical to force math. */
+}
+
+.hud {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px 20px;
+  border-radius: 20px;
+  color: white;
+  font-weight: bold;
+  font-size: 20px;
+  z-index: 20;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.instructionsPanel {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(145, 68, 128, 0.9);
+  padding: 10px 30px;
+  border-radius: 30px;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  text-align: center;
+  z-index: 20;
+  border: 3px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
+.overlayTitle {
+  color: white;
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  text-align: center;
+}
+
+.startButton {
+  background: #E87A5D;
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  font-size: 24px;
+  font-weight: bold;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  transition: transform 0.1s, background 0.2s;
+}
+
+.startButton:hover {
+  background: #F08A6D;
+  transform: scale(1.05);
+}
+
+.startButton:active {
+  transform: scale(0.95);
+}
+
+.runningAnim {
+  animation: runBounce 0.3s infinite alternate;
+}
+
+@keyframes runBounce {
+  from { transform: translateY(-8px) rotate(-5deg); }
+  to { transform: translateY(-12px) rotate(5deg); }
+}
+
+.hitAnim {
+  animation: hitShake 0.5s;
+}
+
+@keyframes hitShake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  75% { transform: translateX(-10px); }
+  100% { transform: translateX(0); }
+}

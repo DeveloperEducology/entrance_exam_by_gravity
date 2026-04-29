@@ -136,6 +136,107 @@ if (logic === 'division_countdown_v1') {
     return inst;
   }
 
+if (logic === 'money_subtraction_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    const ASSETS = {
+      500: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773482720778-qtwnbtb2c2.jpg",
+      200: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773482719931-8zk7msk3jj.jpg",
+      100: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773481483413-j2sdzsvnvus.jpg",
+      50: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773482718951-tvl0xvezk4.jpg",
+      20: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773482718448-pjb6um8690p.jpg",
+      10: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773482717771-iccioja4ttq.jpeg",
+      5: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1777177780818-o0d57jggadk.jpg",
+      2: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773484351761-4iiizqpq85i.jpg",
+      1: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/1773484418376-norxwu3nja.jpg"
+    };
+
+    const names = ["Vijay", "Aisha", "Rohan", "Maya", "Kabir", "Arjun", "Zara"];
+    const items = ["Toy Car 🚘", "Book 📖", "Puzzle 🧩", "Ball ⚽", "Doll 🧸", "Box of Crayons 🖍️"];
+
+    // Force randomness: We ignore ds.student_name and ds.item to ensure variety
+    const name = names[Math.floor(Math.random() * names.length)];
+    const item = items[Math.floor(Math.random() * items.length)];
+    
+    // --- START RANDOMIZATION LOGIC ---
+    let itemCost, wallet = {};
+    
+    if (overrideVariables) {
+      itemCost = overrideVariables.itemCost;
+      wallet = overrideVariables.wallet;
+    } else {
+      // Force random cost between 100 and 800
+      itemCost = (Math.floor(Math.random() * 70) * 10) + 100;
+
+      // 2. Build a wallet that is guaranteed to be more than the itemCost
+      let currentTotal = 0;
+      const denoms = [500, 200, 100, 50, 20, 10];
+      
+      while (currentTotal <= itemCost) {
+        // Pick a denomination that makes sense for the remaining gap
+        const possibleDenoms = denoms.filter(d => d <= 500); 
+        const pick = possibleDenoms[Math.floor(Math.random() * possibleDenoms.length)];
+        
+        wallet[pick] = (wallet[pick] || 0) + 1;
+        currentTotal += pick;
+      }
+    }
+    // --- END RANDOMIZATION LOGIC ---
+
+    let totalInWallet = 0;
+    const moneyImages = [];
+
+    Object.entries(wallet).forEach(([denom, count]) => {
+      totalInWallet += (Number(denom) * count);
+      moneyImages.push({
+        type: "image",
+        imageUrl: ASSETS[denom],
+        isVertical: false,
+        count: count,
+        label: `Rs. ${denom}`,
+        width: 100
+      });
+    });
+
+    const correctBalance = totalInWallet - itemCost;
+    
+    // Generate 3 logical wrong distractors for a 4-option MCQ
+    const wrong1 = correctBalance + 10;
+    const wrong2 = Math.max(10, correctBalance - 10); // Ensure no negative/zero money
+    const wrong3 = correctBalance + 50;
+
+    // Use a Set to ensure we have 4 unique options
+    let optionsArr = Array.from(new Set([correctBalance, wrong1, wrong2, wrong3]));
+    while (optionsArr.length < 4) {
+      optionsArr.push(optionsArr[optionsArr.length - 1] + 20); // Fallback to ensure 4 options
+    }
+
+    const options = optionsArr.map(val => `Rs. ${val}`).sort(() => 0.5 - Math.random());
+
+    inst.adaptiveConfig.variables = { name, item, itemCost, totalInWallet, correctBalance };
+
+    inst.parts = [
+      { type: 'text', content: `The cost of **${item}** is **Rs. ${itemCost}**. ${name} has:`, isVertical: true },
+      ...moneyImages,
+      { type: 'text', content: `How much money is left with him after buying the ${item}?`, isVertical: true, style: { marginTop: '15px' } }
+    ];
+
+    inst.solution = [
+      { type: 'text', content: `### Step 1: Count the Money`, isVertical: true },
+      { type: 'text', content: `${name} has a total of **Rs. ${totalInWallet}**.`, isVertical: true },
+      { type: 'text', content: `### Step 2: Subtract the Cost`, isVertical: true },
+      { type: 'text', content: `**Rs. ${totalInWallet} (Total) - Rs. ${itemCost} (Cost) = Rs. ${correctBalance}**`, isVertical: true }
+    ];
+
+    inst.type = 'mcq';
+    inst.options = options;
+    inst.correctAnswerIndex = options.indexOf(`Rs. ${correctBalance}`);
+    inst.correctAnswerText = `Rs. ${correctBalance}`;
+
+    return inst;
+  }
+  
   if (logic === 'division_by_fixed_divisor_v1') {
     const config = inst.adaptiveConfig || {};
     const ds = inst.data_source || config.data_source || {};
@@ -177,13 +278,14 @@ if (logic === 'division_countdown_v1') {
       {
         type: 'text',
         content: 'Divide:',
-        isVertical: true
+        isVertical: true,
+        style: { marginLeft: '20px' }
       },
       {
         type: 'text',
         content: `${dividend} &divide; ${divisor} = [[quotient]]`,
         isVertical: true,
-        style: { fontSize: '20px', marginTop: '10px' }
+        style: { fontSize: '25px', marginTop: '10px', marginLeft: '20px', marginBottom: '-15px' }
       }
     ];
 
@@ -10628,6 +10730,251 @@ if (logic === 'digit_arrangement_v1') {
 
     inst.type = 'mcq';
     return inst;
+  }
+
+  if (logic === 'item_cost_comparison_v1') {
+    const config = inst.adaptiveConfig || {};
+    const itemsPool = [
+      { name: "T-shirt", price: 100, imageUrl: "https://cdn-icons-png.flaticon.com/512/6602/6602177.png" },
+      { name: "Bag", price: 50, imageUrl: "https://cdn-icons-png.flaticon.com/512/6602/6602177.png" },
+      { name: "Toy Car", price: 500, imageUrl: "https://cdn-icons-png.flaticon.com/512/3719/3719801.png" },
+      { name: "Hat", price: 150, imageUrl: "https://cdn-icons-png.flaticon.com/512/548/548251.png" },
+      { name: "Burger", price: 20, imageUrl: "https://cdn-icons-png.flaticon.com/512/415/415682.png" },
+      { name: "Fries", price: 10, imageUrl: "https://cdn-icons-png.flaticon.com/512/2909/2909761.png" },
+      { name: "Watermelon", price: 60, imageUrl: "https://cdn-icons-png.flaticon.com/512/1202/1202125.png" },
+      { name: "Ice Cream", price: 15, imageUrl: "https://cdn-icons-png.flaticon.com/512/3014/3014521.png" },
+      { name: "Pencil", price: 5, imageUrl: "https://cdn-icons-png.flaticon.com/512/3238/3238686.png" },
+      { name: "Notebook", price: 40, imageUrl: "https://cdn-icons-png.flaticon.com/512/3238/3238676.png" },
+      { name: "Laptop", price: 300, imageUrl: "https://cdn-icons-png.flaticon.com/512/2972/2972413.png" },
+      { name: "Eraser", price: 3, imageUrl: "https://cdn-icons-png.flaticon.com/512/1004/1004733.png" },
+      { name: "Cricket Ball", price: 450, imageUrl: "https://cdn-icons-png.flaticon.com/512/1165/1165187.png" },
+      { name: "Football", price: 150, imageUrl: "https://cdn-icons-png.flaticon.com/512/889/889505.png" },
+      { name: "Basketball", price: 500, imageUrl: "https://cdn-icons-png.flaticon.com/512/1165/1165178.png" }
+    ];
+
+    let selectedItems, type;
+    if (overrideVariables && overrideVariables.item1_url && !String(overrideVariables.item1_url).includes('{{')) {
+      type = overrideVariables.type;
+      selectedItems = [
+        { imageUrl: overrideVariables.item1_url, price: parseInt(String(overrideVariables.item1_label || '0').replace(/[^\d]/g, '')) },
+        { imageUrl: overrideVariables.item2_url, price: parseInt(String(overrideVariables.item2_label || '0').replace(/[^\d]/g, '')) },
+        { imageUrl: overrideVariables.item3_url, price: parseInt(String(overrideVariables.item3_label || '0').replace(/[^\d]/g, '')) },
+        { imageUrl: overrideVariables.item4_url, price: parseInt(String(overrideVariables.item4_label || '0').replace(/[^\d]/g, '')) }
+      ];
+    } else {
+      type = Math.random() > 0.5 ? 'least' : 'most';
+      
+      // Shuffle and pick 4 unique items by name
+      const uniqueSelected = [];
+      const seenNames = new Set();
+      const shuffledPool = [...itemsPool].sort(() => 0.5 - Math.random());
+      
+      for (const item of shuffledPool) {
+          if (!seenNames.has(item.name)) {
+              uniqueSelected.push(item);
+              seenNames.add(item.name);
+          }
+          if (uniqueSelected.length === 4) break;
+      }
+
+      const usedPrices = new Set();
+      selectedItems = uniqueSelected.map(item => {
+          let price;
+          do {
+              // Generate random price between 10 and 50, multiples of 5
+              price = (Math.floor(Math.random() * 9) + 2) * 5;
+          } while (usedPrices.has(price));
+          usedPrices.add(price);
+          return { ...item, price };
+      });
+    }
+
+    let correctIndex = 0;
+    let targetPrice = selectedItems[0].price;
+    for (let i = 1; i < selectedItems.length; i++) {
+        if (type === 'least' ? selectedItems[i].price < targetPrice : selectedItems[i].price > targetPrice) {
+            targetPrice = selectedItems[i].price;
+            correctIndex = i;
+        }
+    }
+
+    const templateVars = {
+      type,
+      item1_url: selectedItems[0].imageUrl,
+      item1_label: `Rs. ${selectedItems[0].price}`,
+      item2_url: selectedItems[1].imageUrl,
+      item2_label: `Rs. ${selectedItems[1].price}`,
+      item3_url: selectedItems[2].imageUrl,
+      item3_label: `Rs. ${selectedItems[2].price}`,
+      item4_url: selectedItems[3].imageUrl,
+      item4_label: `Rs. ${selectedItems[3].price}`,
+      winning_item_name: selectedItems[correctIndex].name,
+      winning_item_price: `Rs. ${selectedItems[correctIndex].price}`,
+      correct_index: correctIndex
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+    inst.correctAnswerIndex = correctIndex;
+    inst.correctAnswerIndices = [correctIndex];
+    inst.type = 'mcq';
+  }
+
+  if (logic === 'english_action_verbs_v1') {
+    const actionsPool = [
+      { action: "running", url: "https://cdn-icons-png.flaticon.com/512/4721/4721050.png" },
+      { action: "jumping", url: "https://cdn-icons-png.flaticon.com/512/8288/8288101.png" },
+      { action: "reading", url: "https://cdn-icons-png.flaticon.com/512/2436/2436882.png" },
+      { action: "sleeping", url: "https://cdn-icons-png.flaticon.com/512/6266/6266005.png" },
+      { action: "eating", url: "https://cdn-icons-png.flaticon.com/512/5286/5286619.png" },
+      { action: "writing", url: "https://img.freepik.com/premium-vector/girl-writing-with-pen-vector-flat-illustration_1062857-1707.jpg?semt=ais_hybrid&w=740&q=80" },
+      { action: "drinking", url: "https://cdn-icons-png.flaticon.com/512/8250/8250240.png" },
+      { action: "dancing", url: "https://img.freepik.com/premium-vector/joyful-cartoon-boy-dancing-with-smile_1544779-709.jpg?semt=ais_hybrid&w=740&q=80" }
+    ];
+
+    let selected, targetAction, correctIdx;
+
+    if (overrideVariables && overrideVariables.opt0_url && !String(overrideVariables.opt0_url).includes('{{')) {
+      // Reconstruct from overrides
+      targetAction = overrideVariables.action;
+      selected = [
+        { url: overrideVariables.opt0_url, action: "" }, // actions not strictly needed for images
+        { url: overrideVariables.opt1_url, action: "" },
+        { url: overrideVariables.opt2_url, action: "" },
+        { url: overrideVariables.opt3_url, action: "" }
+      ];
+      // Find which one was the target action
+      correctIdx = parseInt(overrideVariables.correct_index ?? 0);
+    } else {
+      // Pick 4 unique actions
+      selected = [...actionsPool].sort(() => 0.5 - Math.random()).slice(0, 4);
+      correctIdx = Math.floor(Math.random() * 4);
+      targetAction = selected[correctIdx].action;
+    }
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      action: targetAction,
+      opt0_url: selected[0].url,
+      opt1_url: selected[1].url,
+      opt2_url: selected[2].url,
+      opt3_url: selected[3].url,
+      correct_index: correctIdx
+    };
+    inst.isGrid = true; // Enable gallery grid
+    inst.correctAnswerIndex = correctIdx;
+    inst.correctAnswerIndices = [correctIdx];
+    inst.type = 'mcq';
+
+    // Auto-apply responsive sizing to all image options
+    if (inst.options && Array.isArray(inst.options)) {
+      inst.options = inst.options.map(opt => {
+        const parts = Array.isArray(opt) ? opt : (opt.parts || []);
+        return parts.map(p => {
+          if (p.type === 'image') {
+            return { ...p, width: 180, mobileWidth: 120 };
+          }
+          return p;
+        });
+      });
+    }
+  }
+
+  if (logic === 'science_animal_habitats_v1') {
+    const habitatsPool = [
+      { 
+        name: "ocean", 
+        animals: [
+          { name: "Shark", url: "https://static.vecteezy.com/system/resources/thumbnails/052/511/193/small/great-white-shark-png.png" },
+          { name: "Whale", url: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/import-docs/58057767-652d-43d8-bc2b-a3b1397df773.png" },
+          { name: "Whale", url: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/import-docs/8bf87187-38cb-4bbe-960f-626015d3ff0c.png" },
+          { name: "Whale", url: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/import-docs/1f4f8bb1-93a3-4529-a786-0a7e79e70c48.png" },
+          { name: "Whale", url: "https://pub-6d655d3564544704a2d99beb0760355e.r2.dev/import-docs/14545f95-2e20-411b-afc2-e0f2289410ab.png" },
+          { name: "Octopus", url: "https://static.vecteezy.com/system/resources/thumbnails/036/397/946/small/ai-generated-octopus-isolated-on-transparent-background-png.png" }
+        ] 
+      },
+      { 
+        name: "forest", 
+        animals: [
+          { name: "Deer", url: "https://static.vecteezy.com/system/resources/thumbnails/044/650/666/small/a-spotted-deer-with-towering-antlers-stands-alert-and-poised-free-png.png" },
+          { name: "Bear", url: "https://static.vecteezy.com/system/resources/previews/054/473/015/non_2x/grizzly-bear-walking-through-a-forested-area-png.png" },
+          { name: "Fox", url: "https://static.vecteezy.com/system/resources/thumbnails/036/397/673/small/ai-generated-fox-isolated-on-transparent-background-png.png" }
+        ] 
+      },
+      { 
+        name: "desert", 
+        animals: [
+          { name: "Camel", url: "https://static.vecteezy.com/system/resources/thumbnails/030/740/131/small/camel-side-view-isolated-camel-isolated-on-transparent-background-generative-ai-png.png" },
+          { name: "Scorpion", url: "https://static.vecteezy.com/system/resources/previews/059/048/804/non_2x/closeup-of-a-brown-desert-scorpion-with-curved-tail-and-prominent-claws-free-png.png" },
+          { name: "Cactus", url: "https://static.vecteezy.com/system/resources/previews/055/318/041/non_2x/desert-cactus-plant-free-png.png" }
+        ] 
+      }
+    ];
+
+    let habitat, options, correctIdx;
+
+    if (overrideVariables && overrideVariables.opt0_url && !String(overrideVariables.opt0_url).includes('{{')) {
+      habitat = overrideVariables.habitat;
+      options = [
+        { url: overrideVariables.opt0_url, name: overrideVariables.opt0_name },
+        { url: overrideVariables.opt1_url, name: overrideVariables.opt1_name },
+        { url: overrideVariables.opt2_url, name: overrideVariables.opt2_name },
+        { url: overrideVariables.opt3_url, name: overrideVariables.opt3_name }
+      ];
+      correctIdx = parseInt(overrideVariables.correct_index ?? 0);
+    } else {
+      const targetHabitat = habitatsPool[Math.floor(Math.random() * habitatsPool.length)];
+      habitat = targetHabitat.name;
+      const correctAnimal = targetHabitat.animals[Math.floor(Math.random() * targetHabitat.animals.length)];
+
+      const distractorPool = habitatsPool
+        .filter(h => h.name !== habitat)
+        .flatMap(h => h.animals)
+        .sort(() => 0.5 - Math.random());
+
+      const distractorOptions = [];
+      const seenNames = new Set([correctAnimal.name]);
+
+      for (const animal of distractorPool) {
+        if (!seenNames.has(animal.name)) {
+          distractorOptions.push(animal);
+          seenNames.add(animal.name);
+        }
+        if (distractorOptions.length === 3) break;
+      }
+
+      options = [correctAnimal, ...distractorOptions].sort(() => 0.5 - Math.random());
+      correctIdx = options.findIndex(a => a.name === correctAnimal.name);
+    }
+
+    inst.adaptiveConfig.variables = {
+      ...(inst.adaptiveConfig.variables || {}),
+      habitat: habitat,
+      opt0_url: options[0].url, opt0_name: options[0].name,
+      opt1_url: options[1].url, opt1_name: options[1].name,
+      opt2_url: options[2].url, opt2_name: options[2].name,
+      opt3_url: options[3].url, opt3_name: options[3].name,
+      width: 180,        // Compact grid sizing
+      mobileWidth: 120,  // Compact mobile sizing
+      correct_name: options[correctIdx].name,
+      correct_index: correctIdx
+    };
+    inst.isGrid = true; // Enable gallery grid (4 cols desktop / 2 cols mobile)
+    inst.correctAnswerIndex = correctIdx;
+    inst.correctAnswerIndices = [correctIdx];
+    inst.type = 'mcq';
+
+    // Auto-apply responsive sizing to all image options
+    if (inst.options && Array.isArray(inst.options)) {
+      inst.options = inst.options.map(opt => {
+        const parts = Array.isArray(opt) ? opt : (opt.parts || []);
+        return parts.map(p => {
+          if (p.type === 'image') {
+            return { ...p, width: 180, mobileWidth: 120 };
+          }
+          return p;
+        });
+      });
+    }
   }
 
   // Always provide a unique instance ID if it was hydrated from a template

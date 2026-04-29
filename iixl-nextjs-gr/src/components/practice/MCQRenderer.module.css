@@ -1,13 +1,13 @@
 .container {
     width: 100%;
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
 .questionCard {
     background: white;
     /* border-radius: var(--border-radius-xl); */
-    padding: 2.5rem;
+    padding: 1.25rem 1.5rem;
     /* box-shadow: var(--card-shadow); */
     animation: fadeIn 0.4s ease-out;
     width: 100%;
@@ -19,7 +19,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
     width: 100%;
 }
 
@@ -43,45 +43,50 @@
     justify-content: flex-start;
     align-items: flex-start;
     gap: var(--mcq-gap, 0.75rem);
-    margin: 1.5rem 0 0;
+    margin: 1rem 0 0;
     max-width: 100%;
+}
+
+.optionsGrid.gridMode {
+    display: grid;
+    /* auto-fit ensures it looks like a full gallery on desktop */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); 
+    gap: var(--mcq-gap, 1.25rem);
+    width: 100%;
+    margin-top: 1.5rem;
+    justify-content: center;
 }
 
 .option {
     background: #ffffff;
-    border: 2px solid #89c9ec;
-    border-radius: 0;
-    padding: 0.9rem 1.15rem;
-    font-size: var(--mcq-font-size, 1.2rem);
+    border: 2px solid #afe3f5;
+    border-radius: 4px;
+    padding: 1rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: #1e293b;
+    color: #000000;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.15s ease-in-out;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
-    text-align: left;
-    width: fit-content;
-    min-width: 120px;
-    justify-content: flex-start;
-    white-space: normal;
-    word-break: break-word;
-    flex: 0 0 auto;
-    box-shadow: 0 2px 4px rgba(137, 201, 236, 0.1);
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+    width: 100%;
+    max-width: 280px; /* Bounded width for professional feel */
+    box-sizing: border-box;
 }
 
 .option:hover:not(.disabled) {
-    background: #f0f9ff;
     border-color: #5fb5e4;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(137, 201, 236, 0.2);
+    background: #fdfdfd;
 }
 
 .option.selected {
-    background: #e0f2fe;
-    border-color: #0f6ea8;
-    color: #0369a1;
-    box-shadow: 0 4px 15px rgba(15, 110, 168, 0.15);
+    background: #ffffff;
+    border-color: #009be4; /* IXL deep blue selection */
+    border-width: 3px;     /* Slightly thicker when selected */
 }
 
 .option.disabled {
@@ -125,13 +130,74 @@
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .partsInOption {
     justify-content: flex-start !important;
-    gap: 0.35rem !important;
+    gap: 0.4rem !important;
     flex-wrap: nowrap !important;
+    width: auto !important;
+}
+
+/* Allow width from JSON to be respected while enforcing height */
+.partsInOption img,
+.partsInOption svg,
+.partsInOption :global(.image),
+.partsInOption :global(.urlImage) {
+    height: auto !important;
+    max-height: 180px;
+    width: 180px; /* Default width if not specified in JSON */
+    max-width: 100%; /* Respect container and inline maxWidth */
+    object-fit: contain !important;
+    margin: 0 !important;
+    display: block !important;
+}
+
+.partsInOption :global(.imageContainer),
+.partsInOption :global(.imageBlock),
+.partsInOption [class*="imageContainer"],
+.partsInOption [class*="imageBlock"] {
+    margin: 0 !important;
+    gap: 12px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+}
+
+.partsInOption :global(.imageLabel) {
+    display: block !important;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #000000;
+    margin-top: 0.25rem;
+    text-align: center;
+}
+
+/* Completely remove the inner gray box and double borders */
+.partsInOption [class*="imageCard"],
+.partsInOption [class*="imageContainerCard"],
+.partsInOption :global(.imageCard),
+.partsInOption :global(.imageContainerCard) {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+.partsInOption [class*="imageBlock"],
+.partsInOption [class*="imageContainer"],
+.partsInOption :global(.imageBlock),
+.partsInOption :global(.imageContainer) {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.partsInOption [class*="cardDivider"],
+.partsInOption :global(.cardDivider) {
+    display: none !important;
 }
 
 .optionMedia svg {
@@ -162,7 +228,7 @@
 
 @media (max-width: 768px) {
     .questionCard {
-        padding: 1.5rem;
+        /* padding: 1.0rem; */
     }
 
     .questionContent {
@@ -173,8 +239,13 @@
         gap: 0.65rem;
     }
 
+    .optionsGrid.gridMode {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
     .option {
-        min-width: 96px;
-        padding: 0.75rem 0.9rem;
+        padding: 0.5rem;
+        font-size: 0.9rem;
     }
 }
