@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 import { uploadToR2 } from '../lib/r2';
 import { Search, Plus, Copy, Check, Upload, Trash2, ExternalLink, Image as ImageIcon, Filter, X, CloudRain, Database, Loader2, AlertCircle, Cloud } from 'lucide-react';
 import { cn } from '../lib/utils';
+import Cropper from 'react-easy-crop';
+import { getCroppedImgBlob } from '../lib/crop';
 
 export function MediaGallery() {
     const [images, setImages] = useState([]);
@@ -20,17 +22,13 @@ export function MediaGallery() {
         setLoading(true);
         try {
             // Fetch from the new Node.js/MongoDB media registry
-            const { data, error } = await supabase
-                .from('media')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            // Optional: You could still fetch questions to show usage counts, 
-            // but for now let's prioritize the registry data and names.
-            setImages(data || []);
-
+            const response = await fetch('http://localhost:5000/api/media');
+            const result = await response.json();
+            if (result.error) throw new Error(result.error);
+            
+            // Sort by created_at descending
+            const sortedData = (result.data || []).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+            setImages(sortedData);
         } catch (err) {
             console.error("Error fetching media registry:", err);
         } finally {
@@ -166,21 +164,33 @@ function AddMediaModal({ onClose, onUploaded }) {
     const [progress, setProgress] = useState({ current: 0, total: 0 });
     const [bulkErrors, setBulkErrors] = useState([]);
 
+    // Cropping Flow
+    const [pendingFiles, setPendingFiles] = useState([]); // { file, previewUrl, crop, zoom, croppedBlob }
+    const [currentCropIndex, setCurrentCropIndex] = useState(-1);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
     const [isR2Configured, setIsR2Configured] = useState(false);
     useEffect(() => {
         setIsR2Configured(!!(import.meta.env.VITE_R2_ACCOUNT_ID && import.meta.env.VITE_R2_BUCKET_NAME));
-        if (isR2Configured) setProvider('r2');
-    }, [isR2Configured]);
+        if (!!(import.meta.env.VITE_R2_ACCOUNT_ID && import.meta.env.VITE_R2_BUCKET_NAME)) setProvider('r2');
+    }, []);
+    
+    // Dimension & Aspect Settings
+    const [targetDim, setTargetDim] = useState('original'); // 'original', '200', '400', '800'
+    const [aspect, setAspect] = useState(null); // null is Free
 
     const handleUrlSubmit = async () => {
         if (url) {
             try {
-                const cleanName = url.split('/').pop().split('?')[0].replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, " ") || "External Image";
-                await supabase.from('media').insert({
-                    name: cleanName,
-                    url: url,
-                    type: 'image/external'
+                const response = await fetch('http://localhost:5000/api/media/bulk-upload-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls: [url] })
                 });
+                const resJson = await response.json();
+                if (resJson.error) throw new Error(resJson.error.message);
                 onUploaded();
             } catch (err) {
                 console.error("Failed to register URL:", err);
@@ -189,20 +199,104 @@ function AddMediaModal({ onClose, onUploaded }) {
         }
     };
 
-    const handleFileUpload = async (e) => {
+    const handleFileSelect = async (e) => {
         const selectedFiles = Array.from(e.target.files);
         if (selectedFiles.length === 0) return;
 
+        const filesWithPreviews = [];
+        for (const file of selectedFiles) {
+            const previewUrl = URL.createObjectURL(file);
+            
+            // Auto-detect aspect ratio for "Full Image" default
+            let detectedAspect = 1;
+            try {
+                const img = new Image();
+                img.src = previewUrl;
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        detectedAspect = img.width / img.height;
+                        resolve();
+                    };
+                });
+            } catch (e) { console.error(e); }
+
+            filesWithPreviews.push({
+                file,
+                previewUrl,
+                crop: { x: 0, y: 0 },
+                zoom: 1,
+                name: file.name,
+                detectedAspect
+            });
+        }
+
+        setPendingFiles(filesWithPreviews);
+        setAspect(filesWithPreviews[0].detectedAspect);
+        setCurrentCropIndex(0);
+    };
+
+    const onCropComplete = (croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    };
+
+    const handleNextCrop = async () => {
+        try {
+            const currentFile = pendingFiles[currentCropIndex];
+            
+            let tW = null;
+            let tH = null;
+            
+            if (targetDim !== 'original') {
+                const size = parseInt(targetDim);
+                if (aspect) {
+                    tW = size;
+                    tH = Math.round(size / aspect);
+                } else {
+                    // For free aspect, we can just cap the largest dimension
+                    const scale = Math.min(1, size / Math.max(croppedAreaPixels.width, croppedAreaPixels.height));
+                    tW = Math.round(croppedAreaPixels.width * scale);
+                    tH = Math.round(croppedAreaPixels.height * scale);
+                }
+            }
+
+            const croppedBlob = await getCroppedImgBlob(currentFile.previewUrl, croppedAreaPixels, 0, { horizontal: false, vertical: false }, tW, tH);
+            
+            const updatedFiles = [...pendingFiles];
+            updatedFiles[currentCropIndex] = {
+                ...currentFile,
+                croppedBlob
+            };
+            setPendingFiles(updatedFiles);
+
+            if (currentCropIndex < pendingFiles.length - 1) {
+                setCurrentCropIndex(currentCropIndex + 1);
+                setCrop({ x: 0, y: 0 });
+                setZoom(1);
+            } else {
+                // All cropped, start upload
+                setCurrentCropIndex(-1);
+                handleBulkUpload(updatedFiles);
+            }
+        } catch (e) {
+            console.error(e);
+            setError("Failed to crop image");
+        }
+    };
+
+    const handleBulkUpload = async (filesToUpload) => {
         setUploading(true);
         setError(null);
         setBulkErrors([]);
-        setProgress({ current: 0, total: selectedFiles.length });
+        setProgress({ current: 0, total: filesToUpload.length });
 
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const file = selectedFiles[i];
+        for (let i = 0; i < filesToUpload.length; i++) {
+            const item = filesToUpload[i];
+            const file = item.croppedBlob || item.file;
+            const originalName = item.name || "image.jpg";
+
             try {
                 // Standardize filename
-                const fileExt = file.name.split('.').pop();
+                const fileExt = originalName.split('.').pop() || 'jpg';
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
                 let publicUrl = '';
@@ -226,18 +320,22 @@ function AddMediaModal({ onClose, onUploaded }) {
                 }
 
                 // Register in MongoDB Media Table
-                const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, " ") || "Uploaded Image";
-                await supabase.from('media').insert({
-                    name: cleanName,
-                    url: publicUrl,
-                    type: file.type
+                const cleanName = originalName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, " ") || "Uploaded Image";
+                await fetch('http://localhost:5000/api/media', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: cleanName,
+                        url: publicUrl,
+                        type: item.file.type
+                    })
                 });
 
                 setProgress(prev => ({ ...prev, current: i + 1 }));
 
             } catch (err) {
-                console.error(`Upload failed for ${file.name}:`, err);
-                setBulkErrors(prev => [...prev, `${file.name}: ${err.message}`]);
+                console.error(`Upload failed for ${originalName}:`, err);
+                setBulkErrors(prev => [...prev, `${originalName}: ${err.message}`]);
             }
         }
 
@@ -252,12 +350,102 @@ function AddMediaModal({ onClose, onUploaded }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="font-bold text-lg text-slate-900">Add New Media</h3>
+                    <h3 className="font-bold text-lg text-slate-900">
+                        {currentCropIndex !== -1 ? `Crop Image (${currentCropIndex + 1}/${pendingFiles.length})` : 'Add New Media'}
+                    </h3>
                     <button onClick={onClose}><X className="w-5 h-5 text-slate-400 hover:text-slate-600" /></button>
                 </div>
 
                 <div className="p-6 space-y-4">
-                    <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                    {currentCropIndex !== -1 ? (
+                        <div className="space-y-6">
+                            <div className="relative h-64 bg-slate-900 rounded-xl overflow-hidden">
+                                <Cropper
+                                    key={aspect}
+                                    image={pendingFiles[currentCropIndex].previewUrl}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    aspect={aspect || undefined}
+                                    onCropChange={setCrop}
+                                    onCropComplete={onCropComplete}
+                                    onZoomChange={setZoom}
+                                    showGrid={true}
+                                />
+                            </div>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aspect Ratio</label>
+                                        <div className="flex gap-1">
+                                            {[
+                                                { label: '1:1', val: 1 },
+                                                { label: '4:3', val: 1.33 },
+                                                { label: '16:9', val: 1.77 },
+                                                { label: 'Wide', val: 3 },
+                                                { label: 'Free', val: null }
+                                            ].map(opt => (
+                                                <button
+                                                    key={opt.label}
+                                                    onClick={() => setAspect(opt.val)}
+                                                    className={cn(
+                                                        "flex-1 py-1.5 text-[10px] font-bold rounded border transition-all",
+                                                        aspect === opt.val 
+                                                            ? "bg-brand-600 border-brand-600 text-white" 
+                                                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                                    )}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Max Dimension</label>
+                                        <select
+                                            value={targetDim}
+                                            onChange={(e) => setTargetDim(e.target.value)}
+                                            className="w-full py-1.5 px-2 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600 focus:ring-1 focus:ring-brand-500 outline-none"
+                                        >
+                                            <option value="original">Original (Full Quality)</option>
+                                            <option value="200">200px (Icons)</option>
+                                            <option value="400">400px (Standard MCQ)</option>
+                                            <option value="800">800px (High Res)</option>
+                                            <option value="1200">1200px (Large)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Zoom</span>
+                                    <input
+                                        type="range"
+                                        value={zoom}
+                                        min={1}
+                                        max={3}
+                                        step={0.1}
+                                        aria-labelledby="Zoom"
+                                        onChange={(e) => setZoom(e.target.value)}
+                                        className="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                                    />
+                                </div>
+                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
+                                        {pendingFiles[currentCropIndex].name}
+                                    </div>
+                                    <button
+                                        onClick={handleNextCrop}
+                                        className="bg-brand-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-brand-700 transition-all shadow-lg shadow-brand-100 active:scale-95"
+                                    >
+                                        {currentCropIndex === pendingFiles.length - 1 ? "FINISH & UPLOAD" : "NEXT IMAGE"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ) : (
+                        <>
+                            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
                         <button
                             onClick={() => setTab('url')}
                             className={cn("flex-1 py-2 text-sm font-medium rounded-md transition-all", tab === 'url' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
@@ -357,7 +545,7 @@ function AddMediaModal({ onClose, onUploaded }) {
                                             type="file"
                                             multiple
                                             className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={handleFileUpload}
+                                            onChange={handleFileSelect}
                                             accept="image/*"
                                         />
                                     </>
@@ -394,6 +582,8 @@ function AddMediaModal({ onClose, onUploaded }) {
                                 </div>
                             )}
                         </div>
+                    )}
+                        </>
                     )}
                 </div>
 
