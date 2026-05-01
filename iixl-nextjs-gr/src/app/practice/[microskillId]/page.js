@@ -232,17 +232,22 @@ function getCorrectAnswerDisplay(question) {
       return summaries.length > 0 ? summaries.join(' | ') : 'No targets defined';
     }
 
-    case 'tokenselection': {
+    case 'tokenselection':
+    case 'tokenselectionv2': {
       let ids = [];
-      const rawText = question.correctAnswerText;
-      if (Array.isArray(rawText)) {
-        ids = rawText;
+      if (Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
+        ids = question.correctAnswerIndices;
       } else {
-        try {
-          const parsed = JSON.parse(String(rawText || '[]'));
-          ids = Array.isArray(parsed) ? parsed : [parsed];
-        } catch {
-          ids = rawText ? [rawText] : [];
+        const rawText = question.correctAnswerText;
+        if (Array.isArray(rawText)) {
+          ids = rawText;
+        } else {
+          try {
+            const parsed = JSON.parse(String(rawText || '[]'));
+            ids = Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            ids = rawText ? [rawText] : [];
+          }
         }
       }
 
@@ -252,6 +257,12 @@ function getCorrectAnswerDisplay(question) {
       
       if (sentencePart && Array.isArray(sentencePart.tokens)) {
         tokenArr = sentencePart.tokens;
+      } else if (Array.isArray(question.options) && question.options.length > 0) {
+        tokenArr = question.options.map((opt, idx) => ({
+          id: String(idx),
+          text: typeof opt === 'object' && opt !== null ? (opt.text || opt.label || opt.content || '') : String(opt ?? ''),
+          content: typeof opt === 'object' && opt !== null ? (opt.content || opt.text || opt.label || '') : String(opt ?? ''),
+        }));
       } else if (parts.some(p => p.type === 'token')) {
         tokenArr = parts.filter(p => p.type === 'token');
       } else {
@@ -408,7 +419,7 @@ function getSelectedAnswerDisplay(question, answer) {
     return 'No option selected';
   }
 
-  if (type === 'tokenselection') {
+  if (type === 'tokenselection' || type === 'tokenselectionv2') {
     let ids = [];
     if (Array.isArray(answer)) {
       ids = answer;
@@ -427,6 +438,12 @@ function getSelectedAnswerDisplay(question, answer) {
     
     if (sentencePart && Array.isArray(sentencePart.tokens)) {
       tokenArr = sentencePart.tokens;
+    } else if (Array.isArray(question.options) && question.options.length > 0) {
+      tokenArr = question.options.map((opt, idx) => ({
+        id: String(idx),
+        text: typeof opt === 'object' && opt !== null ? (opt.text || opt.label || opt.content || '') : String(opt ?? ''),
+        content: typeof opt === 'object' && opt !== null ? (opt.content || opt.text || opt.label || '') : String(opt ?? ''),
+      }));
     } else if (parts.some(p => p.type === 'token')) {
       tokenArr = parts.filter(p => p.type === 'token');
     } else {
@@ -797,6 +814,7 @@ function computeSmartScoreDelta({
 export default function PracticePage() {
   const params = useParams();
   const { microskillId } = params;
+  const getSeenStorageKey = (skillId) => `practice-seen:${skillId}`;
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [nextQuestion, setNextQuestion] = useState(null);
@@ -895,6 +913,18 @@ export default function PracticePage() {
     : (Number.isFinite(Number(Array.from(correctIndexSet)[0])) ? currentQuestion?.options?.[Number(Array.from(correctIndexSet)[0])] : null);
 
   useEffect(() => {
+    if (!microskillId || typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(
+        getSeenStorageKey(microskillId),
+        JSON.stringify(seenQuestionIds.map((id) => String(id)))
+      );
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [microskillId, seenQuestionIds]);
+
+  useEffect(() => {
     let active = true;
 
     const loadFirstQuestion = async () => {
@@ -905,7 +935,19 @@ export default function PracticePage() {
       setIsCorrect(null);
       setFeedbackData(null);
       setNextQuestion(null);
-      setSeenQuestionIds([]);
+      let persistedSeenIds = [];
+      if (typeof window !== 'undefined' && microskillId) {
+        try {
+          const rawSeenIds = window.sessionStorage.getItem(getSeenStorageKey(microskillId));
+          const parsedSeenIds = rawSeenIds ? JSON.parse(rawSeenIds) : [];
+          persistedSeenIds = Array.isArray(parsedSeenIds)
+            ? parsedSeenIds.map((id) => String(id)).filter(Boolean)
+            : [];
+        } catch {
+          persistedSeenIds = [];
+        }
+      }
+      setSeenQuestionIds(persistedSeenIds);
       setAdaptiveSessionId(null);
       setUsingAdaptiveApi(true);
       setAdaptiveMeta(null);
@@ -978,7 +1020,10 @@ export default function PracticePage() {
         }
 
         if (!firstQuestion) {
-          const res = await fetch(`/api/practice/${actualMicroSkillId}`, { cache: 'no-store' });
+          const excludeQuery = persistedSeenIds.length > 0
+            ? `?${new URLSearchParams({ exclude: persistedSeenIds.join(',') }).toString()}`
+            : '';
+          const res = await fetch(`/api/practice/${actualMicroSkillId}${excludeQuery}`, { cache: 'no-store' });
           const payload = await res.json();
           if (!active) return;
 
@@ -994,7 +1039,11 @@ export default function PracticePage() {
 
         setCurrentQuestion(firstQuestion);
         setQuestionStartedAt(Date.now());
-        setSeenQuestionIds(firstQuestion?.id ? [String(firstQuestion.id)] : []);
+        setSeenQuestionIds((prev) => {
+          const merged = new Set(prev.map((id) => String(id)));
+          if (firstQuestion?.id) merged.add(String(firstQuestion.id));
+          return Array.from(merged);
+        });
       } catch (error) {
         if (!active) return;
         setSubmitError(error?.message || 'Could not load first question. Please refresh.');
@@ -1374,14 +1423,15 @@ export default function PracticePage() {
                   : ''
                 }`}
             >
-              <QuestionRenderer
-                question={withSubmitBehavior(currentQuestion)}
-                userAnswer={userAnswer}
-                onAnswer={handleAnswer}
-                onSubmit={handleSubmit}
-                isAnswered={isAnswered}
-                isCorrect={isCorrect}
-              />
+            <QuestionRenderer
+              key={`${currentQuestion.id}-${questionsAnswered}`}
+              question={withSubmitBehavior(currentQuestion)}
+              userAnswer={userAnswer}
+              onAnswer={handleAnswer}
+              onSubmit={handleSubmit}
+              isAnswered={isAnswered}
+              isCorrect={isCorrect}
+            />
             </div>
           )}
 

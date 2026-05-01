@@ -27,6 +27,18 @@ function buildBasicFeedback(question, selectedAnswer = null) {
       const label = option.label ?? option.text ?? '';
       if (label) return String(label);
     }
+    if (!option) return `Option ${index + 1}`;
+    
+    if (typeof option === 'object' && !Array.isArray(option)) {
+        const direct = option.label || option.text || option.content || '';
+        if (direct) return String(direct);
+
+        if (Array.isArray(option.parts)) {
+            const textPart = option.parts.find(p => p.type === 'text');
+            if (textPart && textPart.content) return String(textPart.content);
+        }
+    }
+
     if (typeof option === 'string') {
       const trimmed = option.trim();
       if (
@@ -84,19 +96,23 @@ function buildBasicFeedback(question, selectedAnswer = null) {
     correctAnswerText: question?.correctAnswerText ?? '',
     correctAnswerDisplay: (() => {
       if (!question) return '';
-      if (type === 'mcq' || type === 'imagechoice') {
-        if (question.isMultiSelect) {
-          const indices = Array.isArray(question.correctAnswerIndices)
-            ? question.correctAnswerIndices.map((i) => Number(i)).filter(Number.isFinite)
-            : [];
-          return indices.map((idx) => getOptionLabel(question.options?.[idx], idx)).join(', ');
+      if (type === 'mcq' || type === 'imagechoice' || type === 'tokenselection' || type === 'tokenselectionv2' || type === 'tokenSelectionV2') {
+        if (question.isMultiSelect || Array.isArray(question.correct_answer_indices) || Array.isArray(question.correctAnswerIndices)) {
+          const indices = (Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0)
+            ? question.correctAnswerIndices
+            : (Array.isArray(question.correct_answer_indices) ? question.correct_answer_indices : []);
+          const options = Array.isArray(question.options) ? question.options : [];
+          if (indices.length > 0 && options.length > 0) {
+            return indices.map((idx) => getOptionLabel(options[idx], idx)).join(', ');
+          }
         }
-        const idx = getMcqCorrectIndex(question);
 
-        if (Number.isFinite(idx) && idx >= 0) {
-          return getOptionLabel(question.options?.[idx], idx);
+        const idx = getMcqCorrectIndex(question);
+        if (Number.isFinite(idx) && idx >= 0 && Array.isArray(question.options)) {
+          return getOptionLabel(question.options[idx], idx);
         }
       }
+
       if (type === 'sorting') {
           try {
               const ids = JSON.parse(String(question.correctAnswerText || '[]'));
@@ -107,48 +123,6 @@ function buildBasicFeedback(question, selectedAnswer = null) {
                  }).join(', ');
               }
           } catch { }
-      }
-      if (type === 'tokenselection') {
-          try {
-             let rawText = question.correctAnswerText || question.correct_answer_text;
-             let ids = [];
-
-             if (question.isMultiSelect && Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
-                 ids = question.correctAnswerIndices;
-             } else {
-                 if (Array.isArray(rawText)) {
-                     ids = rawText;
-                 } else {
-                     try {
-                         const parsed = JSON.parse(String(rawText || '[]'));
-                         ids = Array.isArray(parsed) ? parsed : [parsed];
-                     } catch {
-                         ids = rawText ? [rawText] : [];
-                     }
-                 }
-             }
-
-             const parts = Array.isArray(question.parts) ? question.parts : [];
-             const sentencePart = parts.find(p => p.type === 'token_sentence');
-             let tokenArr = [];
-             
-             if (sentencePart && Array.isArray(sentencePart.tokens)) {
-               tokenArr = sentencePart.tokens;
-             } else if (parts.some(p => p.type === 'token')) {
-               tokenArr = parts.filter(p => p.type === 'token');
-             } else {
-               tokenArr = Array.isArray(question.tokens) ? question.tokens : [];
-             }
-             
-             const texts = ids.map(id => {
-                const tk = tokenArr.find(t => String(t.id || t) === String(id));
-                return tk ? (tk.text || tk) : id;
-             }).filter(Boolean);
-
-             if (texts.length > 0) return texts.join(', ');
-          } catch (err) {
-              console.error("[buildFeedback] tokenSelection failure:", err);
-          }
       }
 
       if (type === 'draganddrop' || type === 'draganddropv2') {
@@ -306,6 +280,18 @@ function buildBasicFeedback(question, selectedAnswer = null) {
         return inferred >= 0 ? inferred : null;
       })();
       return Number.isFinite(idx) ? [idx] : [];
+    })(),
+    userAnswerDisplay: (() => {
+      if (selectedAnswer === null || selectedAnswer === undefined) return '';
+      
+
+      if (type === 'mcq' || type === 'imagechoice' || type === 'tokenselection' || type === 'tokenselectionv2' || type === 'tokenSelectionV2') {
+        const idx = Number(selectedAnswer);
+        if (Number.isFinite(idx) && idx >= 0) {
+          return getOptionLabel(question.options?.[idx], idx);
+        }
+      }
+      return String(selectedAnswer);
     })(),
     // Attach arithmetic journey details if applicable so Remediation/Feedback shows them
     ...(type === 'arithmetic_journey' || question.logic_type === 'arithmetic_journey_v1' ? {
@@ -539,6 +525,7 @@ export async function POST(req) {
       : Math.max(0, Number(priorRecoveryContext?.remediationRemaining ?? 0) - 1);
     const inRecoveryNow = effectiveRemediationRemaining > 0;
     const effectivePhase = inRecoveryNow ? 'recovery' : sessionUpdate.phase;
+    const nextTargetDifficulty = sessionUpdate.activeDifficulty || mastery.difficultyBand || 'easy';
 
     // Determine the base ID for session tracking (e.g. map 'inst_tpl1_...' to 'tpl1')
     const baseTrackingId = (() => {
@@ -562,7 +549,7 @@ export async function POST(req) {
         micro_skill_id: microskillId,
         mastery_score: mastery.masteryScore,
         confidence: mastery.confidence,
-        difficulty_band: mastery.difficulty_band,
+        difficulty_band: mastery.difficultyBand,
         streak: mastery.streak,
         attempts_total: mastery.attemptsTotal,
         correct_total: mastery.correctTotal,
@@ -632,10 +619,11 @@ export async function POST(req) {
 
     let nextResult = chooseNextQuestion({
       questions,
-      targetDifficulty: sessionRow?.active_difficulty ?? mastery.difficultyBand,
+      targetDifficulty: nextTargetDifficulty,
       recentQuestionIds: sessionRow?.recent_question_ids || sessionUpdate.recentQuestionIds,
       remediationRecentQuestionIds: sessionRow?.remediation_recent_question_ids || [],
       excludeQuestionId: questionId,
+      currentQuestion,
       remediation: inRecoveryNow
         ? {
           misconceptionCode: effectiveRemediationCode,
@@ -736,7 +724,9 @@ export async function POST(req) {
         reason: nextResult.reason,
         debug: nextResult.debug ?? null,
         phase: effectivePhase,
-        difficulty: sessionRow?.active_difficulty ?? mastery.difficultyBand,
+        difficulty: nextTargetDifficulty,
+        previousDifficulty: prevSession?.active_difficulty || prevSkill?.difficulty_band || 'easy',
+        selectedDifficulty: nextResult.question?.difficulty || nextTargetDifficulty,
         remediationCode: effectiveRemediationCode,
         remediationRemaining: effectiveRemediationRemaining,
       },

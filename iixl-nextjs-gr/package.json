@@ -30,6 +30,7 @@
     "framer-motion": "^12.36.0",
     "jsonwebtoken": "^9.0.3",
     "katex": "^0.16.32",
+    "mermaid": "^11.14.0",
     "mongoose": "^8.19.2",
     "next": "16.1.6",
     "next-mdx-remote": "^6.0.0",

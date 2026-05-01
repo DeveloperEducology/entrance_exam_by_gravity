@@ -71,6 +71,7 @@ function toPublicQuestion(question) {
     dropGroups: question.dropGroups ?? [],
     problem: question.problem ?? null,
     adaptiveConfig: question.adaptiveConfig ?? null,
+    tokenSelectionV2Config: question.tokenSelectionV2Config ?? question.tokenSelectionConfig ?? null,
     ui_config: question.ui_config ?? null,
     correctAnswerText: question.correctAnswerText ?? '',
     correctAnswerIndex: question.correctAnswerIndex ?? null,
@@ -93,8 +94,16 @@ function toPublicQuestion(question) {
   };
 }
 
-export async function GET(_req, { params }) {
+export async function GET(req, { params }) {
   const startedAt = Date.now();
+  const { searchParams } = new URL(req.url);
+  const excludedIds = new Set(
+    searchParams
+      .getAll('exclude')
+      .flatMap((value) => String(value || '').split(','))
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
   const { microskillId: microskillKey } = await params;
   const microskillId = await resolveMicroskillIdByKey(microskillKey);
 
@@ -184,16 +193,21 @@ export async function GET(_req, { params }) {
     }
 
     const { instantiateTemplate } = require('@/lib/practice/generators/templateInstantiator');
-    // Pick a random question from the results to provide variety
-    const randomIndex = data && data.length > 0 ? Math.floor(Math.random() * data.length) : 0;
-    const selectedQuestion = Array.isArray(data) && data.length > 0
-      ? toPublicQuestion(instantiateTemplate(mapDbQuestion(data[randomIndex])))
+    const allQuestions = Array.isArray(data) ? data.map((row) => mapDbQuestion(row)) : [];
+    const unseenQuestions = excludedIds.size > 0
+      ? allQuestions.filter((question) => !excludedIds.has(String(question?.id ?? '')))
+      : allQuestions;
+    const selectionPool = unseenQuestions.length > 0 ? unseenQuestions : allQuestions;
+    const randomIndex = selectionPool.length > 0 ? Math.floor(Math.random() * selectionPool.length) : 0;
+    const selectedQuestion = selectionPool.length > 0
+      ? toPublicQuestion(instantiateTemplate(selectionPool[randomIndex]))
       : null;
 
     serverLog('api.practice.get', 'request success', {
       microskillId,
       hasQuestion: Boolean(selectedQuestion),
-      questionCount: data ? data.length : 0,
+      questionCount: allQuestions.length,
+      excludedCount: excludedIds.size,
       durationMs: Date.now() - startedAt,
     });
 

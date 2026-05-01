@@ -24,6 +24,7 @@ function toPublicQuestion(question) {
     dragItems: question.dragItems ?? [],
     dropGroups: question.dropGroups ?? [],
     adaptiveConfig: question.adaptiveConfig ?? null,
+    tokenSelectionV2Config: question.tokenSelectionV2Config ?? question.tokenSelectionConfig ?? null,
     correctAnswerText: question.correctAnswerText ?? '',
     correctAnswerIndex: question.correctAnswerIndex ?? null,
     correctAnswerIndices: Array.isArray(question.correctAnswerIndices) ? question.correctAnswerIndices : [],
@@ -279,7 +280,8 @@ function validateAnswer(question, answer) {
       if (expected == null || actual == null) return false;
       return Math.abs(actual - expected) < 0.0001;
     }
-    case 'tokenselection': {
+    case 'tokenselection':
+    case 'tokenselectionv2': {
       const getTokens = (q) => {
         const parts = Array.isArray(q.parts) ? q.parts : [];
         const sentencePart = parts.find(p => p.type === 'token_sentence');
@@ -290,7 +292,7 @@ function validateAnswer(question, answer) {
 
       const normalizeSelection = (val) => {
         if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
-        if (!val) return [];
+        if (val == null || val === '') return [];
         let parsed = val;
         if (typeof val === 'string') {
           try {
@@ -329,7 +331,29 @@ function validateAnswer(question, answer) {
       };
 
       const selectedIds = resolveToIds(answer);
-      const expectedSource = question.correctAnswerIndex ?? question.correctAnswerText;
+      const expectedSource = question.isMultiSelect
+        ? (
+          Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+            ? question.correctAnswerIndices
+            : (
+              Array.isArray(question.correct_answer_indices) && question.correct_answer_indices.length > 0
+                ? question.correct_answer_indices
+                : question.correctAnswerText
+            )
+        )
+        : (
+          Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+            ? question.correctAnswerIndices[0]
+            : (
+              Array.isArray(question.correct_answer_indices) && question.correct_answer_indices.length > 0
+                ? question.correct_answer_indices[0]
+                : (
+                  question.correctAnswerIndex !== undefined && question.correctAnswerIndex !== null
+                    ? question.correctAnswerIndex
+                    : question.correctAnswerText
+                )
+            )
+        );
       const expectedIds = resolveToIds(expectedSource);
       
       if (question.isMultiSelect) {
@@ -423,16 +447,26 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       feedback.correctAnswerDisplay = formatDragDropAnswerDisplay(question, parsed) || feedback.correctAnswerDisplay;
     }
-  } else if (type === 'tokenselection') {
-    const rawText = question.correctAnswerText;
-    let ids = [];
-    try {
-      const parsed = JSON.parse(String(rawText || '[]'));
-      ids = Array.isArray(parsed) ? parsed : [parsed];
-    } catch {
-      ids = rawText ? [rawText] : [];
-    }
-
+  } else if (type === 'tokenselection' || type === 'tokenselectionv2') {
+    const parseTokenIds = (val) => {
+      if (val == null || val === '') return [];
+      if (Array.isArray(val)) return val.map((v) => String(v).trim()).filter(Boolean);
+      if (typeof val === 'number') return [String(val)];
+      if (typeof val !== 'string') return [String(val).trim()].filter(Boolean);
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed.map((v) => String(v).trim()).filter(Boolean) : [String(parsed).trim()].filter(Boolean);
+      } catch {
+        return val.split(',').map((s) => String(s).trim()).filter(Boolean);
+      }
+    };
+    const ids = (
+      Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+        ? question.correctAnswerIndices
+        : (Array.isArray(question.correct_answer_indices) && question.correct_answer_indices.length > 0
+          ? question.correct_answer_indices
+          : parseTokenIds(question.correctAnswerIndex ?? question.correctAnswerText ?? question.correct_answer_text))
+    );
     const parts = Array.isArray(question.parts) ? question.parts : [];
     const sentencePart = parts.find(p => p.type === 'token_sentence');
     const tokenArr = (sentencePart && Array.isArray(sentencePart.tokens))
@@ -448,20 +482,56 @@ function buildFeedback(question, isCorrect, selectedAnswer = null) {
   return feedback;
 }
 
-function chooseAdaptiveQuestion(candidates, currentQuestionId, isCorrect) {
-  if (!Array.isArray(candidates) || candidates.length === 0) return null;
-  const current = candidates.find((q) => String(q.id) === String(currentQuestionId));
-  const remaining = candidates.filter((q) => String(q.id) !== String(currentQuestionId));
-  if (remaining.length === 0) return null;
+function chooseAdaptiveQuestion(candidates, currentQuestionId, isCorrect, allQuestions = []) {
+  if (!Array.isArray(candidates)) return null;
+  const current = allQuestions.find((q) => String(q.id) === String(currentQuestionId));
+  
+  // 1. Priority: Remediation
+  if (!isCorrect && current) {
+     const targetCode = String(current?.adaptiveConfig?.misconceptionCode || '').toLowerCase();
+     if (targetCode) {
+        const remediationPool = allQuestions.filter(q => {
+           const config = q.adaptiveConfig || {};
+           const codes = [
+              config.misconceptionCode,
+              ...(Array.isArray(config.remediationFor) ? config.remediationFor : [config.remediationFor])
+           ].filter(Boolean).map(c => String(c).toLowerCase());
+           
+           return codes.includes(targetCode);
+        });
+        if (remediationPool.length > 0) {
+           return remediationPool[Math.floor(Math.random() * remediationPool.length)];
+        }
+     }
+  }
 
+  // 2. Normal Selection (Unseen first)
   const currentDifficulty = normalizeDifficulty(current?.difficulty);
   const currentIdx = DIFFICULTIES.indexOf(currentDifficulty);
   const targetIdx = Math.min(DIFFICULTIES.length - 1, Math.max(0, currentIdx + (isCorrect ? 1 : -1)));
   const targetDifficulty = DIFFICULTIES[targetIdx];
 
-  const pool = remaining.filter((q) => normalizeDifficulty(q.difficulty) === targetDifficulty);
-  const finalPool = pool.length > 0 ? pool : remaining;
-  return finalPool[Math.floor(Math.random() * finalPool.length)];
+  const unseenPool = candidates.filter((q) => 
+    normalizeDifficulty(q.difficulty) === targetDifficulty && 
+    !q.adaptiveConfig?.isRemediation
+  );
+  if (unseenPool.length > 0) return unseenPool[Math.floor(Math.random() * unseenPool.length)];
+
+  // 3. Fallback: Repeat any normal question (especially if dynamic)
+  const repeatPool = allQuestions.filter(q => {
+    if (q.adaptiveConfig?.isRemediation) return false;
+    if (normalizeDifficulty(q.difficulty) !== targetDifficulty) return false;
+    
+    const isDynamic = Boolean(q.logic_type || q.adaptiveConfig?.logic_type);
+    if (isDynamic) return true; // Always allow repeating dynamic generators
+    return String(q.id) !== String(currentQuestionId); // Avoid immediate repeat of static
+  });
+
+  if (repeatPool.length > 0) return repeatPool[Math.floor(Math.random() * repeatPool.length)];
+  
+  // Final fallback: any normal question
+  const finalPool = allQuestions.filter(q => !q.adaptiveConfig?.isRemediation);
+  return finalPool.length > 0 ? finalPool[Math.floor(Math.random() * finalPool.length)] : null;
 }
 
 async function fetchQuestionsByMicroskill(db, microskillId) {
@@ -551,7 +621,9 @@ export async function POST(req, { params }) {
     const excludedIds = new Set([...attemptedIds, ...clientSeenIds, String(questionId)]);
     const unseen = rawQuestions.map(mapDbQuestion).filter((q) => !excludedIds.has(String(q.id)));
 
-    const nextQuestion = chooseAdaptiveQuestion(unseen.length > 0 ? unseen : rawQuestions.map(mapDbQuestion), questionId, isCorrect);
+    const nextQuestion = unseen.length > 0
+      ? chooseAdaptiveQuestion(unseen, questionId, isCorrect, rawQuestions.map(mapDbQuestion))
+      : chooseAdaptiveQuestion([], questionId, isCorrect, rawQuestions.map(mapDbQuestion));
 
     return NextResponse.json({ source: 'mongodb_hydrated', isCorrect, feedback, nextQuestion: toPublicQuestion(nextQuestion) });
   } catch (err) {

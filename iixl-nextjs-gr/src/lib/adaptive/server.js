@@ -29,6 +29,21 @@ function parseFraction(value) {
   return { numerator, denominator };
 }
 
+/**
+ * Normalizes an instantiated ID (e.g. inst_baseid_timestamp_rand) back to its base ID.
+ * This is critical for preventing repeats in the adaptive engine.
+ */
+function getBaseId(id) {
+  const sId = String(id || '');
+  if (!sId.startsWith('inst_')) return sId;
+  const parts = sId.split('_');
+  if (parts.length >= 3) {
+    // Format: inst_<baseId>_<timestamp>_<random>
+    return parts.slice(1, -2).join('_');
+  }
+  return sId;
+}
+
 function extractFractionFromParts(parts) {
   const list = Array.isArray(parts) ? parts : [];
   for (const part of list) {
@@ -205,6 +220,31 @@ function normalizeAnswerArray(answer) {
   return [String(answer)];
 }
 
+function getQuestionPromptSignature(question) {
+  if (!question || typeof question !== 'object') return '';
+  const prompt = String(
+    question.questionText ||
+    (Array.isArray(question.parts)
+      ? question.parts.find((part) => part?.type === 'text' && String(part?.content || '').trim())?.content || ''
+      : '')
+  )
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const optionSignature = (Array.isArray(question.options) ? question.options : [])
+    .map((option) => {
+      if (typeof option === 'string') return option;
+      if (Array.isArray(option)) return JSON.stringify(option);
+      return option?.text || option?.label || option?.content || option?.id || '';
+    })
+    .map((value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase())
+    .filter(Boolean)
+    .join('|');
+  return `${prompt}::${optionSignature}`;
+}
+
 function getMcqCorrectIndex(question) {
   const direct = Number(question?.correctAnswerIndex);
   if (Number.isFinite(direct) && direct >= 0) return direct;
@@ -240,9 +280,15 @@ function getQuestionMisconceptionCodes(question) {
 function getQuestionRemediationCodes(question) {
   const config = question?.adaptiveConfig ?? {};
   const misconceptionCodes = getQuestionMisconceptionCodes(question);
-  const fromFor = Array.isArray(config.remediationFor)
-    ? config.remediationFor.map((v) => String(v || '').trim())
-    : [];
+  
+  const rawFor = config.remediationFor;
+  let fromFor = [];
+  if (Array.isArray(rawFor)) {
+    fromFor = rawFor.map((v) => String(v || '').trim());
+  } else if (typeof rawFor === 'string' && rawFor.trim()) {
+    fromFor = [rawFor.trim()];
+  }
+
   return [...misconceptionCodes, ...fromFor].filter(Boolean);
 }
 
@@ -287,6 +333,7 @@ export function toPublicQuestion(question) {
     map_url: question.map_url ?? null,
     problem: question.problem ?? null,
     adaptiveConfig: question.adaptiveConfig ?? null,
+    tokenSelectionV2Config: question.tokenSelectionV2Config ?? question.tokenSelectionConfig ?? null,
     ui_config: question.ui_config ?? null,
     measureTarget: getMeasureTarget(question),
     wordLength: fourPics.wordLength,
@@ -299,6 +346,7 @@ export function toPublicQuestion(question) {
     concepts: question.concepts ?? [],
     correctAnswerText: question.correctAnswerText,
     correctAnswerIndex: question.correctAnswerIndex,
+    correctAnswerIndices: Array.isArray(question.correctAnswerIndices) ? question.correctAnswerIndices : [],
     solution: question.solution ?? '',
     show_example: Boolean(question.show_example ?? question.showExample ?? false),
     showExample: Boolean(question.show_example ?? question.showExample ?? false),
@@ -384,104 +432,64 @@ export function validateAnswer(question, answer) {
   switch (type) {
     case 'mcq':
     case 'imagechoice':
-    case 'tokenselection': {
-      const isToken = type === 'tokenselection';
-      
-      const getTokens = (q) => {
-        const parts = Array.isArray(q.parts) ? q.parts : [];
-        const sentencePart = parts.find(p => p.type === 'token_sentence');
-        if (sentencePart && Array.isArray(sentencePart.tokens)) return sentencePart.tokens;
-        if (parts.some(p => p.type === 'token')) return parts.filter(p => p.type === 'token');
-        return Array.isArray(q.tokens) ? q.tokens : [];
-      };
-
-      const tokens = getTokens(question);
-      const idToText = Object.fromEntries(tokens.map(t => [String(t.id), String(t.text || t)]));
-      const textToIds = {};
-      tokens.forEach(t => {
-        const txt = String(t.text || t).trim().toLowerCase();
-        if (!textToIds[txt]) textToIds[txt] = [];
-        textToIds[txt].push(String(t.id));
-      });
-
-      // Helper to normalize any answer format into a sorted array of trimmed strings
-      const normalizeSelection = (val) => {
-        if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
-        if (!val) return [];
-        let parsed = val;
-        if (typeof val === 'string') {
-          try {
-            parsed = JSON.parse(val);
-          } catch {
-            parsed = val.split(',').map(s => s.trim()).filter(Boolean);
-          }
-        }
-        if (Array.isArray(parsed)) return parsed.map(v => String(v).trim()).filter(Boolean);
-        return [String(parsed).trim()].filter(Boolean);
-      };
-
-      const resolveToIds = (vals) => {
-        const items = normalizeSelection(vals);
-        const resolved = new Set();
-        items.forEach(item => {
-          const itemLower = item.toLowerCase();
-          if (idToText[item]) {
-            resolved.add(item);
-          } else if (textToIds[itemLower]) {
-            // If it's pure text, map to all possible IDs for that text
-            textToIds[itemLower].forEach(id => resolved.add(id));
-          } else {
-            resolved.add(item); // Fallback
-          }
-        });
-        return Array.from(resolved).sort();
-      };
-
+    case 'tokenselection':
+    case 'tokenselectionv2':
+    case 'tokenSelectionV2': {
       if (question.isMultiSelect) {
-        const selectedIds = resolveToIds(answer);
+        const selectedIds = (typeof answer === 'string') 
+          ? (parseMaybeJson(answer, []) || [answer])
+          : (Array.isArray(answer) ? answer : [answer]);
         
-        const indices = Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+        const indices = (Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0)
           ? question.correctAnswerIndices
-          : null;
+          : (Array.isArray(question.correct_answer_indices) ? question.correct_answer_indices : []);
+
+        if (indices.length === 0) return false;
+        
+        const selectedSet = new Set(selectedIds.map(String));
+        const correctSet = new Set(indices.map(String));
+        
+        if (selectedSet.size !== correctSet.size) return false;
+        for (let item of correctSet) {
+          if (!selectedSet.has(item)) return false;
+        }
+        return true;
+      } else {
+        const selectedId = String(answer);
+        const correctIdx = (() => {
+          const direct = (question.correctAnswerIndex !== undefined && question.correctAnswerIndex !== null)
+             ? Number(question.correctAnswerIndex)
+             : null;
+          if (Number.isFinite(direct) && direct >= 0) return direct;
           
-        const correctSource = isToken 
-          ? (indices || parseMaybeJson(question.correctAnswerText, []))
-          : (indices || []);
+          if (Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0) {
+            return Number(question.correctAnswerIndices[0]);
+          }
+          if (Array.isArray(question.correct_answer_indices) && question.correct_answer_indices.length > 0) {
+            return Number(question.correct_answer_indices[0]);
+          }
+          return null;
+        })();
         
-        const correctIds = resolveToIds(correctSource);
-        return JSON.stringify(selectedIds) === JSON.stringify(correctIds);
+        if (correctIdx === null) return false;
+
+        // Try numeric match first (best for indices)
+        if (selectedId === String(correctIdx)) return true;
+
+        // Fallback to text matching if ID mismatch
+        const options = Array.isArray(question.options) ? question.options : [];
+        const normalizedAnswer = stripHtml(String(answer ?? '')).toLowerCase();
+        if (!normalizedAnswer) return false;
+
+        const selectedIdx = options.findIndex((option) => {
+          const label = typeof option === 'object'
+            ? (option.label || option.text || option.content || '')
+            : option;
+          return stripHtml(String(label)).toLowerCase() === normalizedAnswer;
+        });
+
+        return selectedIdx >= 0 && selectedIdx === Number(correctIdx);
       }
-      
-      if (isToken) {
-        const selectedIds = resolveToIds(answer);
-        const expectedSource = question.correctAnswerIndex ?? question.correctAnswerText;
-        const expectedIds = resolveToIds(expectedSource);
-        
-        if (selectedIds.length === 0 || expectedIds.length === 0) return false;
-        // For single select, check if the selected ID is among the expected IDs (usually just one)
-        return expectedIds.includes(selectedIds[0]);
-      }
-
-      const expectedIdx = getMcqCorrectIndex(question);
-      if (expectedIdx == null) return false;
-
-      const numericAnswer = Number(answer);
-      if (Number.isFinite(numericAnswer) && numericAnswer >= 0) {
-        return numericAnswer === Number(expectedIdx);
-      }
-
-      const options = Array.isArray(question.options) ? question.options : [];
-      const normalizedAnswer = stripHtml(String(answer ?? '')).toLowerCase();
-      if (!normalizedAnswer) return false;
-
-      const selectedIdx = options.findIndex((option) => {
-        const label = typeof option === 'object'
-          ? (option.label || option.text || option.content || '')
-          : option;
-        return stripHtml(String(label)).toLowerCase() === normalizedAnswer;
-      });
-
-      return selectedIdx >= 0 && selectedIdx === Number(expectedIdx);
     }
 
     case 'textinput':
@@ -500,8 +508,8 @@ export function validateAnswer(question, answer) {
       // 1. Intelligent Primitive Match: If answer is a string/number, check against logic values
       if (typeof answer === 'string' || typeof answer === 'number') {
         const expectedVal = (parsed && typeof parsed === 'object')
-          ? (parsed.ans || parsed.value || parsed.correctAnswer || Object.values(parsed)[0])
-          : rawText;
+          ? (parsed.ans || parsed.value || parsed.correctAnswer || parsed.correct_answer || Object.values(parsed)[0])
+          : (question.correctAnswerText ?? question.correct_answer_text ?? rawText);
 
         if (String(answer).trim().toLowerCase() === String(expectedVal ?? '').trim().toLowerCase()) {
           return true;
@@ -597,6 +605,88 @@ export function validateAnswer(question, answer) {
 
     case 'fourpicsoneword':
       return (Array.isArray(answer) ? answer.join('') : String(answer ?? '')).toUpperCase() === String(question.correctAnswerText ?? '').toUpperCase();
+
+    case 'tokenselection':
+    case 'tokenselectionv2': {
+      const getTokens = (q) => {
+        const parts = Array.isArray(q.parts) ? q.parts : [];
+        const sentencePart = parts.find((p) => p.type === 'token_sentence');
+        if (sentencePart && Array.isArray(sentencePart.tokens)) return sentencePart.tokens;
+        if (parts.some((p) => p.type === 'token')) return parts.filter((p) => p.type === 'token');
+        return Array.isArray(q.tokens) ? q.tokens : [];
+      };
+
+      const normalizeSelection = (val) => {
+        if (Array.isArray(val)) return val.map((v) => String(v).trim()).filter(Boolean);
+        if (val == null || val === '') return [];
+        let parsed = val;
+        if (typeof val === 'string') {
+          try {
+            parsed = JSON.parse(val);
+          } catch {
+            parsed = val.split(',').map((s) => s.trim()).filter(Boolean);
+          }
+        }
+        if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim()).filter(Boolean);
+        return [String(parsed).trim()].filter(Boolean);
+      };
+
+      const tokens = getTokens(question);
+      const idToText = Object.fromEntries(tokens.map((t) => [String(t.id), String(t.text || t)]));
+      const textToIds = {};
+      tokens.forEach((t) => {
+        const txt = String(t.text || t).trim().toLowerCase();
+        if (!textToIds[txt]) textToIds[txt] = [];
+        textToIds[txt].push(String(t.id));
+      });
+
+      const resolveToIds = (vals) => {
+        const items = normalizeSelection(vals);
+        const resolved = new Set();
+        items.forEach((item) => {
+          const itemLower = item.toLowerCase();
+          if (idToText[item]) {
+            resolved.add(item);
+          } else if (textToIds[itemLower]) {
+            textToIds[itemLower].forEach((id) => resolved.add(id));
+          } else {
+            resolved.add(item);
+          }
+        });
+        return Array.from(resolved).sort();
+      };
+
+      const selectedIds = resolveToIds(answer);
+      const expectedSource = question.isMultiSelect
+        ? (
+          Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+            ? question.correctAnswerIndices
+            : (
+              Array.isArray(question.correct_answer_indices) && question.correct_answer_indices.length > 0
+                ? question.correct_answer_indices
+                : (question.correctAnswerText ?? question.correct_answer_text)
+            )
+        )
+        : (
+          Array.isArray(question.correctAnswerIndices) && question.correctAnswerIndices.length > 0
+            ? question.correctAnswerIndices[0]
+            : (
+              Array.isArray(question.correct_answer_indices) && question.correct_answer_indices.length > 0
+                ? question.correct_answer_indices[0]
+                : (
+                  question.correctAnswerIndex !== undefined && question.correctAnswerIndex !== null
+                    ? question.correctAnswerIndex
+                    : (question.correctAnswerText ?? question.correct_answer_text)
+                )
+            )
+        );
+      const expectedIds = resolveToIds(expectedSource);
+
+      if (question.isMultiSelect) {
+        return JSON.stringify(selectedIds) === JSON.stringify(expectedIds);
+      }
+      return selectedIds.length > 0 && expectedIds.includes(selectedIds[0]);
+    }
 
     case 'measure': {
       const expected = parseNumber(question.correctAnswerText);
@@ -891,15 +981,19 @@ export function chooseNextQuestion({
   remediationRecentQuestionIds = [],
   excludeQuestionId = null,
   remediation = null,
+  currentQuestion = null,
 }) {
-  const recentSet = new Set((recentQuestionIds || []).map(String));
-  const remediationRecentSet = new Set((remediationRecentQuestionIds || []).map(String));
-  if (excludeQuestionId) recentSet.add(String(excludeQuestionId));
+  const recentSet = new Set((recentQuestionIds || []).map(id => getBaseId(id)));
+  const remediationRecentSet = new Set((remediationRecentQuestionIds || []).map(id => getBaseId(id)));
+  if (excludeQuestionId) recentSet.add(getBaseId(excludeQuestionId));
+  const currentSignature = getQuestionPromptSignature(
+    currentQuestion || questions.find((q) => String(q.id) === String(excludeQuestionId || ''))
+  );
 
-  const candidates = questions.filter((q) => !recentSet.has(String(q.id)));
+  const candidates = questions.filter((q) => !recentSet.has(getBaseId(q.id)));
   // Full-cycle behavior: only repeat after all questions are used.
   // If cycle is exhausted, start a new cycle but still avoid immediate same-question replay.
-  const poolCandidates = questions.filter((q) => String(q.id) !== String(excludeQuestionId || ''));
+  const poolCandidates = questions.filter((q) => getBaseId(q.id) !== getBaseId(excludeQuestionId));
   const pool = candidates.length > 0
     ? candidates
     : (poolCandidates.length > 0 ? poolCandidates : questions);
@@ -911,6 +1005,13 @@ export function chooseNextQuestion({
     poolQuestions: pool.length,
     targetDifficulty: normalizedTarget,
     recentCount: recentSet.size,
+    currentSignature,
+  };
+
+  const preferDistinctPrompt = (items) => {
+    if (!currentSignature || !Array.isArray(items) || items.length <= 1) return items;
+    const distinct = items.filter((question) => getQuestionPromptSignature(question) !== currentSignature);
+    return distinct.length > 0 ? distinct : items;
   };
 
   if (pool.length === 0) return { question: null, reason: 'no_questions', debug };
@@ -922,13 +1023,16 @@ export function chooseNextQuestion({
     const remediationPool = pool.filter((q) => {
       const codes = getQuestionRemediationCodes(q);
       const hasMatchingCode = codes.some((code) => String(code).toLowerCase() === remediationCode.toLowerCase());
-      const notRecentlyUsedForRemediation = !remediationRecentSet.has(String(q.id));
+      
+      const isDynamic = Boolean(q.logic_type || q.adaptiveConfig?.logic_type);
+      const notRecentlyUsedForRemediation = isDynamic || !remediationRecentSet.has(String(q.id));
+      
       return hasMatchingCode && notRecentlyUsedForRemediation;
     });
 
     if (remediationPool.length > 0) {
       const byDifficulty = remediationPool.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget);
-      const preferred = byDifficulty.length > 0 ? byDifficulty : remediationPool;
+      const preferred = preferDistinctPrompt(byDifficulty.length > 0 ? byDifficulty : remediationPool);
       const randomIndex = Math.floor(Math.random() * preferred.length);
       return {
         question: preferred[randomIndex],
@@ -936,10 +1040,17 @@ export function chooseNextQuestion({
         debug,
       };
     }
+    // If we are in remediation mode but no specific remediation questions are found, 
+    // fall through to normal selection so the user doesn't get a blank screen.
   }
 
   // 1. Try for target difficulty in candidates (unseen questions)
-  const sameDifficultyCandidates = candidates.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget);
+  const sameDifficultyCandidates = preferDistinctPrompt(
+    candidates.filter((q) => 
+      normalizeDifficulty(q.difficulty) === normalizedTarget && 
+      !q.adaptiveConfig?.isRemediation
+    )
+  );
   if (sameDifficultyCandidates.length > 0) {
     const randomIndex = Math.floor(Math.random() * sameDifficultyCandidates.length);
     return {
@@ -950,14 +1061,16 @@ export function chooseNextQuestion({
   }
 
   // 2. If target band is exhausted in candidates, check if we can repeat a question of the SAME difficulty
-  const sameDifficultyRepeats = questions.filter((q) => {
+  const sameDifficultyRepeats = preferDistinctPrompt(questions.filter((q) => {
     if (normalizeDifficulty(q.difficulty) !== normalizedTarget) return false;
-    // Allow immediate repeats if it's a dynamic template generator, because it outputs a unique variation every time.
+    if (q.adaptiveConfig?.isRemediation) return false; // Exclude remediation from normal repeats
+    
+    // Allow immediate repeats if it's a dynamic template generator
     const isDynamicGenerator = Boolean(q.logic_type || q.logicType || q.adaptiveConfig?.logic_type);
     if (isDynamicGenerator) return true;
 
-    return String(q.id) !== String(excludeQuestionId || '');
-  });
+    return getBaseId(q.id) !== getBaseId(excludeQuestionId);
+  }));
   if (sameDifficultyRepeats.length > 0) {
     const randomIndex = Math.floor(Math.random() * sameDifficultyRepeats.length);
     return {
@@ -968,24 +1081,40 @@ export function chooseNextQuestion({
   }
 
   // 3. Fallback to pool (adjacent or any available)
-  const same = pool.filter((q) => normalizeDifficulty(q.difficulty) === normalizedTarget);
+  const same = preferDistinctPrompt(pool.filter((q) => 
+    normalizeDifficulty(q.difficulty) === normalizedTarget && 
+    !q.adaptiveConfig?.isRemediation
+  ));
   if (same.length > 0) {
     const randomIndex = Math.floor(Math.random() * same.length);
     return { question: same[randomIndex], reason: 'pool_target_fallback', debug };
   }
 
   const currentIdx = DIFFICULTIES.indexOf(normalizedTarget);
-  const nearbyPool = pool.filter((q) => {
+  const nearbyPool = preferDistinctPrompt(pool.filter((q) => {
+    if (q.adaptiveConfig?.isRemediation) return false;
     const qIdx = DIFFICULTIES.indexOf(normalizeDifficulty(q.difficulty));
     return Math.abs(qIdx - currentIdx) === 1;
-  });
+  }));
   if (nearbyPool.length > 0) {
     const randomIndex = Math.floor(Math.random() * nearbyPool.length);
     return { question: nearbyPool[randomIndex], reason: 'adjacent_band_fallback', debug };
   }
 
-  const randomIndex = Math.floor(Math.random() * pool.length);
-  return { question: pool[randomIndex], reason: 'any_available', debug };
+  const finalPool = preferDistinctPrompt(pool.filter(q => !q.adaptiveConfig?.isRemediation));
+  if (finalPool.length > 0) {
+    const randomIndex = Math.floor(Math.random() * finalPool.length);
+    return { question: finalPool[randomIndex], reason: 'any_available_unseen', debug };
+  }
+
+  // LAST RESORT: Repeat a normal question from the entire list
+  const allNormal = questions.filter(q => !q.adaptiveConfig?.isRemediation);
+  if (allNormal.length > 0) {
+    const randomIndex = Math.floor(Math.random() * allNormal.length);
+    return { question: allNormal[randomIndex], reason: 'repeat_fallback', debug };
+  }
+
+  return { question: null, reason: 'exhausted', debug };
 }
 
 export function appendCycleRecentQuestionIds({
@@ -993,22 +1122,23 @@ export function appendCycleRecentQuestionIds({
   newQuestionId = null,
   availableQuestionIds = [],
 }) {
-  const available = Array.from(new Set((availableQuestionIds || []).map(String)));
+  const available = Array.from(new Set((availableQuestionIds || []).map(id => getBaseId(id))));
   const availableSet = new Set(available);
   if (available.length === 0) return [];
 
   const seen = [];
   const seenSet = new Set();
-  for (const id of (prevRecentQuestionIds || []).map(String)) {
+  for (const id of (prevRecentQuestionIds || []).map(id => getBaseId(id))) {
     if (!availableSet.has(id)) continue;
     if (seenSet.has(id)) continue;
     seenSet.add(id);
     seen.push(id);
   }
 
-  if (newQuestionId && availableSet.has(String(newQuestionId)) && !seenSet.has(String(newQuestionId))) {
-    seen.push(String(newQuestionId));
-    seenSet.add(String(newQuestionId));
+  const nid = getBaseId(newQuestionId);
+  if (newQuestionId && availableSet.has(nid) && !seenSet.has(nid)) {
+    seen.push(nid);
+    seenSet.add(nid);
   }
 
   // If cycle is complete, reset to start a fresh cycle on next selection.

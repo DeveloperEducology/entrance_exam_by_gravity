@@ -2,7 +2,7 @@
 
 import QuestionParts from './QuestionParts';
 import styles from './MCQRenderer.module.css';
-import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
+import { getImageSrc, isImageUrl, isInlineSvg } from './contentUtils';
 import SafeImage from './SafeImage';
 import SpeakerButton from './SpeakerButton';
 import { isRawLatex } from './latexUtils';
@@ -31,6 +31,13 @@ export default function MCQRenderer({
         '--mcq-columns': layout.columns || (question.isGrid ? 4 : 1),
     };
 
+    const promptParts = Array.isArray(question?.parts) ? question.parts : [];
+    const promptTextPart = promptParts.find((part) => part?.type === 'text' && String(part?.content || '').trim());
+    const promptText = String(question?.questionText || question?.title || promptTextPart?.content || '').trim();
+    const bodyParts = promptText
+        ? promptParts.filter((part) => part !== promptTextPart)
+        : promptParts;
+
     const handleOptionClick = (index) => {
         if (isAnswered) return;
 
@@ -52,80 +59,131 @@ export default function MCQRenderer({
         return userAnswer === index;
     };
 
+    const getOptionMeta = (option) => {
+        const isComplexParts = Array.isArray(option) || (option && typeof option === 'object' && Array.isArray(option.parts));
+        const optionParts = Array.isArray(option) ? option : (option?.parts || []);
+        const rawContent = typeof option === 'string' ? option : (option?.content || option?.value || '');
+        const labelText = typeof option === 'string' ? option : (option?.label || option?.text || rawContent);
+        const optionImageSrc = !isComplexParts ? getImageSrc(rawContent) : '';
+        const hasRichMediaPart = optionParts.some((part) => {
+            const source = getImageSrc(part?.imageUrl || part?.image_url || part?.content || '');
+            return part?.type === 'image' || isInlineSvg(part?.content) || isImageUrl(source);
+        });
+        const isMediaOption = Boolean(
+            isInlineSvg(rawContent) ||
+            isImageUrl(optionImageSrc) ||
+            hasRichMediaPart
+        );
+
+        return {
+            isComplexParts,
+            optionParts,
+            rawContent,
+            labelText,
+            optionImageSrc,
+            isMediaOption,
+        };
+    };
+
+    const optionMetas = Array.isArray(question.options)
+        ? question.options.map((option) => getOptionMeta(option))
+        : [];
+    const hasMediaOptions = optionMetas.some((meta) => meta.isMediaOption);
+    const shouldUseGrid = hasMediaOptions || question.isGrid === true;
+
     return (
         <div className={styles.container} style={dynamicStyle}>
             <div className={styles.questionCard}>
-                
-                {/* 2. Top-Level Content Wrapper with Audio Support */}
                 <div className={styles.questionHeader}>
-                    <div className={styles.questionContent}>
-                        <p>{question?.title || ""}</p>
-                        <QuestionParts parts={question.parts} isVertical={question.isVertical} />
-                    </div>
-                    {question.hasAudio && (
-                        <SpeakerButton 
-                            text={question.audioText || question.parts?.[0]?.content || ''} 
-                            className={styles.mainSpeaker} 
-                        />
-                    )}
+                    {promptText ? (
+                        <div className={styles.promptRow}>
+                            {(question.hasAudio || promptTextPart?.hasAudio) && (
+                                <SpeakerButton
+                                    text={question.audioText || promptText}
+                                    className={styles.mainSpeaker}
+                                />
+                            )}
+                            <div className={styles.promptText}>
+                                <QuestionParts parts={[{ type: 'text', content: promptText }]} />
+                            </div>
+                        </div>
+                    ) : null}
+                    {bodyParts.length > 0 ? (
+                        <div className={styles.questionContent}>
+                            <QuestionParts parts={bodyParts} isVertical={question.isVertical} />
+                        </div>
+                    ) : null}
                 </div>
 
-                {/* 3. Options Grid Wrapper */}
                 <div className={`
                     ${styles.optionsGrid} 
-                    ${question.isVertical ? styles.vertical : ''} 
-                    ${(question.isGrid !== false) ? styles.gridMode : ''}
+                    ${question.isVertical ? styles.vertical : ''}
+                    ${shouldUseGrid ? styles.gridMode : styles.textMode}
+                    ${hasMediaOptions ? styles.mediaMode : styles.choiceMode}
                 `}>
                     {question.options.map((option, index) => (
                         (() => {
-                            // Standardize Option detection for Unique MC schema
-                            const isComplexParts = Array.isArray(option) || (option && typeof option === 'object' && Array.isArray(option.parts));
-                            const optionParts = Array.isArray(option) ? option : (option?.parts || []);
-                            
-                            // Check for content/label vs raw string
-                            const rawContent = typeof option === 'string' ? option : (option?.content || option?.value || '');
-                            const labelText = typeof option === 'string' ? option : (option?.label || option?.text || rawContent);
-                            
-                            const optionImageSrc = !isComplexParts ? getImageSrc(rawContent) : '';
+                            const {
+                                isComplexParts,
+                                optionParts,
+                                rawContent,
+                                labelText,
+                                optionImageSrc,
+                                isMediaOption,
+                            } = optionMetas[index] || getOptionMeta(option);
 
                             return (
                                 <div
                                     key={index}
-                                    className={`${styles.option} ${isSelected(index) ? styles.selected : ''} ${isAnswered ? styles.disabled : ''}`}
+                                    className={`
+                                        ${styles.option}
+                                        ${isMediaOption ? styles.mediaOption : styles.textOption}
+                                        ${isSelected(index) ? styles.selected : ''}
+                                        ${isAnswered ? styles.disabled : ''}
+                                    `}
                                     onClick={() => handleOptionClick(index)}
                                     role="button"
                                     tabIndex={isAnswered ? -1 : 0}
                                     aria-pressed={isSelected(index)}
+                                    onKeyDown={(event) => {
+                                        if (isAnswered) return;
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            handleOptionClick(index);
+                                        }
+                                    }}
                                 >
                                     {question.isMultiSelect && (
-                                        <div className={styles.checkbox}>
+                                        <div className={`${styles.checkbox} ${isMediaOption ? styles.mediaCheckbox : styles.textCheckbox}`}>
                                             {isSelected(index) && '✓'}
                                         </div>
                                     )}
 
-                                    {/* Sub-Renderer logic for option content */}
                                     {isComplexParts ? (
-                                        <div className={styles.optionParts}>
+                                        <div className={`${styles.optionParts} ${isMediaOption ? styles.mediaOptionParts : ''}`}>
                                             <QuestionParts parts={optionParts} className={styles.partsInOption} />
                                         </div>
                                     ) : isInlineSvg(rawContent) ? (
                                         <div
-                                            className={styles.optionMedia}
+                                            className={`${styles.optionMedia} ${isMediaOption ? styles.mediaOptionMedia : ''}`}
                                             dangerouslySetInnerHTML={{ __html: rawContent }}
                                         />
                                     ) : isImageUrl(optionImageSrc) ? (
-                                        <SafeImage
-                                            src={optionImageSrc}
-                                            alt={labelText || `Option ${index + 1}`}
-                                            className={styles.optionImage}
-                                            width={220}
-                                            height={140}
-                                        />
+                                        <div className={styles.mediaFrame}>
+                                            <SafeImage
+                                                src={optionImageSrc}
+                                                alt={labelText || `Option ${index + 1}`}
+                                                className={styles.optionImage}
+                                                width={420}
+                                                height={300}
+                                                sizes="(max-width: 768px) 88vw, 420px"
+                                            />
+                                        </div>
                                     ) : (() => {
                                         const isRaw = isRawLatex(labelText);
                                         
                                         return (
-                                            <div className={styles.optionParts}>
+                                            <div className={`${styles.optionParts} ${styles.textOptionParts}`}>
                                                 <QuestionParts 
                                                     parts={[{ 
                                                         type: isRaw ? 'mathLatex' : 'text', 
@@ -152,4 +210,3 @@ export default function MCQRenderer({
         </div>
     );
 }
-

@@ -138,6 +138,9 @@ function normalizeQuestionType(value) {
     tokenselection: 'tokenSelection',
     token_selection: 'tokenSelection',
     'token-selection': 'tokenSelection',
+    tokenselectionv2: 'tokenSelectionV2',
+    token_selection_v2: 'tokenSelectionV2',
+    'token-selection-v2': 'tokenSelectionV2',
     draganddropv2: 'dragAndDropv2',
     drag_and_drop_v2: 'dragAndDropv2',
     draganddropv3: 'dragAndDropv3',
@@ -198,6 +201,13 @@ export function mapDbQuestion(row) {
     marks: toNumber(row.marks, 1),
     complexity: toNumber(row.complexity, 0),
     adaptiveConfig: parseMaybeJson(row.adaptive_config ?? row.adaptiveConfig, null),
+    tokenSelectionV2Config: parseMaybeJson(
+      row.token_selection_v2_config
+      ?? row.tokenSelectionV2Config
+      ?? row.token_selection_config
+      ?? row.tokenSelectionConfig,
+      null
+    ),
     isMultiSelect: toBoolean(row.is_multi_select ?? row.isMultiSelect, false),
     isGrid: toBoolean(row.is_grid ?? row.isGrid, false),
     isVertical: toBoolean(row.is_vertical ?? row.isVertical, false),

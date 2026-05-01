@@ -23,7 +23,16 @@ export default function TokenSelectionRenderer({
   }, [userAnswer]);
 
   const tokens = useMemo(() => {
-    // If we have an adaptive structure, look in adaptiveConfig or parts
+    // Pro-fix: If options exist, treat them as the primary source of tokens
+    if (Array.isArray(question.options) && question.options.length > 0) {
+      return question.options.map((opt, idx) => ({
+        id: String(idx), // Always use index for consistency with correct_answer_indices
+        text: opt.text || opt.label || (typeof opt === 'string' ? opt : ''),
+        index: idx
+      }));
+    }
+    
+    // Fallback to legacy tokens or parts
     if (Array.isArray(question.tokens) && question.tokens.length > 0) return question.tokens;
     
     if (Array.isArray(question.parts) && question.parts.length > 0) {
@@ -31,7 +40,6 @@ export default function TokenSelectionRenderer({
       if (sentencePart && Array.isArray(sentencePart.tokens)) {
         return sentencePart.tokens;
       }
-      // Fallback: extract from parts if possible
       return question.parts.filter(p => p.type === 'token');
     }
     return [];

@@ -16,17 +16,31 @@
 
 .questionHeader {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1.5rem;
-    margin-bottom: 1.25rem;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
     width: 100%;
 }
 
-.questionContent {
+.promptRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+.promptText {
     flex: 1;
+    min-width: 0;
+}
+
+.promptText :global(.text) {
+    font-size: 1.32rem;
+    line-height: 1.42;
+}
+
+.questionContent {
     font-size: var(--mcq-font-size, 1.05rem);
-    line-height: 1.6;
+    line-height: 1.5;
     color: var(--text-primary);
     min-width: 0;
     overflow-wrap: break-word;
@@ -34,59 +48,67 @@
 
 .mainSpeaker {
     flex-shrink: 0;
-    margin-top: 0.25rem;
+    margin-top: 0.08rem;
 }
 
 .optionsGrid {
+    width: 100%;
+    gap: var(--mcq-gap, 0.75rem);
+    margin: 0.35rem 0 0;
+}
+
+.optionsGrid.textMode {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
     align-items: flex-start;
-    gap: var(--mcq-gap, 0.75rem);
-    margin: 1rem 0 0;
-    max-width: 100%;
+}
+
+.optionsGrid.mediaMode {
+    display: grid;
+    grid-template-columns: repeat(2, 400px);
+    gap: var(--mcq-gap, 1.25rem);
+    justify-content: flex-start;
 }
 
 .optionsGrid.gridMode {
     display: grid;
-    /* auto-fit ensures it looks like a full gallery on desktop */
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); 
-    gap: var(--mcq-gap, 1.25rem);
-    width: 100%;
-    margin-top: 1.5rem;
-    justify-content: center;
+}
+
+.optionsGrid.choiceMode {
+    align-items: flex-start;
+}
+
+.optionsGrid.vertical.textMode {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.optionsGrid.vertical.mediaMode {
+    grid-template-columns: 1fr;
 }
 
 .option {
     background: #ffffff;
     border: 2px solid #afe3f5;
-    border-radius: 4px;
-    padding: 1rem;
-    font-size: 1.25rem;
+    border-radius: 2px;
     font-weight: 700;
     color: #000000;
     cursor: pointer;
     transition: all 0.15s ease-in-out;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    text-align: center;
-    width: 100%;
-    max-width: 280px; /* Bounded width for professional feel */
     box-sizing: border-box;
+    position: relative;
 }
 
 .option:hover:not(.disabled) {
     border-color: #5fb5e4;
-    background: #fdfdfd;
+    background: #fefefe;
 }
 
 .option.selected {
     background: #ffffff;
-    border-color: #009be4; /* IXL deep blue selection */
-    border-width: 3px;     /* Slightly thicker when selected */
+    border-color: #66b8ea;
 }
 
 .option.disabled {
@@ -94,17 +116,56 @@
     opacity: 0.7;
 }
 
+.textOption {
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    text-align: left;
+    width: auto;
+    min-width: 120px;
+    max-width: min(100%, 320px);
+    padding: 0.8rem 1rem;
+    font-size: 1.1rem;
+}
+
+.mediaOption {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.45rem;
+    min-height: 290px;
+    width: 100%;
+    padding: 0.5rem;
+}
+
 .checkbox {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #22c55e;
-    border-radius: 4px;
+    display: flex;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.96rem;
     color: #22c55e;
     flex-shrink: 0;
+}
+
+.textCheckbox {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #22c55e;
+    border-radius: 4px;
+    font-size: 0.92rem;
+}
+
+.mediaCheckbox {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 28px;
+    height: 28px;
+    border: 3px solid #22c55e;
+    border-radius: 50%;
+    font-size: 1rem;
+    background: white;
+    z-index: 1;
 }
 
 .optionText {
@@ -114,7 +175,7 @@
 
 .optionImage {
     width: 100%;
-    max-height: 140px;
+    height: 100%;
     object-fit: contain;
     border-radius: 0;
 }
@@ -133,11 +194,26 @@
     justify-content: flex-start;
 }
 
+.textOptionParts {
+    width: auto;
+}
+
+.mediaOptionParts {
+    flex: 1;
+    justify-content: center;
+    align-items: center;
+}
+
 .partsInOption {
     justify-content: flex-start !important;
     gap: 0.4rem !important;
-    flex-wrap: nowrap !important;
-    width: auto !important;
+    width: 100% !important;
+}
+
+.mediaOptionParts .partsInOption {
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
 }
 
 /* Allow width from JSON to be respected while enforcing height */
@@ -166,6 +242,18 @@
     flex-wrap: nowrap !important;
 }
 
+.mediaOptionParts .partsInOption :global(.imageContainer),
+.mediaOptionParts .partsInOption :global(.imageBlock),
+.mediaOptionParts .partsInOption [class*="imageContainer"],
+.mediaOptionParts .partsInOption [class*="imageBlock"] {
+    width: 100% !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 0.45rem !important;
+}
+
 .partsInOption :global(.imageLabel) {
     display: block !important;
     font-size: 1rem;
@@ -173,6 +261,11 @@
     color: #000000;
     margin-top: 0.25rem;
     text-align: center;
+}
+
+.mediaOptionParts .partsInOption :global(.imageLabel) {
+    width: 100% !important;
+    text-align: center !important;
 }
 
 /* Completely remove the inner gray box and double borders */
@@ -221,6 +314,20 @@
     display: block;
 }
 
+.mediaFrame {
+    width: 100%;
+    min-height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.mediaOptionMedia {
+    min-height: 230px;
+}
+
 .submitButton:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
@@ -235,17 +342,41 @@
         font-size: 0.96rem;
     }
 
-    .optionsGrid {
-        gap: 0.65rem;
+    .promptText :global(.text) {
+        font-size: 1.12rem;
+        line-height: 1.36;
     }
 
-    .optionsGrid.gridMode {
-        grid-template-columns: repeat(2, 1fr);
+    .optionsGrid {
         gap: 0.5rem;
     }
 
-    .option {
-        padding: 0.5rem;
+    .optionsGrid.mediaMode {
+        grid-template-columns: 1fr;
+    }
+
+    .textOption {
+        width: auto;
+        min-width: 108px;
+        padding: 0.68rem 0.9rem;
         font-size: 0.9rem;
+    }
+
+    .mediaOption {
+        min-height: 240px;
+        padding: 0.42rem;
+    }
+
+    .mediaFrame,
+    .mediaOptionMedia {
+        min-height: 180px;
+    }
+
+    .partsInOption img,
+    .partsInOption svg,
+    .partsInOption :global(.image),
+    .partsInOption :global(.urlImage) {
+        width: min(100%, 220px);
+        max-height: 160px;
     }
 }

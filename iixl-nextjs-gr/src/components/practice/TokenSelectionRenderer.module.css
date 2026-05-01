@@ -97,3 +97,173 @@
   animation: pulse 2s infinite;
   border-bottom: 4px solid #2563eb !important;
 }
+
+.v2Container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  line-height: 1.8;
+  padding: 1.25rem;
+  background: white;
+  border-radius: 12px;
+}
+
+.v2QuestionTextRow {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.v2QuestionText {
+  font-size: var(--token-v2-question-font-size, 1.45rem);
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.45;
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+.v2Tokens {
+  width: 100%;
+}
+
+.v2TokensPara {
+  display: block;
+  line-height: 1.95;
+}
+
+.v2TokensVertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.v2Token {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  border: 1.5px solid #bfdbfe;
+  background: #fff;
+  color: #1e293b;
+}
+
+.v2TokenInline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  font-size: var(--token-v2-option-font-size, 1.15rem);
+  line-height: 1.35;
+}
+
+.v2TokenBlock {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-height: 4rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: var(--token-v2-option-font-size, 1.15rem);
+}
+
+.v2TokenHasMedia {
+  align-items: center;
+}
+
+.v2Token:hover:not(.v2Disabled) {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.v2Selected {
+  border-color: #2563eb !important;
+  background: #eff6ff !important;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.v2InlineToken {
+  display: inline;
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--token-v2-option-font-size, 1.15rem);
+  font-weight: 500;
+  line-height: 1.9;
+  color: #111827;
+  border-bottom: 3px solid transparent;
+  margin-right: 0.35ch;
+  transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.v2InlineToken:hover:not(.v2Disabled) {
+  border-bottom-color: #93c5fd;
+}
+
+.v2InlineSelected {
+  color: #0f172a;
+  border-bottom-color: #2563eb !important;
+  text-decoration: none;
+}
+
+.v2Disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.v2TokenText {
+  font-size: var(--token-v2-option-font-size, 1.15rem);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.v2TokenMediaWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.v2TokenImage {
+  max-width: 240px;
+  max-height: 160px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.v2TokenMedia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.v2TokenParts {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  border: 1.5px solid #94a3b8;
+  border-radius: 3px;
+  color: #2563eb;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.v2TokenCaption {
+  font-size: var(--token-v2-option-font-size, 0.95rem);
+  font-weight: 600;
+  color: #334155;
+  text-align: center;
+  line-height: 1.35;
+}

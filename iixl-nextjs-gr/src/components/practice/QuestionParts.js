@@ -23,6 +23,9 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
+import MermaidRenderer from './MermaidRenderer';
+import RoughRenderer from './RoughRenderer';
+import JSXGraphRenderer from './JSXGraphRenderer';
 
 /**
  * @typedef {Object} QuestionPart
@@ -51,7 +54,15 @@ function renderInlineMarkdown(value, isVertical = false) {
                     components={{
                         p: ({ children }) => <div className={styles.markdownPara}>{children}</div>,
                         // Ensure LaTeX inside Markdown works
-                        span: ({ node, ...props }) => <span {...props} />
+                        span: ({ node, ...props }) => <span {...props} />,
+                        code: ({ node, inline, className, children, ...props }) => {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const language = match ? match[1] : '';
+                            if (!inline && language === 'mermaid') {
+                                return <MermaidRenderer chart={String(children).replace(/\n$/, '')} />;
+                            }
+                            return <code className={className} {...props}>{children}</code>;
+                        }
                     }}
                 >
                     {normalized}
@@ -799,6 +810,9 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'pictureEquation':
                 return renderPictureEquation(part, index, styles);
 
+            case 'mermaid':
+                return <MermaidRenderer key={index} chart={part.content} />;
+
             case 'longMultiply':
                 return renderLongMultiply(part, index, styles);
 
@@ -914,6 +928,12 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'dotArray':
             case 'dot_array':
                 return <DotArrayVisual key={index} part={part} />;
+
+            case 'rough':
+                return <RoughRenderer {...part.config} />;
+
+            case 'jsxgraph':
+                return <JSXGraphRenderer {...part.config} />;
 
             default:
                 return null;

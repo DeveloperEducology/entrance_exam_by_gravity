@@ -34,6 +34,7 @@ async function selectAndInstantiateNextQuestion({
     recentQuestionIds: sessionState?.recent_question_ids || [],
     remediationRecentQuestionIds: sessionState?.remediation_recent_question_ids || [],
     excludeQuestionId: sessionState?.last_question_id || null,
+    currentQuestion: questions.find((q) => String(q.id) === String(sessionState?.last_question_id || '')) || null,
     remediation: recoveryContext.inRecovery
       ? {
         misconceptionCode: recoveryContext.misconceptionCode,

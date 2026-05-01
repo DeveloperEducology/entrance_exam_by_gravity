@@ -20,6 +20,9 @@ import DotArrayVisual from './DotArrayVisual';
 import SharingDragDrop from './SharingDragDrop';
 import ImageChoiceRenderer from './ImageChoiceRenderer';
 import MCQRenderer from './MCQRenderer';
+import MermaidRenderer from './MermaidRenderer';
+import RoughRenderer from './RoughRenderer';
+import JSXGraphRenderer from './JSXGraphRenderer';
 
 function InlineLatexBlanks({
     part,
@@ -2174,6 +2177,22 @@ export default function FillInTheBlankRenderer({
                         />
                     </div>
                 ));
+
+            case 'mermaid':
+                return wrapPart(part, index, (
+                    <MermaidRenderer 
+                        chart={part.content} 
+                        userAnswer={userAnswer}
+                        onInputChange={handleInputChange}
+                        isAnswered={isAnswered}
+                    />
+                ));
+
+            case 'rough':
+                return wrapPart(part, index, <RoughRenderer {...part.config} />);
+
+            case 'jsxgraph':
+                return wrapPart(part, index, <JSXGraphRenderer {...part.config} />);
 
             case 'pictureEquation':
                 return wrapPart(part, index, renderPictureEquation(part));

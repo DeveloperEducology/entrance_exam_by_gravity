@@ -58,61 +58,46 @@ export default function ImageChoiceRenderer({
 
                 <div className={styles.contentWrapper}>
                     <div className={`${styles.optionsGrid} ${question.isVertical ? styles.vertical : ''}`}>
-                        {question.options.map((optionValue, index) => {
-                            const actualOption = Array.isArray(optionValue) && optionValue.length > 0 
-                                ? optionValue[0] 
-                                : optionValue;
-                            const src = getImageSrc(actualOption);
-                            const optionText =
-                                typeof actualOption === 'string'
-                                    ? actualOption
-                                    : actualOption?.label || actualOption?.text || '';
-                            const inlineSvgMarkup = isInlineSvg(actualOption)
-                                ? actualOption
-                                : isInlineSvg(src)
-                                    ? src
-                                    : null;
+                        {question.options.map((option, index) => {
+                            const isComplex = (option && typeof option === 'object' && Array.isArray(option.parts));
+                            const optionParts = isComplex ? option.parts : (Array.isArray(option) ? option : []);
+                            const labelText = isComplex ? (option.label || option.text) : (typeof option === 'string' ? option : (option?.label || option?.text || ''));
+                            const imageSrc = !isComplex ? getImageSrc(option) : '';
+
                             return (
-                            <button
-                                key={index}
-                                className={`${styles.option} ${isSelected(index) ? styles.selected : ''} ${isAnswered ? styles.disabled : ''}`}
-                                onClick={() => handleOptionClick(index)}
-                                disabled={isAnswered}
-                            >
-                                {question.isMultiSelect && (
-                                    <div className={styles.checkbox}>
-                                        {isSelected(index) && '✓'}
-                                    </div>
-                                )}
-                                <div className={styles.imageWrapper}>
-                                    {inlineSvgMarkup ? (
-                                        <div
-                                            className={styles.inlineSvg}
-                                            dangerouslySetInnerHTML={{ __html: inlineSvgMarkup }}
-                                        />
-                                    ) : isImageUrl(src) ? (
-                                        <SafeImage
-                                            src={src}
-                                            alt={`Option ${index + 1}`}
-                                            className={styles.optionImage}
-                                            width={420}
-                                            height={300}
-                                            sizes="(max-width: 768px) 88vw, 420px"
-                                        />
-                                    ) : !src ? (
-                                        <span className={styles.optionFallback}>No image</span>
-                                    ) : (
-                                        hasInlineHtml(optionText) ? (
-                                            <span
-                                                className={styles.optionText}
-                                                dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(optionText) }}
+                                <button
+                                    key={index}
+                                    className={`${styles.option} ${isSelected(index) ? styles.selected : ''} ${isAnswered ? styles.disabled : ''}`}
+                                    onClick={() => handleOptionClick(index)}
+                                    disabled={isAnswered}
+                                >
+                                    {question.isMultiSelect && (
+                                        <div className={styles.checkbox}>
+                                            {isSelected(index) && '✓'}
+                                        </div>
+                                    )}
+                                    <div className={styles.imageWrapper}>
+                                        {isComplex ? (
+                                            <QuestionParts parts={optionParts} />
+                                        ) : isInlineSvg(option) || isInlineSvg(imageSrc) ? (
+                                            <div
+                                                className={styles.inlineSvg}
+                                                dangerouslySetInnerHTML={{ __html: isInlineSvg(option) ? option : imageSrc }}
+                                            />
+                                        ) : isImageUrl(imageSrc) ? (
+                                            <SafeImage
+                                                src={imageSrc}
+                                                alt={labelText || `Option ${index + 1}`}
+                                                className={styles.optionImage}
+                                                width={420}
+                                                height={300}
+                                                sizes="(max-width: 768px) 88vw, 420px"
                                             />
                                         ) : (
-                                            <span className={styles.optionText}>{optionText || 'No image'}</span>
-                                        )
-                                    )}
-                                </div>
-                            </button>
+                                            <span className={styles.optionText}>{labelText || 'No image'}</span>
+                                        )}
+                                    </div>
+                                </button>
                             );
                         })}
                     </div>

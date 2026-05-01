@@ -12,6 +12,7 @@ import FourPicsRenderer from './FourPicsRenderer';
 import MeasureRenderer from './MeasureRenderer';
 import ShadeGridRenderer from './ShadeGridRenderer';
 import TokenSelectionRenderer from './TokenSelectionRenderer';
+import TokenSelectionRendererV2 from './TokenSelectionRendererV2';
 import DragDropRendererV2 from './DragDropRendererV2';
 import GuidedStepRenderer from './GuidedStepRenderer';
 import LongDivisionStepRenderer from './LongDivisionStepRenderer';
@@ -34,8 +35,11 @@ const RENDERER_MAP = {
     fourPicsOneWord: FourPicsRenderer,
     measure: MeasureRenderer,
     shadeGrid: ShadeGridRenderer,
-    tokenSelection: TokenSelectionRenderer,
     dotGrid: DotGridRenderer,
+    tokenSelection: TokenSelectionRenderer,
+    tokenselection: TokenSelectionRenderer,
+    tokenSelectionV2: TokenSelectionRendererV2,
+    tokenselectionv2: TokenSelectionRendererV2,
     stepwise: (props) => {
         if (props.question?.ui_config?.type === 'ladder_focus') {
             return <LongDivisionStepRenderer {...props} />;

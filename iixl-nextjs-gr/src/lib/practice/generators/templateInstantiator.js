@@ -464,7 +464,34 @@ if (logic === 'money_subtraction_v1') {
 
   if (logic === 'interactive_paragraph_v1') {
     const dataSource = inst.data_source || inst.adaptiveConfig?.data_source || {};
-    const variables = dataSource.variables || {};
+    
+    // NEW: Support dynamic variable generation
+    const variables = { ...(dataSource.variables || {}) };
+    if (dataSource.generate && !overrideVariables) {
+      for (const [key, cfg] of Object.entries(dataSource.generate)) {
+        if (cfg.min !== undefined && cfg.max !== undefined) {
+          let val = Math.floor(Math.random() * (cfg.max - cfg.min + 1)) + cfg.min;
+          if (cfg.multipleOf) {
+            val = Math.round(val / cfg.multipleOf) * cfg.multipleOf;
+          }
+          variables[key] = val;
+        } else if (cfg.value !== undefined) {
+          variables[key] = cfg.value;
+        }
+      }
+      // Second pass for expressions (e.g. {dividend} / {divisor})
+      for (const [key, cfg] of Object.entries(dataSource.generate)) {
+        if (cfg && typeof cfg === 'object' && cfg.expression) {
+          const expr = cfg.expression.replace(/\{(\w+)\}/g, (_, k) => variables[k]);
+          try {
+            variables[key] = Function(`"use strict"; return (${expr})`)();
+          } catch (e) {
+            console.error("Expression evaluation failed:", expr, e);
+          }
+        }
+      }
+    }
+
     const currentVars = { ...variables, ...(overrideVariables || {}) };
 
     // PRO FIX: Use parts if present, otherwise fallback to template
@@ -10958,6 +10985,14 @@ if (logic === 'digit_arrangement_v1') {
       correct_name: options[correctIdx].name,
       correct_index: correctIdx
     };
+    inst.options = options.map(opt => ({
+      label: opt.name,
+      parts: [
+        { type: 'image', content: opt.url, width: 180, mobileWidth: 120 },
+        { type: 'text', content: opt.name }
+      ]
+    }));
+
     inst.isGrid = true; // Enable gallery grid (4 cols desktop / 2 cols mobile)
     inst.correctAnswerIndex = correctIdx;
     inst.correctAnswerIndices = [correctIdx];
@@ -10975,6 +11010,159 @@ if (logic === 'digit_arrangement_v1') {
         });
       });
     }
+  }
+  if (logic === 'adaptive_division_scaffolding_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    
+    // Check if we already have stable values (e.g. from server-side generation)
+    // If not, generate them once using a stable seed
+    const seedStr = String(inst.id || inst.template_id || 'static');
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed += seedStr.charCodeAt(i);
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    const divisor = Number(vars.divisor) || Math.floor(seededRandom() * 5) + 3;
+    const dividend = Number(vars.dividend) || (Math.floor(seededRandom() * 6) + 3) * divisor;
+    const quotient = dividend / divisor;
+    
+    // Persist these values back into variables so the client uses the SAME ones
+    if (!inst.adaptiveConfig) inst.adaptiveConfig = {};
+    if (!inst.adaptiveConfig.variables) inst.adaptiveConfig.variables = {};
+    inst.adaptiveConfig.variables.dividend = dividend;
+    inst.adaptiveConfig.variables.divisor = divisor;
+    inst.adaptiveConfig.variables.quotient = quotient;
+
+    const modes = ['rough_number_line', 'mermaid_subtraction', 'mermaid_interactive_bond', 'rough_bar_model', 'rough_array'];
+    const mode = vars.mode || modes[Math.floor(seededRandom() * modes.length)];
+    inst.adaptiveConfig.variables.mode = mode;
+    
+    const parts = [];
+    const answers = {};
+
+    if (mode === 'rough_array') {
+      // Mode E: Sketchy Array Grouping (Rough.js) - Now in Grid!
+      const shapes = [];
+      const padding = 30;
+      const spacing = 40;
+      const groupsPerRow = 3; // Wrap every 3 groups
+      const groupWidth = divisor * spacing;
+      const rowHeight = spacing + 40;
+      
+      for (let g = 0; g < quotient; g++) {
+        const row = Math.floor(g / groupsPerRow);
+        const col = g % groupsPerRow;
+        const startX = padding + (col * (groupWidth + 20));
+        const startY = padding + (row * rowHeight);
+
+        // Draw a group box
+        shapes.push({
+          type: 'rectangle',
+          x: startX - 5,
+          y: startY - 5,
+          w: groupWidth - 10,
+          h: spacing + 10,
+          color: '#4f57ff',
+          options: { strokeWidth: 1.5, roughness: 1.5 }
+        });
+
+        // Draw items in the group
+        for (let i = 0; i < divisor; i++) {
+          shapes.push({
+            type: 'circle',
+            x: startX + (i * spacing) + (spacing/2) - 5,
+            y: startY + (spacing/2),
+            diameter: 15,
+            color: '#000',
+            fill: '#000',
+            options: { fillStyle: 'solid' }
+          });
+        }
+      }
+
+      const totalRows = Math.ceil(quotient / groupsPerRow);
+      parts.push({ type: 'text', content: `### Grouping Objects\nThere are **${dividend}** dots grouped by **${divisor}**.`, isVertical: true });
+      parts.push({ type: 'rough', config: { width: 600, height: padding + (totalRows * rowHeight), shapes, seed: seededRandom() }, isVertical: true });
+      parts.push({ type: 'text', content: `How many groups did we make? [[ans]]` });
+      answers.ans = String(quotient);
+    }
+    else if (mode === 'rough_bar_model') {
+      // Mode D: Sketchy Bar Model (Rough.js)
+      const width = 500;
+      const barWidth = (width - 40) / quotient;
+      const shapes = [
+        // The "Whole" Bar
+        { type: 'rectangle', x: 20, y: 20, w: width - 40, h: 40, fill: '#4f57ff33', options: { strokeWidth: 2 } },
+        { type: 'text', text: String(dividend), x: width / 2, y: 47 }
+      ];
+
+      // The "Part" Bars
+      for (let i = 0; i < quotient; i++) {
+        shapes.push({ 
+            type: 'rectangle', 
+            x: 20 + (i * barWidth), 
+            y: 70, 
+            w: barWidth, 
+            h: 40, 
+            color: '#000',
+            fill: i % 2 === 0 ? '#e2e8f0' : '#cbd5e1',
+            options: { strokeWidth: 1.5, roughness: 1.2 } 
+        });
+        shapes.push({ type: 'text', text: String(divisor), x: 20 + (i * barWidth) + (barWidth / 2), y: 97 });
+      }
+
+      parts.push({ type: 'text', content: `### The Bar Model\nA bar of **${dividend}** is split into groups of **${divisor}**.`, isVertical: true });
+      parts.push({ type: 'rough', config: { width, height: 130, shapes, seed: seededRandom() }, isVertical: true });
+      parts.push({ type: 'text', content: `How many groups are there? [[ans]]` });
+      answers.ans = String(quotient);
+    }
+    else if (mode === 'rough_number_line') {
+      const width = 600;
+      const stepWidth = (width - 100) / quotient;
+      const shapes = [{ type: 'line', x1: 50, y1: 80, x2: 550, y2: 80, color: '#000' }];
+      
+      for (let i = 0; i <= quotient; i++) {
+        const x = 50 + (i * stepWidth);
+        shapes.push({ type: 'line', x1: x, y1: 70, x2: x, y2: 90, color: '#000' });
+        shapes.push({ type: 'text', text: String(i * divisor), x: x, y: 115 });
+        if (i < quotient) {
+          shapes.push({ type: 'ellipse', x: x + (stepWidth / 2), y: 60, w: stepWidth - 10, h: 50, color: '#4f57ff', options: { strokeWidth: 2, roughness: 2 } });
+        }
+      }
+      parts.push({ type: 'text', content: `### Division on a Number Line\nHow many jumps of **${divisor}** does it take to reach **${dividend}**?`, isVertical: true });
+      parts.push({ type: 'rough', config: { width, height: 140, shapes, seed: seededRandom() }, isVertical: true });
+      parts.push({ type: 'text', content: `It takes [[ans]] jumps.` });
+      answers.ans = String(quotient);
+    } 
+    else if (mode === 'mermaid_subtraction') {
+      let mermaidContent = 'graph LR\n';
+      for (let i = 0; i < quotient; i++) {
+        mermaidContent += `    S${i}(${dividend - (i * divisor)}) -- "-${divisor}" --> S${i+1}(${dividend - ((i + 1) * divisor)})\n`;
+      }
+      mermaidContent += `    style S0 fill:#f9f\n    style S${quotient} fill:#6f6`;
+      parts.push({ type: 'text', content: `### Repeated Subtraction\nSubtract **${divisor}** until you reach 0. How many times did you subtract?`, isVertical: true });
+      parts.push({ type: 'mermaid', content: mermaidContent, isVertical: true });
+      parts.push({ type: 'text', content: `I subtracted ${divisor}, [[ans]] times.` });
+      answers.ans = String(quotient);
+    }
+    else {
+      let mermaidContent = `graph TD\n    T(${dividend}) --> G1([[a1]])\n`;
+      answers.a1 = String(divisor);
+      for (let i = 2; i <= quotient; i++) {
+        mermaidContent += `    T --> G${i}([[a${i}]])\n`;
+        answers[`a${i}`] = String(divisor);
+      }
+      mermaidContent += `    style T fill:#4f57ff,color:#fff`;
+      parts.push({ type: 'text', content: `### Sharing into Groups\nSplit **${dividend}** into **${quotient}** equal groups. How many go in each group?`, isVertical: true });
+      parts.push({ type: 'mermaid', content: mermaidContent, isVertical: true });
+    }
+
+    inst.type = 'fillInTheBlank';
+    inst.parts = parts;
+    inst.correct_answer_text = JSON.stringify(answers);
+    inst.show_submit_button = true;
   }
 
   // Always provide a unique instance ID if it was hydrated from a template
