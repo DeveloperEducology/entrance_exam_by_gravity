@@ -92,6 +92,7 @@ export function CreateQuestion() {
             // New JSON Schema Elements
             complexity: 8,
             showSubmitButton: false,
+            showExample: false,
             adaptiveConfig: {
                 conceptTags: 'place_value, hundreds',
                 misconceptionCode: '',
@@ -127,7 +128,11 @@ export function CreateQuestion() {
                     layout: { rows: 7, cols: 6, cellSize: 46, showBackgroundGrid: true, cells: [], borders: [] }
                 }],
                 correct_answer_text: "{}"
-            }, null, 2)
+            }, null, 2),
+            paragraph_template: '',
+            paragraph_answers: '{}',
+            // dragAndDropv3
+            mapUrl: '',
         }
     });
 
@@ -193,7 +198,12 @@ export function CreateQuestion() {
                             content: p.type === 'image' ? (p.imageUrl || p.content) : p.content,
                             isVertical: p.isVertical,
                             hasAudio: p.hasAudio !== undefined ? p.hasAudio : getHasAudioOrig(p.type, p.content),
-                            ...(p.type === 'image' && { count: p.count || 1 })
+                            ...(p.type === 'image' && { 
+                                count: p.count || 1, 
+                                label: p.label || '',
+                                width: p.width || p.imageWidth || '',
+                                gridColumns: p.gridColumns || p.columns || '' 
+                            })
                         });
                     } else if (isFib && p.type === 'input') {
                         // Resolve FIB answer
@@ -292,8 +302,10 @@ export function CreateQuestion() {
                 type: forcedType,
                 skill_id: normalizedData.micro_skill_id || normalizedData.skill_id,
 
-                // Load parts directly using helper
-                parts: normalizedData.type !== 'fillInTheBlank' ? parseParts(partsList) : [{ type: 'text', content: '' }],
+                // Load parts directly using helper, fallback to question_text if parts is empty
+                parts: normalizedData.type !== 'fillInTheBlank' 
+                    ? (partsList.length > 0 ? parseParts(partsList) : [{ type: 'text', content: normalizedData.question_text || '', isVertical: false, hasAudio: true }]) 
+                    : [{ type: 'text', content: '' }],
 
                 is_multi_select: normalizedData.is_multi_select || false,
                 is_vertical: normalizedData.is_vertical !== undefined ? normalizedData.is_vertical : true,
@@ -311,19 +323,37 @@ export function CreateQuestion() {
                             isCorrect
                         };
                     }
+
+                    // If option is an array (direct parts list)
+                    if (Array.isArray(o)) {
+                        return {
+                            parts: parseParts(o),
+                            isCorrect
+                        };
+                    }
+
                     // If it's already an object with parts
-                    if (o.parts) {
+                    if (o && o.parts) {
                         return { ...o, isCorrect };
                     }
+
                     // If it's an object but maybe old format { text, ... }
                     return {
-                        parts: [{ type: 'text', content: o.text || '', isVertical: false, hasAudio: true }],
+                        parts: [{ type: 'text', content: (o && o.text) || '', isVertical: false, hasAudio: true }],
                         isCorrect
                     };
                 }),
 
-                drag_groups: normalizedData.drag_groups || [],
-                drag_items: normalizedData.drag_items ? normalizedData.drag_items.map(i => ({ id: i.id, text: i.content || i.text, group_id: i.target_group_id || i.group_id })) : [],
+                drag_groups: normalizedData.drag_groups || normalizedData.dropGroups || [],
+                drag_items: (normalizedData.drag_items || normalizedData.dragItems) 
+                    ? (normalizedData.drag_items || normalizedData.dragItems).map(i => ({ 
+                        id: i.id, 
+                        text: i.content || i.text, 
+                        group_id: i.target_group_id || i.group_id || i.targetGroupId,
+                        imageUrl: i.imageUrl || '',
+                        imageWidth: i.imageWidth || 100
+                    })) : [],
+                mapUrl: normalizedData.mapUrl || normalizedData.map_url || '',
                 sort_items: (forcedType === 'sorting' && Array.isArray(normalizedData.options)) ? normalizedData.options.map(t => ({ text: typeof t === 'string' ? t : (t.text || '') })) : [{ text: '' }],
                 images: (forcedType === 'fourPicsOneWord' && partsList) ? partsList.filter(p => p.type === 'image').map(p => p.imageUrl || p.content) : ['', '', '', ''],
                 jumbled_letters: normalizedData.correct_answer_text || '',
@@ -349,8 +379,9 @@ export function CreateQuestion() {
                 // Restore adaptive/new schema configs directly
                 complexity: normalizedData.complexity || 8,
                 showSubmitButton: normalizedData.show_submit_button || false,
-                adaptiveConfig: normalizedData.adaptive_config ? {
-                    ...normalizedData.adaptive_config,
+                showExample: normalizedData.show_example || false,
+                adaptiveConfig: (normalizedData.adaptive_config || normalizedData.adaptiveConfig) ? {
+                    ...(normalizedData.adaptive_config || normalizedData.adaptiveConfig),
                     conceptTags: Array.isArray(normalizedData.adaptive_config.conceptTags)
                         ? normalizedData.adaptive_config.conceptTags.join(', ')
                         : (normalizedData.adaptive_config.conceptTags || ''),
@@ -369,7 +400,10 @@ export function CreateQuestion() {
                     keypadKeys: '[]'
                 },
                 grid_arithmetic_json: gridJson,
-                smart_table_json: smartTableJson
+                smart_table_json: smartTableJson,
+                logic_type: normalizedData.logic_type || '',
+                paragraph_template: normalizedData.data_source?.template || '',
+                paragraph_answers: normalizedData.data_source?.answers ? JSON.stringify(normalizedData.data_source.answers, null, 2) : '{}'
             };
 
             console.log("Resetting form with:", formData);
@@ -452,7 +486,10 @@ export function CreateQuestion() {
                     type: 'image', 
                     imageUrl: p.imageUrl || p.content || '', 
                     isVertical: p.isVertical !== undefined ? p.isVertical : true, 
-                    count: parseInt(p.count) || 1 
+                    count: parseInt(p.count) || 1,
+                    label: p.label || '',
+                    width: p.width || '',
+                    gridColumns: p.gridColumns || ''
                 };
             } else if (p.type === 'svg') {
                 return {
@@ -489,6 +526,7 @@ export function CreateQuestion() {
 
             complexity: parseInt(data.complexity) || 8,
             show_submit_button: data.showSubmitButton,
+            show_example: data.showExample,
             adaptive_config: {
                 ...data.adaptiveConfig,
                 conceptTags: Array.isArray(data.adaptiveConfig?.conceptTags)
@@ -515,15 +553,28 @@ export function CreateQuestion() {
 
         if (data.type === 'mcq' || data.type === 'imageChoice') {
             payload.parts = (data.parts || []).map(p => processPart(p, {}, { count: 0 }));
-            if (payload.parts.length === 0 && data.question_text) {
-                payload.parts = [{
-                    type: 'text',
-                    content: data.question_text,
-                    hasAudio: getHasAudio('text', data.question_text)
-                }];
+            
+            // Ensure question_text is also populated for backward compatibility if it's a simple text block
+            if (payload.parts.length === 1 && payload.parts[0].type === 'text') {
+                payload.question_text = payload.parts[0].content;
+            } else if (payload.parts.length === 0 && data.question_text) {
+                payload.question_text = data.question_text;
             }
-            payload.options = (data.options || []).map(o => (o.parts || []).map(p => processPart(p, {}, { count: 0 })));
-            // Fallback for simple display/export if needed
+
+            // SIMPLIFICATION: If all options are single-part text, save as flat array of strings
+            const isAllSimpleText = (data.options || []).every(o => 
+                o.parts?.length === 1 && 
+                o.parts[0].type === 'text' && 
+                !o.parts[0].imageUrl && 
+                !o.parts[0].content?.includes('<svg')
+            );
+
+            if (isAllSimpleText) {
+                payload.options = data.options.map(o => o.parts[0].content);
+            } else {
+                payload.options = (data.options || []).map(o => (o.parts || []).map(p => processPart(p, {}, { count: 0 })));
+            }
+
             const correctIndices = (data.options || []).map((o, i) => o.isCorrect ? i : -1).filter(i => i !== -1);
             payload.correct_answer_indices = correctIndices;
             payload.correct_answer_index = correctIndices.length > 0 ? correctIndices[0] : -1;
@@ -611,19 +662,104 @@ export function CreateQuestion() {
             });
             payload.correct_answer_text = JSON.stringify(answers);
 
-        } else if (data.type === 'dragAndDrop') {
+        } else if (data.type === 'dragAndDrop' || data.type === 'dragAndDropv2') {
             payload.parts = (data.parts || []).map(p => processPart(p, {}, { count: 0 }));
             payload.drag_groups = data.drag_groups;
             payload.drag_items = (data.drag_items || []).map(i => ({
-                id: i.id,
+                id: i.id || `item_${Math.random().toString(36).substr(2, 9)}`,
                 type: 'text',
                 content: i.text,
+                text: i.text,
+                imageUrl: i.imageUrl || '',
+                imageWidth: parseInt(i.imageWidth) || 100,
+                targetGroupId: i.group_id,
                 target_group_id: i.group_id
             }));
+
+            if (data.type === 'dragAndDropv2') {
+                // V2 specific fields
+                payload.dragItems = payload.drag_items;
+                payload.dropGroups = payload.drag_groups;
+                
+                const answers = {};
+                payload.drag_items.forEach(item => {
+                    if (item.targetGroupId) {
+                        answers[item.id] = item.targetGroupId;
+                    }
+                });
+                payload.correctAnswerText = JSON.stringify(answers);
+                payload.correct_answer_text = payload.correctAnswerText;
+            }
+
+        } else if (data.type === 'dragAndDropv3') {
+            payload.parts = (data.parts || []).map(p => processPart(p, {}, { count: 0 }));
+            payload.mapUrl = data.mapUrl;
+            payload.microskillId = data.micro_skill_id || data.microskillId;
+            payload.questionText = data.question_text || data.questionText;
+            
+            // Create a mapping for group IDs to ensure targetGroupId stays synced
+            const groupMap = {};
+            payload.dropGroups = (data.drag_groups || []).map(g => {
+                const newId = (g.label || '').toLowerCase().replace(/[^a-z0-9]/g, '_').trim() || g.id || `group_${Math.random().toString(36).substr(2, 9)}`;
+                if (g.id) groupMap[g.id] = newId;
+                return {
+                    id: newId,
+                    label: g.label,
+                    x: parseFloat(g.x) || 50,
+                    y: parseFloat(g.y) || 50
+                };
+            });
+
+            payload.dragItems = (data.drag_items || []).map(i => {
+                const newId = (i.text || '').toLowerCase().replace(/[^a-z0-9]/g, '_').trim() || i.id || `item_${Math.random().toString(36).substr(2, 9)}`;
+                return {
+                    id: newId,
+                    content: i.text,
+                    targetGroupId: groupMap[i.group_id] || i.group_id
+                };
+            });
+            
+            // Keep snake_case for DB columns
+            payload.drag_items = payload.dragItems;
+            payload.drag_groups = payload.dropGroups;
+            payload.map_url = data.mapUrl;
+            payload.question_text = data.question_text;
+
+            const answers = {};
+            payload.dragItems.forEach(item => {
+                if (item.targetGroupId) {
+                    answers[item.id] = item.targetGroupId;
+                }
+            });
+            payload.correctAnswerText = JSON.stringify(answers);
+            payload.correct_answer_text = payload.correctAnswerText;
+
+            // Required adaptiveConfig format
+            payload.adaptiveConfig = {
+                instantFeedback: data.adaptiveConfig?.instantFeedback ?? true,
+                showKeypad: data.adaptiveConfig?.showKeypad ?? false
+            };
+            payload.adaptive_config = payload.adaptiveConfig;
 
         } else if (data.type === 'sorting') {
             payload.parts = (data.parts || []).map(p => processPart(p, {}, { count: 0 }));
             payload.options = (data.sort_items || []).map(i => i.text);
+
+        } else if (data.type === 'interactiveParagraph' || data.logic_type === 'interactive_paragraph_v1') {
+            payload.type = 'fillInTheBlank';
+            payload.logic_type = 'interactive_paragraph_v1';
+            payload.data_source = {
+                template: data.paragraph_template,
+                answers: (() => {
+                    try {
+                        return JSON.parse(data.paragraph_answers || '{}');
+                    } catch (e) {
+                        return {};
+                    }
+                })()
+            };
+            payload.correct_answer_text = JSON.stringify(payload.data_source.answers);
+            payload.parts = [];
 
         } else if (data.type === 'fourPicsOneWord') {
             const qText = data.question_text || "Guess the word!";
@@ -819,9 +955,12 @@ export function CreateQuestion() {
 
                                         <option value="gridArithmetic">Grid Arithmetic (Raw JSON)</option>
                                         <option value="dragAndDrop">Drag & Drop</option>
+                                        <option value="dragAndDropv2">Drag & Drop v2 (High Fidelity)</option>
+                                        <option value="dragAndDropv3">Drag & Drop v3 (Map/Diagram)</option>
                                         <option value="sorting">Sorting</option>
                                         <option value="fourPicsOneWord">4 Pics 1 Word</option>
                                         <option value="imageChoice">Image Choice</option>
+                                        <option value="interactiveParagraph">Interactive Paragraph (Logic V1)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -888,6 +1027,21 @@ export function CreateQuestion() {
                                     <input type="checkbox" {...register('showSubmitButton')} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
                                     <span className="text-sm font-medium text-slate-700">Show Submit Button</span>
                                 </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" {...register('showExample')} className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
+                                    <span className="text-sm font-medium text-slate-700">Show Example</span>
+                                </label>
+                                <div className="flex items-center gap-2 ml-4 border-l border-slate-200 pl-6">
+                                    <span className="text-sm font-medium text-slate-700">Option Grid Columns:</span>
+                                    <input 
+                                        type="number" 
+                                        {...register('adaptiveConfig.gridColumns', { valueAsNumber: true })} 
+                                        className="w-16 border border-slate-300 rounded-lg px-2 py-1 text-sm text-center focus:ring-2 focus:ring-brand-500/20" 
+                                        placeholder="Auto" 
+                                        min={1}
+                                        max={6}
+                                    />
+                                </div>
                             </div>
 
                             <div className="pt-4">
@@ -972,9 +1126,10 @@ export function CreateQuestion() {
                             {questionType === 'gridArithmetic' && <GridArithmeticBuilder control={control} register={register} setValue={setValue} watch={watch} />}
                             {questionType === 'smartTable' && <SmartTableEditor control={control} register={register} setValue={setValue} watch={watch} />}
                             {questionType === 'shadeGrid' && <ShadeGridEditor control={control} register={register} setValue={setValue} watch={watch} />}
-                            {questionType === 'dragAndDrop' && <DragDropForm control={control} register={register} setValue={setValue} />}
+                            {['dragAndDrop', 'dragAndDropv2', 'dragAndDropv3'].includes(questionType) && <DragDropForm control={control} register={register} setValue={setValue} type={questionType} />}
                             {questionType === 'sorting' && <SortingForm control={control} register={register} setValue={setValue} />}
                             {questionType === 'fourPicsOneWord' && <FourPicsForm register={register} setValue={setValue} />}
+                            {questionType === 'interactiveParagraph' && <ParagraphForm register={register} />}
                         </div>
 
                         {/* Solution */}
@@ -1236,14 +1391,14 @@ function R2UploadButton({ onUploadComplete }) {
     );
 }
 
-function QuestionStemBuilder({ control, register, setValue, name = 'parts' }) {
+function QuestionStemBuilder({ control, register, setValue, name = 'parts', defaultType = 'text' }) {
     const { fields, append, remove } = useFieldArray({ control, name });
     const watchedParts = useWatch({ control, name });
 
     // Ensure there's at least one text block
     React.useEffect(() => {
         if (fields.length === 0) {
-            append({ type: 'text', content: '', isVertical: false, hasAudio: true });
+            append({ type: defaultType, content: '', isVertical: false, hasAudio: true });
         }
     }, [fields.length, append]);
 
@@ -1287,16 +1442,44 @@ function QuestionStemBuilder({ control, register, setValue, name = 'parts' }) {
                                         </div>
                                     )}
                                     {currentType === 'image' && (
-                                        <div className="flex items-center gap-2">
-                                            <label className="text-xs text-slate-500 whitespace-nowrap">Repeat Count:</label>
-                                            <input
-                                                type="number"
-                                                {...register(`${name}.${index}.count`)}
-                                                defaultValue={1}
-                                                min={1}
-                                                className="w-20 text-xs border border-slate-300 rounded px-2 py-1"
-                                            />
-                                            <span className="text-[10px] text-slate-400">(Renders side-by-side)</span>
+                                        <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-xs text-slate-500 whitespace-nowrap">Repeat Count:</label>
+                                                <input
+                                                    type="number"
+                                                    {...register(`${name}.${index}.count`)}
+                                                    defaultValue={1}
+                                                    min={1}
+                                                    className="w-16 text-xs border border-slate-300 rounded px-2 py-1"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-xs text-slate-500 whitespace-nowrap">Label/Caption:</label>
+                                                <input
+                                                    type="text"
+                                                    {...register(`${name}.${index}.label`)}
+                                                    placeholder="Optional label..."
+                                                    className="w-32 text-xs border border-slate-300 rounded px-2 py-1"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-xs text-slate-500 whitespace-nowrap">Width (px):</label>
+                                                <input
+                                                    type="number"
+                                                    {...register(`${name}.${index}.width`, { valueAsNumber: true })}
+                                                    placeholder="Auto"
+                                                    className="w-20 text-xs border border-slate-300 rounded px-2 py-1"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-xs text-slate-500 whitespace-nowrap">Grid Columns:</label>
+                                                <input
+                                                    type="number"
+                                                    {...register(`${name}.${index}.gridColumns`, { valueAsNumber: true })}
+                                                    placeholder="Auto"
+                                                    className="w-16 text-xs border border-slate-300 rounded px-2 py-1"
+                                                />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -1322,8 +1505,8 @@ function QuestionStemBuilder({ control, register, setValue, name = 'parts' }) {
                     );
                 })}
             </div>
-            <button type="button" onClick={() => append({ type: 'text', content: '', isVertical: false, hasAudio: true })} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700 font-medium flex items-center gap-1">
-                <Plus className="w-3 h-3" /> Add Text/Image Block
+            <button type="button" onClick={() => append({ type: defaultType, content: '', isVertical: false, hasAudio: true })} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700 font-medium flex items-center gap-1">
+                <Plus className="w-3 h-3" /> Add {defaultType === 'image' ? 'Image' : 'Text/Image'} Block
             </button>
         </div>
     );
@@ -1378,6 +1561,20 @@ function SequenceBuilder({ control, register, setValue, name, allowInput = false
                                             title="Height"
                                             className="w-10 text-[10px] border border-slate-200 rounded px-1"
                                         />
+                                        <input
+                                            type="number"
+                                            {...register(`${name}.${index}.gridColumns`, { valueAsNumber: true })}
+                                            placeholder="Cols"
+                                            title="Grid Columns"
+                                            className="w-10 text-[10px] border border-slate-200 rounded px-1"
+                                        />
+                                        <input
+                                            type="text"
+                                            {...register(`${name}.${index}.label`)}
+                                            placeholder="Label"
+                                            title="Label"
+                                            className="w-20 text-[10px] border border-slate-200 rounded px-1"
+                                        />
                                     </div>
                                 )}
                                 {type === 'input' && (
@@ -1404,13 +1601,25 @@ function SequenceBuilder({ control, register, setValue, name, allowInput = false
     );
 }
 
-function MCQForm({ control, register, setValue }) {
+function MCQForm({ control, register, setValue, type = 'text' }) {
     const { fields, append, remove } = useFieldArray({ control, name: 'options' });
+    const gridCols = useWatch({ control, name: 'adaptiveConfig.gridColumns' });
+
+    const gridStyle = gridCols && gridCols > 1 ? {
+        display: 'grid',
+        gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+        gap: '1rem'
+    } : {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
+    };
 
     return (
         <div className="space-y-4">
             <p className="text-xs text-slate-500 mb-2">Build each option by adding text, images, or sequences. Select the radio button for the correct answer.</p>
-            {fields.map((field, index) => {
+            <div style={gridStyle}>
+                {fields.map((field, index) => {
                 return (
                     <div key={field.id} className="flex gap-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm relative group overflow-hidden">
                         <div className="flex flex-col items-center pt-2">
@@ -1424,6 +1633,7 @@ function MCQForm({ control, register, setValue }) {
                                 register={register} 
                                 setValue={setValue} 
                                 name={`options.${index}.parts`} 
+                                defaultType={type}
                             />
                         </div>
 
@@ -1437,10 +1647,11 @@ function MCQForm({ control, register, setValue }) {
                     </div>
                 );
             })}
+            </div>
             <button 
                 type="button" 
                 onClick={() => append({ 
-                    parts: [{ type: 'text', content: '', isVertical: false, hasAudio: true }], 
+                    parts: [{ type, content: '', isVertical: false, hasAudio: true }], 
                     isCorrect: false 
                 })} 
                 className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-500 font-medium hover:border-brand-500 hover:text-brand-600 hover:bg-brand-50/20 transition-all flex items-center justify-center gap-2"
@@ -1596,33 +1807,146 @@ function FillBlankForm({ control, register, setValue }) {
     );
 }
 
-function DragDropForm({ control, register, setValue }) {
+function DragDropForm({ control, register, setValue, type = 'dragAndDrop' }) {
     const { fields: groupFields, append: appendGroup, remove: removeGroup } = useFieldArray({ control, name: 'drag_groups', keyName: 'customId' });
     const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({ control, name: 'drag_items', keyName: 'customId' });
+    const isV3 = type === 'dragAndDropv3';
+    const [selectedGroupIdx, setSelectedGroupIdx] = useState(null);
+    const mapUrl = useWatch({ control, name: 'mapUrl' });
+    const watchedGroups = useWatch({ control, name: 'drag_groups' });
+
+    const handleMapClick = (e) => {
+        if (!isV3 || selectedGroupIdx === null) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        setValue(`drag_groups.${selectedGroupIdx}.x`, parseFloat(x.toFixed(1)));
+        setValue(`drag_groups.${selectedGroupIdx}.y`, parseFloat(y.toFixed(1)));
+    };
 
     return (
         <div className="space-y-8">
+            {isV3 && (
+                <div className="space-y-4">
+                    <div className="p-4 bg-brand-50 border border-brand-100 rounded-xl">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2 italic">1. Upload Background Map/Diagram (for V3)</label>
+                        <div className="flex items-center gap-2">
+                            <input 
+                                {...register('mapUrl')} 
+                                placeholder="https://..." 
+                                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white" 
+                            />
+                            <MediaSelect onSelect={(url) => setValue('mapUrl', url)} />
+                        </div>
+                    </div>
+
+                    {mapUrl && (
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">2. Position Zones (Click on image to place selected zone)</label>
+                            <div 
+                                className="relative border-2 border-slate-200 rounded-xl overflow-hidden bg-slate-100 cursor-crosshair group"
+                                onClick={handleMapClick}
+                            >
+                                <img src={mapUrl} alt="Map Picker" className="w-full h-auto block select-none" draggable={false} />
+                                
+                                {/* Existing zones indicators */}
+                                {watchedGroups?.map((group, idx) => (
+                                    <div 
+                                        key={idx}
+                                        className={cn(
+                                            "absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold shadow-lg transition-all",
+                                            selectedGroupIdx === idx 
+                                                ? "bg-brand-500 border-white text-white scale-125 z-20 ring-4 ring-brand-500/30" 
+                                                : "bg-white/80 border-slate-400 text-slate-600 z-10 hover:bg-white"
+                                        )}
+                                        style={{ left: `${group.x}%`, top: `${group.y}%` }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedGroupIdx(idx);
+                                        }}
+                                    >
+                                        {idx + 1}
+                                    </div>
+                                ))}
+
+                                {selectedGroupIdx !== null && (
+                                    <div className="absolute top-2 right-2 px-2 py-1 bg-brand-600 text-white text-[10px] font-bold rounded shadow-md animate-pulse">
+                                        Editing Zone {selectedGroupIdx + 1} - Click map to move
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div>
                 <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center justify-between">
-                    <span>Groups (Buckets)</span>
-                    <button type="button" onClick={() => appendGroup({ id: Date.now(), label: '' })} className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded text-slate-700">+ Add Group</button>
+                    <span>{isV3 ? '3. Drop Zones Data' : 'Groups (Buckets)'}</span>
+                    <button 
+                        type="button" 
+                        onClick={() => {
+                            const newIdx = groupFields.length;
+                            appendGroup({ id: `group_${Date.now()}`, label: '', x: 50, y: 50 });
+                            if (isV3) setSelectedGroupIdx(newIdx);
+                        }} 
+                        className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded text-slate-700"
+                    >
+                        + Add {isV3 ? 'Zone' : 'Group'}
+                    </button>
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                     {groupFields.map((field, index) => (
-                        <div key={field.customId} className="p-3 border border-slate-200 rounded-lg bg-slate-50 relative group">
-                            <button onClick={() => removeGroup(index)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
-                            {/* Register the ID so it persists in form data */}
-                            <input type="hidden" {...register(`drag_groups.${index}.id`)} />
-
-                            <input {...register(`drag_groups.${index}.label`)} placeholder="Group Label" className="w-full text-sm font-medium bg-transparent border-0 border-b border-transparent focus:border-brand-500 px-0 focus:ring-0 mb-2" />
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded bg-slate-200 flex items-center justify-center text-slate-400">
-                                    <ImageIcon className="w-4 h-4" />
+                        <div 
+                            key={field.customId} 
+                            className={cn(
+                                "p-3 border rounded-lg relative group transition-all",
+                                selectedGroupIdx === index ? "border-brand-500 bg-brand-50/50 ring-2 ring-brand-500/10 shadow-sm" : "border-slate-200 bg-slate-50"
+                            )}
+                            onClick={() => isV3 && setSelectedGroupIdx(index)}
+                        >
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeGroup(index);
+                                    if (selectedGroupIdx === index) setSelectedGroupIdx(null);
+                                }} 
+                                className="absolute top-2 right-2 text-slate-400 hover:text-red-500 z-10"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Zone #{index + 1}</label>
+                                    <div className="flex gap-2">
+                                        <input {...register(`drag_groups.${index}.id`)} placeholder="ID" className="w-16 text-[10px] border border-slate-200 rounded px-1.5 py-1 bg-white font-mono" />
+                                        <input {...register(`drag_groups.${index}.label`)} placeholder="Label" className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1 bg-white font-medium" />
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 flex-1">
-                                    <input {...register(`drag_groups.${index}.image`)} placeholder="Image URL (optional)" className="flex-1 text-xs border border-slate-200 rounded px-2 py-1" />
-                                    <MediaSelect onSelect={(url) => setValue(`drag_groups.${index}.image`, url)} />
-                                </div>
+                                
+                                {isV3 ? (
+                                    <div className="grid grid-cols-2 gap-3 p-2 bg-white rounded border border-slate-100 shadow-inner">
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-0.5">X (%)</label>
+                                            <input type="number" step="0.1" {...register(`drag_groups.${index}.x`)} className="w-full text-xs border border-transparent hover:border-slate-200 rounded px-1 py-0.5 font-mono focus:bg-slate-50" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-0.5">Y (%)</label>
+                                            <input type="number" step="0.1" {...register(`drag_groups.${index}.y`)} className="w-full text-xs border border-transparent hover:border-slate-200 rounded px-1 py-0.5 font-mono focus:bg-slate-50" />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded bg-slate-200 flex items-center justify-center text-slate-400">
+                                            <ImageIcon className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <input {...register(`drag_groups.${index}.image`)} placeholder="Image URL (optional)" className="flex-1 text-xs border border-slate-200 rounded px-2 py-1" />
+                                            <MediaSelect onSelect={(url) => setValue(`drag_groups.${index}.image`, url)} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -1634,22 +1958,29 @@ function DragDropForm({ control, register, setValue }) {
                     <span>Draggable Items</span>
                     <button type="button" onClick={() => appendItem({ id: Date.now(), text: '' })} className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded text-slate-700">+ Add Item</button>
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-4">
                     {itemFields.map((field, index) => (
-                        <div key={field.customId} className="flex items-center gap-3 p-2 bg-slate-50 rounded border border-slate-100">
-                            <GripVertical className="w-4 h-4 text-slate-400" />
-                            {/* Register Item ID */}
-                            <input type="hidden" {...register(`drag_items.${index}.id`)} />
+                        <div key={field.customId} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100 group relative">
+                            <button onClick={() => removeItem(index)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+                            
+                            <div className="flex items-center gap-3">
+                                <GripVertical className="w-4 h-4 text-slate-400" />
+                                <input type="hidden" {...register(`drag_items.${index}.id`)} />
+                                <input {...register(`drag_items.${index}.text`)} placeholder="Item Text" className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-sm font-medium" />
+                                <GroupSelector control={control} register={register} index={index} />
+                            </div>
 
-                            <input {...register(`drag_items.${index}.text`)} placeholder="Item Text" className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-sm" />
-                            {/* Use a separate component to access watched groups without re-rendering the whole list constantly? 
-                                Actually, just inline is fine for now, but we need to pass the watched values. 
-                                Let's Pass control to a sub-component or just use generic indices if ID is tricky?
-                                No, use a sub-component for the select so it can useWatch isolate.
-                            */}
-                            <GroupSelector control={control} register={register} index={index} />
-
-                            <button onClick={() => removeItem(index)} className="text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                            <div className="flex items-center gap-3 pl-7">
+                                <div className="flex items-center gap-2 flex-1">
+                                    <ImageIcon className="w-3 h-3 text-slate-400" />
+                                    <input {...register(`drag_items.${index}.imageUrl`)} placeholder="Image URL (optional)" className="flex-1 text-[10px] border border-slate-200 rounded px-2 py-1" />
+                                    <MediaSelect onSelect={(url) => setValue(`drag_items.${index}.imageUrl`, url)} />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-500">Width:</span>
+                                    <input type="number" {...register(`drag_items.${index}.imageWidth`, { valueAsNumber: true })} className="w-16 text-[10px] border border-slate-200 rounded px-2 py-1" placeholder="100" />
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -1710,7 +2041,77 @@ function FourPicsForm({ register, setValue }) {
                 <input {...register('jumbled_letters')} className="w-full border border-slate-300 rounded px-3 py-2 uppercase tracking-widest font-bold text-center" placeholder="ANSWER" />
             </div>
         </div>
-    )
+    );
+}
+
+function ParagraphForm({ register }) {
+    return (
+        <div className="space-y-6">
+            <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Paragraph Template (Markdown)</label>
+                <p className="text-xs text-slate-500 mb-3">Use <strong>[[key]]</strong> for interactive blanks. Supports Markdown and LaTeX ($...$).</p>
+                <textarea 
+                    {...register('paragraph_template')} 
+                    rows={12} 
+                    className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-700 font-mono focus:ring-2 focus:ring-brand-500/20 resize-y leading-relaxed"
+                    placeholder="Two forests have a total of **8,400 trees**... [[step1]]"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Answers Mapping (JSON)</label>
+                <textarea 
+                    {...register('paragraph_answers')} 
+                    rows={6} 
+                    className="w-full border border-slate-300 rounded-xl px-4 py-3 text-xs text-slate-700 font-mono focus:ring-2 focus:ring-brand-500/20"
+                    placeholder='{
+  "step1": { "value": "7200" },
+  "ans": { "value": "4800" }
+}'
+                />
+            </div>
+        </div>
+    );
+}
+
+function InteractiveParagraphRenderer({ template, answers }) {
+    if (!template) return null;
+
+    // Basic Markdown Parser helper (duplicated for local use)
+    const renderMdLocal = (text) => {
+        if (!text) return '';
+        let html = String(text)
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\$(.*?)\$/g, '<code class="bg-slate-100 px-1 rounded text-brand-600 font-serif font-bold">$1</code>')
+            .replace(/\n/g, '<br />');
+        return html;
+    };
+    
+    // Replace [[key]] with input boxes
+    const parts = template.split(/(\[\[.*?\]\])/g);
+    
+    return (
+        <div className="prose prose-slate max-w-none leading-relaxed text-slate-800 text-lg">
+            {parts.map((part, i) => {
+                const match = part.match(/\[\[(.*?)\]\]/);
+                if (match) {
+                    const key = match[1];
+                    return (
+                        <span key={i} className="inline-block relative">
+                            <input 
+                                type="text"
+                                placeholder="?"
+                                className="inline-block border-b-2 border-brand-400 bg-brand-50 mx-1 w-20 text-center font-bold text-brand-700 rounded-sm focus:ring-0 focus:border-brand-600 outline-none transition-all h-8"
+                                readOnly
+                            />
+                        </span>
+                    );
+                }
+                
+                return <span key={i} dangerouslySetInnerHTML={{ __html: renderMdLocal(part) }} />;
+            })}
+        </div>
+    );
 }
 
 // Preview Component
@@ -1745,6 +2146,47 @@ function ArithmeticGridRenderer({ layout }) {
     );
 }
 
+function DragDropV3Preview({ data }) {
+    if (!data.mapUrl) return <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">Please provide a mapUrl to preview the diagram.</div>;
+    
+    return (
+        <div className="relative w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-white">
+            <img src={data.mapUrl} alt="Map" className="w-full h-auto block" />
+            
+            {/* Render drop zones as overlays */}
+            {(data.drag_groups || []).map((group, idx) => (
+                <div 
+                    key={group.id || idx}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 group/zone"
+                    style={{ left: `${group.x}%`, top: `${group.y}%` }}
+                >
+                    {/* The "Zone" marker */}
+                    <div className="w-6 h-6 bg-brand-500/30 border-2 border-brand-600 rounded-full flex items-center justify-center shadow-lg backdrop-blur-[2px] hover:scale-125 transition-transform cursor-help">
+                        <div className="w-2 h-2 bg-brand-600 rounded-full animate-pulse" />
+                    </div>
+                    
+                    {/* The Label */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.5 bg-slate-800 text-white text-[8px] font-bold rounded whitespace-nowrap opacity-0 group-hover/zone:opacity-100 transition-opacity pointer-events-none z-10 uppercase tracking-tighter">
+                        {group.label || `Zone ${idx + 1}`}
+                    </div>
+                </div>
+            ))}
+
+            {/* Draggable items list below map in preview */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200">
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Available Labels</p>
+                <div className="flex flex-wrap gap-2">
+                    {(data.drag_items || []).map((item, idx) => (
+                        <div key={item.id || idx} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 shadow-sm">
+                            {item.text || item.content}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function PartPreview({ part }) {
     if (!part) return null;
     const isVertical = part.isVertical === true;
@@ -1772,10 +2214,34 @@ function PartPreview({ part }) {
         }
 
         if (part.type === 'image') {
+            const cols = parseInt(part.gridColumns);
+            const style = cols ? {
+                display: 'grid',
+                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                gap: '8px',
+                width: 'fit-content',
+                margin: '0 auto'
+            } : {
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px',
+                justifyContent: 'center'
+            };
+
+            const imgWidth = part.width ? (typeof part.width === 'number' ? `${part.width}px` : part.width) : 'auto';
+
             return (
-                <div className="flex flex-wrap gap-2 justify-center">
+                <div style={style}>
                     {Array.from({ length: parseInt(part.count) || 1 }).map((_, idx) => (
-                        <img key={idx} src={part.content || part.imageUrl} className="max-w-full rounded-lg max-h-40 inline-block" alt="" />
+                        <div key={idx} className="flex flex-col items-center">
+                            <img 
+                                src={part.content || part.imageUrl} 
+                                className="max-w-full rounded-lg max-h-40 inline-block" 
+                                style={{ width: imgWidth }}
+                                alt="" 
+                            />
+                            {part.label && <span className="text-[10px] text-slate-500 mt-1">{part.label}</span>}
+                        </div>
                     ))}
                 </div>
             );
@@ -1813,7 +2279,20 @@ function PartPreview({ part }) {
             return <FractionModelRenderer config={part.modelConfig} />;
         }
 
-        return <div dangerouslySetInnerHTML={{ __html: part.content }} />;
+        // Basic Markdown Parser for 'text' parts
+        const renderMarkdown = (text) => {
+            if (!text) return '';
+            let html = String(text)
+                .replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mt-2">$1</h3>')
+                .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mt-3">$1</h2>')
+                .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4">$1</h1>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br />');
+            return html;
+        };
+
+        return <div dangerouslySetInnerHTML={{ __html: renderMarkdown(part.content) }} />;
     };
 
     return (
@@ -1823,12 +2302,114 @@ function PartPreview({ part }) {
     );
 }
 
-function PreviewContent({ data, previewMode = 'mobile' }) {
+function JourneyPreview({ data, previewMode, onCorrect }) {
+    const [currentStepIdx, setCurrentStepIdx] = React.useState(0);
+    const [stepUnlocked, setStepUnlocked] = React.useState(false);
+
+    // Reset progression if data changes significantly
+    React.useEffect(() => {
+        setCurrentStepIdx(0);
+        setStepUnlocked(false);
+    }, [data.id]);
+
+    if (!data.steps || data.steps.length === 0) {
+        return <div className="p-8 text-center text-slate-400 italic">No steps found in this journey.</div>;
+    }
+
+    const currentStep = data.steps[currentStepIdx];
+
+    return (
+        <div className="space-y-8">
+            <div className="p-4 bg-brand-50 rounded-xl border border-brand-100 mb-6 flex justify-between items-center">
+                <div>
+                    <h2 className="text-xl font-bold text-brand-700 flex items-center gap-2">
+                        🗺️ {data.title || 'Untitled Journey'}
+                    </h2>
+                    <p className="text-xs text-brand-500 font-medium uppercase tracking-widest mt-1">
+                        {data.adaptive_config?.theme || 'General'} Theme • Character: {data.adaptive_config?.character_name || 'None'}
+                    </p>
+                </div>
+                <div className="text-right">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
+                    <div className="text-lg font-black text-brand-600">{currentStepIdx + 1} / {data.steps.length}</div>
+                </div>
+            </div>
+            
+            <div className="space-y-12">
+                <div className="relative pl-8 border-l-2 border-dashed border-slate-200 ml-4 pb-4">
+                    <div className="absolute -left-[17px] top-0 w-8 h-8 rounded-full bg-brand-600 border-2 border-white flex items-center justify-center shadow-md">
+                        <span className="text-lg">{currentStep.icon || '📍'}</span>
+                    </div>
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Current Step: {currentStep.label}</h3>
+                    
+                    <div className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm space-y-4">
+                        <PreviewContent 
+                            data={{ 
+                                ...currentStep.question, 
+                                difficulty: data.difficulty,
+                                solutionParts: currentStep.question.solution 
+                            }} 
+                            previewMode={previewMode} 
+                            onCorrect={() => setStepUnlocked(true)}
+                        />
+                    </div>
+
+                    {stepUnlocked && currentStepIdx < data.steps.length - 1 && (
+                        <div className="mt-8 flex justify-center">
+                            <button 
+                                onClick={() => {
+                                    setCurrentStepIdx(currentStepIdx + 1);
+                                    setStepUnlocked(false);
+                                }}
+                                className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg scale-110 active:scale-95"
+                            >
+                                Continue to {data.steps[currentStepIdx + 1].label} 🚀
+                            </button>
+                        </div>
+                    )}
+
+                    {stepUnlocked && currentStepIdx === data.steps.length - 1 && (
+                        <div className="mt-8 p-6 bg-green-50 border-2 border-green-200 rounded-2xl text-center animate-bounce-in">
+                            <div className="text-3xl mb-2">🏆</div>
+                            <h4 className="text-xl font-bold text-green-700">Journey Complete!</h4>
+                            <p className="text-sm text-green-600">Great job, {data.adaptive_config?.character_name || 'student'}!</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function PreviewContent({ data, previewMode = 'mobile', onCorrect }) {
     if (!data) return null;
+
+    const [selectedIdx, setSelectedIdx] = React.useState(null);
+    const [showSolution, setShowSolution] = React.useState(false);
+
+    // Reset state when data changes (important for Journeys)
+    React.useEffect(() => {
+        setSelectedIdx(null);
+        setShowSolution(false);
+    }, [data]);
 
     const isFIB = data.type === 'fillInTheBlank';
     const isSmartTable = data.type === 'smartTable';
     const isAdvancedMath = data.type === 'advanced_math';
+
+    const handleOptionClick = (idx) => {
+        setSelectedIdx(idx);
+        const correct = Array.isArray(data.correct_answer_indices)
+            ? data.correct_answer_indices.includes(idx)
+            : (data.correct_answer_index === idx);
+        
+        if (correct) {
+            setShowSolution(false);
+            if (onCorrect) onCorrect();
+        } else {
+            setShowSolution(true);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -1841,7 +2422,7 @@ function PreviewContent({ data, previewMode = 'mobile' }) {
                     )}>
                         {data.difficulty}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-medium">10 Points</span>
+                    <span className="text-[10px] text-slate-400 font-medium">{data.marks || 1} Points</span>
                 </div>
 
                 <div className="text-slate-900 font-bold text-lg leading-tight space-y-4">
@@ -1852,10 +2433,23 @@ function PreviewContent({ data, previewMode = 'mobile' }) {
 
                     {/* Render Parts */}
                     <div className="flex flex-wrap items-center">
-                        {(isFIB ? data.fib_parts : data.parts)?.map((p, i) => (
+                        {(isFIB && data.logic_type !== 'interactive_paragraph_v1') && data.fib_parts?.map((p, i) => (
+                            <PartPreview key={i} part={p} />
+                        ))}
+                        {(!isFIB) && data.parts?.map((p, i) => (
                             <PartPreview key={i} part={p} />
                         ))}
                     </div>
+
+                    {/* Interactive Paragraph V1 */}
+                    {data.logic_type === 'interactive_paragraph_v1' && (
+                        <div className="mt-4 p-4 border border-slate-100 rounded-2xl bg-white shadow-sm">
+                            <InteractiveParagraphRenderer 
+                                template={data.data_source?.template} 
+                                answers={data.data_source?.answers} 
+                            />
+                        </div>
+                    )}
 
                     {/* Integrated Generator Previews (Show only if not already rendered via parts) */}
                     {isSmartTable && !data.parts?.some(p => p.type === 'smartTable') && data.smart_table_json && (
@@ -1904,26 +2498,57 @@ function PreviewContent({ data, previewMode = 'mobile' }) {
                         "grid gap-3",
                         previewMode === 'web' && !data.is_vertical ? "grid-cols-2" : "grid-cols-1"
                     )}>
-                        {data.options?.map((opt, i) => (
-                            <div key={i} className={cn(
-                                "relative p-4 rounded-xl border-2 transition-all",
-                                opt.isCorrect ? "border-green-500 bg-green-50/50 shadow-sm" : "border-slate-200 bg-white"
-                            )}>
-                                <div className="flex flex-wrap items-center">
-                                    {(opt.parts || []).map((p, idx) => (
-                                        <PartPreview key={idx} part={p} />
-                                    ))}
-                                </div>
-
-                                {opt.isCorrect && (
-                                    <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full shadow-lg">
-                                        <Check className="w-3 h-3" />
+                        {data.options?.map((opt, i) => {
+                            const isAnswer = Array.isArray(data.correct_answer_indices)
+                                ? data.correct_answer_indices.includes(i)
+                                : (data.correct_answer_index === i);
+                            
+                            const isUserSelected = selectedIdx === i;
+                            const isWrongSelection = isUserSelected && !isAnswer;
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => handleOptionClick(i)}
+                                    className={cn(
+                                        "p-4 rounded-2xl border-2 text-left transition-all relative group",
+                                        isAnswer && (selectedIdx !== null) ? "border-green-500 bg-green-50" :
+                                        isWrongSelection ? "border-red-500 bg-red-50" :
+                                        "border-slate-100 bg-slate-50 hover:border-brand-200 hover:bg-brand-50/30"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0",
+                                            isAnswer && (selectedIdx !== null) ? "bg-green-500 border-green-500 text-white" :
+                                            isWrongSelection ? "bg-red-500 border-red-500 text-white" :
+                                            "border-slate-200 text-slate-400 group-hover:border-brand-300"
+                                        )}>
+                                            {String.fromCharCode(65 + i)}
+                                        </div>
+                                        <div className="flex-1 font-semibold text-slate-700">
+                                            {Array.isArray(opt) ? (
+                                                <div className="flex flex-wrap items-center">
+                                                    {opt.map((p, pi) => <PartPreview key={pi} part={p} />)}
+                                                </div>
+                                            ) : (typeof opt === 'string' ? opt : (opt.parts ? (
+                                                <div className="flex flex-wrap items-center">
+                                                    {opt.parts.map((p, pi) => <PartPreview key={pi} part={p} />)}
+                                                </div>
+                                            ) : 'Option'))}
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
+
+                {data.type === 'dragAndDropv3' && (
+                    <div className="mt-4">
+                        <DragDropV3Preview data={data} />
+                    </div>
+                )}
+
 
                 {(data.type === 'fillInTheBlank' || data.type === 'smartTable' || data.type === 'advanced_math' || data.type === 'shadeGrid') && (
                     <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100 text-center text-xs text-brand-600 font-medium">
@@ -1967,6 +2592,10 @@ function PreviewContent({ data, previewMode = 'mobile' }) {
                             </div>
                         ))}
                     </div>
+                )}
+
+                {data.type === 'journey_v1' && (
+                    <JourneyPreview data={data} previewMode={previewMode} />
                 )}
 
                 {data.type === 'fourPicsOneWord' && (
@@ -2016,15 +2645,23 @@ function PreviewContent({ data, previewMode = 'mobile' }) {
                     </div>
                 )}
 
-                {/* Solution Preview */}
-                {(data.solutionParts && data.solutionParts.length > 0) && (
-                    <div className="mt-12 p-6 bg-orange-50/30 rounded-2xl border border-orange-100/50 space-y-3">
-                        <div className="flex items-center gap-2 text-orange-600 mb-2">
+                {/* Solution Preview - Now conditional on selection or forced show */}
+                {(showSolution || (data.solutionParts && data.solutionParts.length > 0)) && (
+                    <div className={cn(
+                        "mt-12 p-6 rounded-2xl border transition-all duration-500",
+                        showSolution ? "bg-red-50 border-red-100 ring-2 ring-red-100" : "bg-orange-50/30 border-orange-100/50"
+                    )}>
+                        <div className={cn(
+                            "flex items-center gap-2 mb-2",
+                            showSolution ? "text-red-600" : "text-orange-600"
+                        )}>
                              <Zap className="w-4 h-4 fill-current" />
-                             <span className="text-[10px] font-black uppercase tracking-widest">Solution Explanation</span>
+                             <span className="text-[10px] font-black uppercase tracking-widest">
+                                {showSolution ? "Incorrect! Feedback:" : "Solution Explanation"}
+                             </span>
                         </div>
                         <div className="text-slate-700 leading-relaxed font-medium">
-                            {data.solutionParts.map((p, i) => (
+                            {data.solutionParts?.map((p, i) => (
                                 <PartPreview key={i} part={p} />
                             ))}
                         </div>

@@ -42,14 +42,10 @@ const QUESTION_TEMPLATES = {
                     "type": "mcq",
                     "is_multi_select": false,
                     "is_vertical": true,
-                    "parts": [
-                        { "type": "text", "content": "Question text here", "isVertical": false }
-                    ],
+                    "question_text": "Question text here",
                     "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
                     "correct_answer_index": 0,
-                    "solutionParts": [
-                        { "type": "text", "content": "Brief explanation of the correct answer", "isVertical": true }
-                    ]
+                    "solution": "Brief explanation of the correct answer"
                 }
             },
             {
@@ -676,17 +672,29 @@ export function AutoQuestionGenerator() {
                 target_group_id: di.target_group_id || di.targetGroupId || di.group_id || ''
             }));
 
+            // Handle options normalization (Simple strings vs Rich objects)
+            let finalOptions = q.options || [];
+            const isAllSimpleText = Array.isArray(finalOptions) && finalOptions.every(o => typeof o === 'string');
+            
+            // If the incoming options are objects with parts (like from CreateQuestion), normalize them
+            if (!isAllSimpleText && Array.isArray(finalOptions)) {
+                const areObjectsWithParts = finalOptions.every(o => o.parts);
+                if (areObjectsWithParts) {
+                    finalOptions = finalOptions.map(o => o.parts[0]?.content || '');
+                }
+            }
+
             const payload = {
                 micro_skill_id: selectedMicroSkill,
                 type: type,
                 difficulty: (q.difficulty || 'medium').toLowerCase(),
                 question_text: q.question_text || q.questionText || '',
                 parts: q.parts || [],
-                options: q.options || [],
+                options: finalOptions,
                 correct_answer_index: q.correct_answer_index ?? q.correctAnswerIndex ?? -1,
                 correct_answer_indices: (q.is_multi_select || q.isMultiSelect) ? (Array.isArray(q.correct_answer_index) ? q.correct_answer_index : [q.correct_answer_index]) : null,
                 correct_answer_text: typeof correctAnswerText === 'object' ? JSON.stringify(correctAnswerText) : correctAnswerText,
-                solution: q.solution || q.solution_text || q.solutionText || JSON.stringify(q.solutionParts || []),
+                solution: q.solution || q.solution_text || q.solutionText || (Array.isArray(q.solutionParts) ? JSON.stringify(q.solutionParts) : q.solution),
                 marks: parseInt(q.marks) || 1,
                 complexity: parseInt(q.complexity) || 5,
                 is_vertical: q.is_vertical ?? q.isVertical ?? true,

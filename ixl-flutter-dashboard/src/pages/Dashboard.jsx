@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Upload, Copy } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Upload, Copy, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api as supabase } from '../lib/apiClient';
 
@@ -307,6 +307,13 @@ export function Dashboard() {
                         Import JSON
                     </Link>
                     <Link
+                        to="/division-journey"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+                    >
+                        <Sparkles className="w-5 h-5" />
+                        Division Journey
+                    </Link>
+                    <Link
                         to="/create"
                         className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
                     >
@@ -452,13 +459,14 @@ export function Dashboard() {
                                             q.type === 'mcq' && "bg-blue-50 text-blue-700 border-blue-100",
                                             q.type === 'dragAndDrop' && "bg-purple-50 text-purple-700 border-purple-100",
                                             q.type === 'sorting' && "bg-orange-50 text-orange-700 border-orange-100",
-                                            q.type === 'fillInTheBlank' && "bg-teal-50 text-teal-700 border-teal-100",
+                                            q.type === 'fillInTheBlank' && q.logic_type === 'division_journey_v1' && "bg-indigo-600 text-white border-indigo-700",
+                                            q.type === 'fillInTheBlank' && q.logic_type !== 'division_journey_v1' && "bg-teal-50 text-teal-700 border-teal-100",
                                             q.type === 'fourPicsOneWord' && "bg-pink-50 text-pink-700 border-pink-100",
                                             q.type === 'imageChoice' && "bg-indigo-50 text-indigo-700 border-indigo-100",
                                             q.type === 'template' && "bg-emerald-50 text-emerald-700 border-emerald-100",
                                             (!['mcq', 'dragAndDrop', 'sorting', 'fillInTheBlank', 'fourPicsOneWord', 'imageChoice', 'template'].includes(q.type)) && "bg-slate-100 text-slate-700 border-slate-200"
                                         )}>
-                                            {q.type?.replace(/([A-Z])/g, ' $1').trim().toUpperCase() || 'UNKNOWN'}
+                                            {q.logic_type === 'division_journey_v1' ? 'DIVISION JOURNEY' : (q.type?.replace(/([A-Z])/g, ' $1').trim().toUpperCase() || 'UNKNOWN')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">

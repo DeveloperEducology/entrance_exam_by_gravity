@@ -1,0 +1,66 @@
+{
+  "id": "practice-simplify-fractions-multimedia-001",
+  "type": "fillInTheBlank",
+  "micro_skill_id": "01aa9954-5b43-4850-a1e9-5a5d50d0de7f",
+  "logic_type": "interactive_paragraph_v1",
+  "questionText": "Master fraction simplification using visuals and logic.",
+  "data_source": {
+    "parts": [
+      {
+        "type": "text",
+        "content": "### Visualizing \\( \\frac{4}{8} \\)\nTo simplify a fraction, we are looking for a way to describe the same 'amount' using smaller numbers.",
+        "isVertical": true
+      },
+      {
+        "type": "image",
+        "content": "https://img.icons8.com/fluency/48/pizza.png",
+        "width": 40,
+        "count": 4,
+        "label": "Numerator (4 parts)",
+        "isVertical": true
+      },
+      {
+        "type": "image",
+        "content": "https://img.icons8.com/color/48/pizza-half-done.png",
+        "width": 30,
+        "count": 8,
+        "label": "Denominator (8 parts total)",
+        "isVertical": true
+      },
+      {
+        "type": "markdown",
+        "content": "---\n### Step 1: Strategy\nWhat is the **Greatest Common Factor (GCF)** that divides both 4 and 8?\n[[gcf_mcq]]",
+        "isVertical": true
+      },
+      {
+        "type": "svg",
+        "content": "<svg width='200' height='40' viewBox='0 0 200 40'><rect x='0' y='0' width='100' height='40' fill='#bfdbfe' stroke='#1e40af' stroke-width='2'/><rect x='100' y='0' width='100' height='40' fill='none' stroke='#1e40af' stroke-width='2'/><text x='50' y='25' font-family='Arial' font-size='12' text-anchor='middle' fill='#1e40af'>1/2</text><text x='150' y='25' font-family='Arial' font-size='12' text-anchor='middle' fill='#1e40af'>1/2</text></svg>",
+        "label": "Goal: Reach the simplest 1/2 ratio",
+        "isVertical": true
+      },
+      {
+        "type": "markdown",
+        "content": "### Step 2: Calculation\nDivide both numbers by your chosen GCF:\n\n\\( \\frac{4 \\div 4}{8 \\div 4} = \\frac{[[simp_num]]}{[[simp_den]]} \\)",
+        "isVertical": true
+      }
+    ],
+    "answers": {
+      "gcf_mcq": {
+        "type": "mcq",
+        "options": [
+          { "label": "2", "value": "2" },
+          { "label": "4 (Greatest)", "value": "4" }
+        ],
+        "value": "4"
+      },
+      "simp_num": { "value": "1", "size": "one-digit" },
+      "simp_den": { "value": "2", "size": "one-digit" }
+    }
+  },
+  "adaptiveConfig": {
+    "logic_type": "interactive_paragraph_v1",
+    "guidedMode": true,
+    "instantFeedback": true,
+    "showKeypad": true
+  }
+}

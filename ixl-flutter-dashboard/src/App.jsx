@@ -17,6 +17,7 @@ import { WYSIWYGEditor } from './pages/WYSIWYGEditor';
 import EquationReference from './pages/EquationReference';
 import { JsonView } from './pages/JsonView';
 import { QuestionSchemaDocs } from './pages/QuestionSchemaDocs';
+import { DivisionJourneyForm } from './pages/DivisionJourneyForm';
 
 
 function App() {
@@ -31,6 +32,8 @@ function App() {
           <Route path="equation-reference" element={<EquationReference />} />
           <Route path="import" element={<JsonImport />} />
           <Route path="docs" element={<Documentation />} />
+          <Route path="division-journey" element={<DivisionJourneyForm />} />
+          <Route path="division-journey/:id" element={<DivisionJourneyForm />} />
 
           <Route path="grades" element={<ResourceList title="Grades" tableName="grades" columns={['id', 'name', 'sort_order', 'color_hex']} sortBy="sort_order" sortAscending={true} />} />
 
