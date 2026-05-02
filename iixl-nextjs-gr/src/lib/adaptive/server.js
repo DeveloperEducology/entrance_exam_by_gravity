@@ -946,6 +946,19 @@ export function detectMisconceptionCode({ question, answer, isCorrect }) {
 
   if (type === 'fillintheblank' || type === 'textinput' || type === 'measure' || type === 'table' || type === 'smarttable') {
     const expectedRaw = question.correctAnswerText;
+    
+    // Check for explicit misconceptions defined in the template config
+    if (Array.isArray(config.misconceptions)) {
+      const normalizedInput = typeof answer === 'object' && answer !== null
+        ? String(Object.values(answer)[0] || '').trim().toLowerCase()
+        : String(answer || '').trim().toLowerCase();
+
+      const matched = config.misconceptions.find(m => 
+        String(m.answer || m.value || '').trim().toLowerCase() === normalizedInput
+      );
+      if (matched) return String(matched.code || matched.misconceptionCode);
+    }
+
     const expectedNumeric = parseNumber(expectedRaw);
     const actualNumeric = parseNumber(
       typeof answer === 'object' && answer !== null

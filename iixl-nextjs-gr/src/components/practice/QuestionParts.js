@@ -26,6 +26,7 @@ import rehypeRaw from 'rehype-raw';
 import MermaidRenderer from './MermaidRenderer';
 import RoughRenderer from './RoughRenderer';
 import JSXGraphRenderer from './JSXGraphRenderer';
+import P5Renderer from './P5Renderer';
 
 /**
  * @typedef {Object} QuestionPart
@@ -935,6 +936,10 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'jsxgraph':
                 return <JSXGraphRenderer {...part.config} />;
 
+            case 'p5_lab':
+            case 'p5lab':
+                return <P5Renderer {...part.config} />;
+
             default:
                 return null;
         }
@@ -942,6 +947,7 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
 
     const renderPart = (part, index) => {
         const content = renderPartContent(part, index);
+        console.log(`[QUESTION_PARTS] Part index ${index}, type: ${part.type}, hasContent: ${!!content}`);
         if (content === null) return null;
 
         const isVertical = Boolean(part?.isVertical ?? defaultVertical);

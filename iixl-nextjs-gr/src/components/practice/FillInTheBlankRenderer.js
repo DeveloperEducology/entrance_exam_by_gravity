@@ -23,6 +23,7 @@ import MCQRenderer from './MCQRenderer';
 import MermaidRenderer from './MermaidRenderer';
 import RoughRenderer from './RoughRenderer';
 import JSXGraphRenderer from './JSXGraphRenderer';
+import P5Renderer from './P5Renderer';
 
 function InlineLatexBlanks({
     part,
@@ -2193,6 +2194,21 @@ export default function FillInTheBlankRenderer({
 
             case 'jsxgraph':
                 return wrapPart(part, index, <JSXGraphRenderer {...part.config} />);
+
+            case 'p5_lab':
+            case 'p5lab':
+                return wrapPart(part, index, (
+                    <P5Renderer 
+                        {...part.config} 
+                        onStateChange={(state) => {
+                            if (state.dotsCount !== undefined) {
+                                // Report dotsCount as the answer for the specific part if it has an ID, 
+                                // otherwise report to a default field
+                                handleInputChange(part.id || 'dotsCount', String(state.dotsCount));
+                            }
+                        }}
+                    />
+                ));
 
             case 'pictureEquation':
                 return wrapPart(part, index, renderPictureEquation(part));

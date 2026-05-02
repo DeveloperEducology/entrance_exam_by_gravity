@@ -30,11 +30,19 @@ export function hydrateNode(node, templateVars) {
 export function instantiateTemplate(question, overrideVariables = null) {
   if (!question) return question;
 
-  const logic = question.logic_type || question.adaptiveConfig?.logic_type || question.adaptiveConfig?.logic;
+  const logic = question.logic_type || question.logicType || question.adaptiveConfig?.logic_type || question.adaptiveConfig?.logicType || question.adaptiveConfig?.logic;
   if (!logic) return question;
 
   let inst = JSON.parse(JSON.stringify(question));
   inst.adaptiveConfig = inst.adaptiveConfig || {};
+
+  // 1. Generate unique instance metadata immediately to provide a stable seed
+  if (!overrideVariables) {
+    const ts = Date.now();
+    const rd = Math.floor(Math.random() * 1000000);
+    inst.id = `inst_${question.id || question.template_id || 'tpl'}_${ts}_${rd}`;
+    inst.created_at = new Date().toISOString();
+  }
 
   // Merge override variables if provided (critical for server-side validation desync)
   if (overrideVariables && typeof overrideVariables === 'object') {
@@ -11011,6 +11019,507 @@ if (logic === 'digit_arrangement_v1') {
       });
     }
   }
+  if (logic === 'pattern_discovery_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    const seedStr = String(inst.id || inst.template_id || Date.now() + Math.random());
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed += seedStr.charCodeAt(i);
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    // Supported Modes: all_ones, counting, odd, even, triangular, square
+    const modes = ['all_ones', 'counting', 'odd', 'even', 'triangular', 'square'];
+    const mode = vars.mode || modes[Math.floor(seededRandom() * modes.length)];
+    // Step in the pattern (1 to 5)
+    const n = vars.n || (Math.floor(seededRandom() * 5) + 1); 
+    
+    // Save these back so they are locked for the student
+    if (!inst.adaptiveConfig) inst.adaptiveConfig = { variables: {} };
+    if (!inst.adaptiveConfig.variables) inst.adaptiveConfig.variables = {};
+    inst.adaptiveConfig.variables.mode = mode;
+    inst.adaptiveConfig.variables.n = n;
+    
+    const shapes = [];
+    const spacing = 35;
+    const padding = 50;
+    let answer = 0;
+    let title = "";
+
+    if (mode === 'all_ones') {
+      title = "All 1's";
+      shapes.push({ type: 'circle', x: padding, y: padding, diameter: 20, color: '#10b981', fill: '#10b981', options: { fillStyle: 'solid' } });
+      answer = 1;
+    } else if (mode === 'counting') {
+      title = "Counting Numbers";
+      for (let i = 0; i < n; i++) {
+        shapes.push({ type: 'circle', x: padding + (i * spacing), y: padding, diameter: 20, color: '#ef4444', fill: '#ef4444', options: { fillStyle: 'solid' } });
+      }
+      answer = n;
+    } else if (mode === 'even') {
+      title = "Even Numbers";
+      for (let i = 0; i < n; i++) {
+        shapes.push({ type: 'circle', x: padding + (i * spacing), y: padding, diameter: 18, color: '#22c55e', fill: '#22c55e', options: { fillStyle: 'solid' } });
+        shapes.push({ type: 'circle', x: padding + (i * spacing), y: padding + spacing, diameter: 18, color: '#22c55e', fill: '#22c55e', options: { fillStyle: 'solid' } });
+      }
+      answer = n * 2;
+    } else if (mode === 'odd') {
+      title = "Odd Numbers";
+      const pairs = n - 1;
+      for (let i = 0; i < pairs; i++) {
+        shapes.push({ type: 'circle', x: padding + (i * spacing), y: padding, diameter: 18, color: '#0ea5e9', fill: '#0ea5e9', options: { fillStyle: 'solid' } });
+        shapes.push({ type: 'circle', x: padding + (i * spacing), y: padding + spacing, diameter: 18, color: '#0ea5e9', fill: '#0ea5e9', options: { fillStyle: 'solid' } });
+      }
+      shapes.push({ type: 'circle', x: padding + (pairs * spacing), y: padding + (spacing/2), diameter: 18, color: '#0ea5e9', fill: '#0ea5e9', options: { fillStyle: 'solid' } });
+      answer = (n * 2) - 1;
+    } else if (mode === 'triangular') {
+      title = "Triangular Numbers";
+      for (let r = 1; r <= n; r++) {
+        for (let c = 1; c <= r; c++) {
+          const x = padding + (c * spacing) - (r * spacing / 2) + (n * spacing / 2);
+          const y = padding + (r * spacing);
+          shapes.push({ type: 'circle', x, y, diameter: 18, color: '#b91c1c', fill: '#b91c1c', options: { fillStyle: 'solid' } });
+          answer++;
+        }
+      }
+    } else if (mode === 'square') {
+      title = "Square Numbers";
+      const sqs = 35;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          shapes.push({ type: 'rectangle', x: padding + (c * sqs), y: padding + (r * sqs), w: sqs, h: sqs, color: '#4f57ff', fill: '#f59e0b', options: { fillStyle: 'solid', strokeWidth: 2 } });
+        }
+      }
+      answer = n * n;
+    }
+
+    inst.type = 'fillInTheBlank';
+    inst.parts = [
+      { type: 'text', content: `### Pattern Discovery: ${title}\nLook at the visual pattern for step **${n}**.`, isVertical: true },
+      { type: 'rough', config: { width: 500, height: 300, shapes, seed: seededRandom() }, isVertical: true },
+      { type: 'text', content: `How many units are in this pattern? [[ans]]` }
+    ];
+
+    inst.correct_answer_text = JSON.stringify({ ans: String(answer) });
+    inst.correctAnswerText = inst.correct_answer_text;
+    inst.show_submit_button = true;
+
+    inst.explanation = [{
+      type: "text",
+      content: `### Pattern Solution:
+      
+This is the **${title}** pattern at step **${n}**.
+Following the pattern rule, we have a total of **${answer}** units.`,
+      isVertical: true
+    }];
+    inst.solution = inst.explanation;
+  }
+  if (logic === 'pattern_dimension_mcq_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    
+    // Pick a square dimension (3x3 to 6x6)
+    const n = vars.n || (Math.floor(Math.random() * 4) + 3);
+    
+    if (!inst.adaptiveConfig) inst.adaptiveConfig = { variables: {} };
+    if (!inst.adaptiveConfig.variables) inst.adaptiveConfig.variables = {};
+    inst.adaptiveConfig.variables.n = n;
+
+    // STABLE SEED: Use template_id + n to ensure shuffle is identical on server/client
+    const seedStr = String(inst.template_id || 'static') + "_" + n;
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed += seedStr.charCodeAt(i);
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    
+    const shapes = [];
+    const s = 30;
+    const padding = 40;
+
+    // Render the n x n grid
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        shapes.push({ 
+          type: 'circle', 
+          x: padding + (c * s), 
+          y: padding + (r * s), 
+          diameter: 16, 
+          color: '#4f57ff', 
+          fill: '#4f57ff', 
+          options: { fillStyle: 'solid' } 
+        });
+      }
+    }
+
+    inst.type = 'mcq';
+    inst.parts = [
+      { type: 'text', content: `### Dimension Discovery\nWhat are the dimensions of this pattern?`, isVertical: true },
+      { type: 'rough', config: { width: 400, height: 300, shapes, seed: seededRandom() }, isVertical: true }
+    ];
+
+    // Generate Options
+    const correct = `${n} × ${n}`;
+    const distractors = [
+      `${n} × ${n+1}`,
+      `${n+1} × ${n}`,
+      `${n-1} × ${n}`
+    ];
+    
+    // DETERMINISTIC SHUFFLE (Fisher-Yates)
+    const allOptions = [correct, ...distractors];
+    for (let i = allOptions.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom() * (i + 1));
+      [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
+    }
+
+    inst.options = allOptions.map(label => ([{ type: 'text', content: label }]));
+    inst.correct_answer_index = allOptions.indexOf(correct);
+    inst.correctAnswerIndex = inst.correct_answer_index;
+    inst.correct_answer_text = correct; // Extra safety for some renderers
+    inst.correctAnswerText = correct;
+
+    inst.explanation = [{
+      type: "text",
+      content: `### Dimension Solution:
+      
+Count the rows and columns:
+- There are **${n}** rows.
+- There are **${n}** columns.
+
+The dimensions are **${n} × ${n}**!`,
+      isVertical: true
+    }];
+    inst.solution = inst.explanation;
+  }
+
+  if (logic === 'pattern_recognition_mcq_v1' || logic === 'pattern_recognition_mcq_v2') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    // Step n (3 to 5)
+    const n = vars.n || (Math.floor(Math.random() * 3) + 3);
+    
+    if (!inst.adaptiveConfig) inst.adaptiveConfig = { variables: {} };
+    if (!inst.adaptiveConfig.variables) inst.adaptiveConfig.variables = {};
+    inst.adaptiveConfig.variables.n = n;
+
+    const seedStr = String(inst.template_id || 'static') + "_" + n + "_vis";
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed += seedStr.charCodeAt(i);
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    const generateGridShapes = (rows, cols, color) => {
+      const shapes = [];
+      const s = 22;
+      const p = 25;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          shapes.push({ type: 'circle', x: p + (c * s), y: p + (r * s), diameter: 12, color, fill: color, options: { fillStyle: 'solid' } });
+        }
+      }
+      return shapes;
+    };
+
+    inst.type = 'mcq';
+    inst.isGrid = true; // Force grid layout for visual options
+    inst.questionText = `Which visual shows a **${n} × ${n}** square pattern?`;
+    
+    inst.parts = [
+      { type: 'text', content: `### Pattern Recognition\nWhich visual shows a **${n} × ${n}** square pattern?`, isVertical: true }
+    ];
+
+    console.log(`[DEBUG] pattern_recognition_mcq_v1: n=${n}, optionsCount=${allOptions.length}`);
+
+    // Correct Option
+    const correctShapes = generateGridShapes(n, n, '#4f57ff');
+    const optCorrect = [{ type: 'rough', config: { width: 160, height: 160, shapes: correctShapes, seed: seededRandom() } }];
+
+    // Distractors
+    const dist1 = [{ type: 'rough', config: { width: 160, height: 160, shapes: generateGridShapes(n, n+1, '#64748b'), seed: seededRandom() } }];
+    const dist2 = [{ type: 'rough', config: { width: 160, height: 160, shapes: generateGridShapes(n+1, n, '#64748b'), seed: seededRandom() } }];
+    const dist3 = [{ type: 'rough', config: { width: 160, height: 160, shapes: generateGridShapes(n-1, n, '#64748b'), seed: seededRandom() } }];
+
+    const allOptions = [
+      { content: optCorrect, id: 'correct' },
+      { content: dist1, id: 'd1' },
+      { content: dist2, id: 'd2' },
+      { content: dist3, id: 'd3' }
+    ];
+
+    // Deterministic Shuffle
+    for (let i = allOptions.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom() * (i + 1));
+      [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
+    }
+
+    inst.options = allOptions.map(o => o.content);
+    inst.correct_answer_index = allOptions.findIndex(o => o.id === 'correct');
+    inst.correctAnswerIndex = inst.correct_answer_index;
+
+    inst.explanation = [{
+      type: "text",
+      content: `### Recognition Solution:
+      
+To find the **${n} × ${n}** pattern:
+1. Count the dots going **across** (columns).
+2. Count the dots going **down** (rows).
+
+The correct pattern has ${n} dots in both directions!`,
+      isVertical: true
+    }];
+    inst.solution = inst.explanation;
+  }
+
+  if (logic === 'p5_pattern_builder_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    const n = vars.n || (Math.floor(Math.random() * 3) + 4);
+    const targetCount = n * n;
+
+    inst.type = 'fillInTheBlank';
+    inst.questionText = `Interactive Lab: Build a **${n} × ${n}** square pattern on the grid.`;
+    
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `### Pattern Lab: Construction\nUse the interactive grid below to build a **${n} × ${n}** square pattern.`, 
+        isVertical: true 
+      },
+      {
+        type: 'p5_lab',
+        config: {
+          width: 400,
+          height: 400,
+          mode: 'pattern_lab',
+          config: {
+            n: n,
+            gridSize: 40
+          }
+        }
+      }
+    ];
+
+    inst.correctAnswerText = String(targetCount);
+    inst.validation = {
+      type: 'numeric',
+      field: 'dotsCount'
+    };
+
+    inst.explanation = [
+      {
+        type: "text",
+        content: `### Lab Solution:
+        
+To build a **${n} × ${n}** square:
+1. You need **${n}** dots in each row.
+2. You need **${n}** dots in each column.
+3. Total dots to place = **${n * n}**.`,
+        isVertical: true
+      }
+    ];
+    inst.solution = inst.explanation;
+  }
+
+  if (logic === 'p5_angle_measurement_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    const targetAngle = vars.targetAngle || (Math.floor(Math.random() * 9) * 10 + 30); // 30 to 110
+    const variants = ['scissors', 'clock', 'laptop', 'roof'];
+    const variant = vars.variant || variants[Math.floor(Math.random() * variants.length)];
+
+    let defaultObjectName = "the object";
+    if (variant === 'scissors') defaultObjectName = "the opening angle of the scissors";
+    else if (variant === 'clock') defaultObjectName = "the angle between the clock hands";
+    else if (variant === 'laptop') defaultObjectName = "the angle of the laptop screen";
+    else if (variant === 'roof') defaultObjectName = "the slanted roof line";
+
+    const objectName = vars.objectName || defaultObjectName;
+    
+    // Only set if not already specific in JSON or if user wants to use variable injection
+    if (!inst.questionText || inst.questionText === "Measure the angle.") {
+      inst.questionText = `Measure ${objectName} using the virtual protractor.`;
+    }
+
+    inst.type = 'fillInTheBlank';
+    
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Align the **red center** of the protractor with the vertex (pivot point) of ${objectName}.`, 
+        isVertical: true 
+      },
+      {
+        type: 'p5_lab',
+        config: {
+          width: 500,
+          height: 400,
+          mode: 'angle_lab',
+          config: {
+            targetAngle: targetAngle,
+            variant: variant,
+            imageUrl: vars.imageUrl,
+            imageWidth: vars.imageWidth,
+            imageHeight: vars.imageHeight
+          }
+        }
+      },
+      {
+        type: 'text',
+        content: `Measured angle: [[angle]]°`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ angle: String(targetAngle) });
+    inst.validation = {
+      type: 'fillInTheBlank'
+    };
+
+    inst.explanation = [
+      {
+        type: "text",
+        content: `### Measurement Solution:
+        
+1. Align the **center** of the protractor with the vertex.
+2. Align the **0° line** with the base line.
+3. Read the scale where the slanted line passes through.
+        
+The angle is **${targetAngle}°**.`,
+        isVertical: true
+      }
+    ];
+    inst.solution = inst.explanation;
+  }
+
+  if (logic === 'p5_line_measurement_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    const targetLength = vars.targetLength || (Math.floor(Math.random() * 7) + 8); // 8 to 14 cm
+
+    inst.type = 'fillInTheBlank';
+    inst.questionText = `Use the transparent ruler to measure the length of the dark line.`;
+    
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `### Ruler Lab\nAlign the **0** mark of the ruler with the start of the line and read the measurement at the end.`, 
+        isVertical: true 
+      },
+      {
+        type: 'p5_lab',
+        config: {
+          width: 500,
+          height: 300,
+          mode: 'ruler_lab',
+          config: {
+            targetLength: targetLength
+          }
+        }
+      },
+      {
+        type: 'text',
+        content: `Length of the line: [[length]] cm`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ length: String(targetLength) });
+    inst.validation = {
+      type: 'fillInTheBlank'
+    };
+
+    inst.explanation = [
+      {
+        type: "text",
+        content: `### Measurement Solution:
+        
+1. Drag the ruler so the **0** mark aligns with the left end of the line.
+2. Ensure the ruler is **level** (horizontal) with the line.
+3. Look at the right end of the line and read the number on the ruler.
+        
+The length is **${targetLength} cm**.`,
+        isVertical: true
+      }
+    ];
+    inst.solution = inst.explanation;
+  }
+
+  if (logic === 'linear_equation_analysis_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    const seedStr = String(inst.id || inst.template_id || 'static');
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) seed += seedStr.charCodeAt(i);
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    // Generate random but "nice" m and b (integers for easy reading)
+    const m = Math.floor(seededRandom() * 3) + 1; // Slope 1 to 3
+    const b = Math.floor(seededRandom() * 5) - 2; // Intercept -2 to 2
+    
+    // Points for the graph
+    const p1 = [0, b];
+    const p2 = [2, (2 * m) + b];
+
+    inst.type = 'fillInTheBlank';
+    inst.parts = [
+      {
+        type: 'text',
+        content: `### Linear Equations\nFind the equation of the blue line in the form **$y = mx + b$**.`,
+        isVertical: true
+      },
+      {
+        type: 'jsxgraph',
+        config: {
+          width: 500, height: 400, boundingBox: [-5, 10, 10, -5],
+          elements: [
+            { id: "p1", type: "point", params: p1, options: { fixed: true, name: `(0, ${b})` } },
+            { id: "p2", type: "point", params: p2, options: { fixed: true, name: `(2, ${(2 * m) + b})` } },
+            { type: "line", params: ["p1", "p2"], options: { strokeColor: "#4f57ff", strokeWidth: 3 } }
+          ]
+        },
+        isVertical: true
+      },
+      {
+        type: 'text',
+        content: `$m = [[m]]$ , $b = [[b]]$\n\nEquation: $y = [[m]]x + [[b]]$`
+      }
+    ];
+    
+    inst.correct_answer_text = JSON.stringify({ m: String(m), b: String(b) });
+    inst.correctAnswerText = inst.correct_answer_text;
+    inst.show_submit_button = true;
+    inst.showSubmitButton = true;
+
+    // Standardized Walkthrough Format
+    const walkthrough = [
+      {
+        type: "text",
+        content: `### How to find the equation of a line:
+      
+**Step 1: Find the y-intercept ($b$)**
+Look at the vertical line in the center. Where does our blue line cross it?
+It crosses at **${b}**. So, $b = ${b}$.
+
+**Step 2: Find the Slope ($m$)**
+The slope is just how "steep" the line is. Let's see how much it goes **UP** for every step we take to the **RIGHT**:
+* From $(0, ${b})$, if we go right 2 steps, we go up to ${(2 * m) + b}$.
+* That's a jump of **${2 * m}** up for **2** steps right.
+* $\\text{Slope} (m) = \\frac{\\text{Rise}}{\\text{Run}} = \\frac{${2 * m}}{2} = **${m}**$.
+
+**Step 3: Put it all together!**
+We use the formula: $y = mx + b$
+$y = ${m}x + ${b}$`,
+        isVertical: true
+      }
+    ];
+
+    // Populate all possible fields to ensure the UI picks it up
+    inst.explanation = walkthrough;
+    inst.solution = walkthrough;
+    inst.steps = walkthrough;
+  }
   if (logic === 'adaptive_division_scaffolding_v1') {
     const vars = inst.adaptiveConfig?.variables || {};
     
@@ -11166,12 +11675,6 @@ if (logic === 'digit_arrangement_v1') {
   }
 
   // Always provide a unique instance ID if it was hydrated from a template
-  if (!overrideVariables) {
-    const ts = Date.now();
-    const rd = Math.floor(Math.random() * 100000);
-    inst.id = `inst_${question.id || question.template_id || 'tpl'}_${ts}_${rd}`;
-  }
-
   // Final Type Safety: Never return "template" as the type to the renderer
   if ((inst.type === 'template' || !inst.type) && (inst.logic_type || inst.adaptiveConfig?.logic_type)) {
     inst.type = 'fillInTheBlank';

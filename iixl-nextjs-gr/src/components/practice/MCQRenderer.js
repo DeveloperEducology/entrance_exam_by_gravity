@@ -67,7 +67,7 @@ export default function MCQRenderer({
         const optionImageSrc = !isComplexParts ? getImageSrc(rawContent) : '';
         const hasRichMediaPart = optionParts.some((part) => {
             const source = getImageSrc(part?.imageUrl || part?.image_url || part?.content || '');
-            return part?.type === 'image' || isInlineSvg(part?.content) || isImageUrl(source);
+            return part?.type === 'image' || part?.type === 'rough' || part?.type === 'jsxgraph' || isInlineSvg(part?.content) || isImageUrl(source);
         });
         const isMediaOption = Boolean(
             isInlineSvg(rawContent) ||
