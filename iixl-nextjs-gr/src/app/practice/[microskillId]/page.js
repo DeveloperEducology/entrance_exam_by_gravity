@@ -1104,6 +1104,14 @@ export default function PracticePage() {
 
   const time = formatTime(elapsedTime);
 
+  useEffect(() => {
+    if (currentQuestion) {
+      console.log("[WEXLS][Debug] Current Question:", currentQuestion);
+    }
+  }, [currentQuestion]);
+
+  const [showDebugJson, setShowDebugJson] = useState(false);
+
   const applyNextQuestion = (upcoming) => {
     if (upcoming) {
       setCurrentQuestion(upcoming);
@@ -1386,6 +1394,22 @@ export default function PracticePage() {
             </div>
             <div className={styles.statPill}><span className={styles.statLabel}>Level</span><strong style={{ textTransform: 'capitalize' }}>{adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}</strong></div>
             <button 
+              onClick={() => setShowDebugJson(!showDebugJson)}
+              style={{ 
+                background: '#334155', 
+                border: 'none', 
+                borderRadius: '8px', 
+                padding: '4px 10px', 
+                fontSize: '0.75rem', 
+                color: '#f8fafc',
+                cursor: 'pointer',
+                marginLeft: '8px',
+                fontWeight: 600
+              }}
+            >
+              {showDebugJson ? 'Hide JSON' : 'View JSON'}
+            </button>
+            <button 
               className={styles.toggleStatsButton} 
               onClick={() => setShowStats(!showStats)}
               title={showStats ? "Hide statistics" : "Show statistics"}
@@ -1411,6 +1435,28 @@ export default function PracticePage() {
               <button className={styles.exampleButton} onClick={handleFetchExample}>
                 <span className={styles.buttonIcon}>💡</span>Learn with an example
               </button>
+            </div>
+          )}
+
+          {showDebugJson && (
+            <div style={{ 
+              margin: '1rem 0', 
+              padding: '1.5rem', 
+              background: '#0f172a', 
+              color: '#38bdf8', 
+              borderRadius: '16px', 
+              fontSize: '0.8rem', 
+              overflow: 'auto',
+              maxHeight: '500px',
+              border: '2px solid #1e293b',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              fontFamily: 'monospace'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <h4 style={{ margin: 0, color: '#f8fafc' }}>Question Snapshot (Debug)</h4>
+                <button onClick={() => setShowDebugJson(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>✕</button>
+              </div>
+              <pre>{JSON.stringify(currentQuestion, null, 2)}</pre>
             </div>
           )}
 

@@ -7338,12 +7338,39 @@ if (logic === 'digit_arrangement_v1') {
         return true;
       });
 
-      // Shuffle
-      inst.options = options.sort(() => Math.random() - 0.5);
+      // Seeded random for deterministic shuffling during validation
+      // We must use the BASE ID to ensure consistency between first-gen and re-hydration
+      const rawId = String(inst.id || 'static-seed');
+      const baseId = rawId.startsWith('inst_') ? rawId.split('_').slice(1, -2).join('_') : rawId;
+      
+      let seed = 0;
+      for (let i = 0; i < baseId.length; i++) {
+        seed = ((seed << 5) - seed + baseId.charCodeAt(i)) | 0;
+      }
+      const seededRandom = () => {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
 
-      // Track correct index AFTER shuffle
-      const correctIdx = inst.options.findIndex(o => String(o.content) === String(num));
-      inst.correctAnswerIndex = correctIdx;
+      // Proper Seeded Fisher-Yates Shuffle
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+      inst.options = options;
+
+      // Track correct index AFTER shuffle - using absolute equality
+      const correctIdx = inst.options.findIndex(o => String(o.content).trim() === String(num).trim());
+      
+      if (correctIdx === -1) {
+          console.error("[Logic Error] Correct answer not found in options for num:", num);
+          inst.correctAnswerIndex = 0;
+      } else {
+          inst.correctAnswerIndex = correctIdx;
+      }
+      
       inst.correctAnswerText = String(num);
     }
 
@@ -7364,6 +7391,87 @@ if (logic === 'digit_arrangement_v1') {
         });
       }
       inst.solution = solution;
+    }
+  }
+
+  if (logic === 'digit_to_word_v1') {
+    inst.type = 'mcq';
+    let num;
+    const dataSource = question.data_source || inst.adaptiveConfig?.data_source || { range: [101, 999] };
+
+    if (overrideVariables) {
+      num = overrideVariables.num;
+    } else {
+      const range = dataSource.range || [101, 999];
+      num = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+    }
+
+    const d3 = Math.floor(num / 100);
+    const d2 = Math.floor((num % 100) / 10);
+    const d1 = num % 10;
+
+    const hundredWord = numberToWords(d3 * 100).split(" ")[0];
+    const correctWord = numberToWords(num);
+
+    // Distractors
+    let teenErrorVal = (d2 >= 2) ? (d3 * 100 + 10 + d1) : (d3 * 100 + 20 + d1);
+    const swapErrorVal = d3 * 100 + d1 * 10 + d2;
+    const hundredErrorVal = ((d3 + (Math.random() > 0.5 ? 1 : -1) - 1 + 9) % 9 + 1) * 100 + d2 * 10 + d1;
+
+    const teen_error = numberToWords(teenErrorVal);
+    const swap_error = numberToWords(swapErrorVal);
+    const hundred_error = numberToWords(hundredErrorVal);
+
+    const templateVars = {
+      num,
+      correct_word: correctWord,
+      digit_3: d3,
+      digit_2: d2,
+      digit_1: d1,
+      hundred_word: hundredWord,
+      teen_error,
+      swap_error,
+      hundred_error
+    };
+
+    inst.adaptiveConfig.variables = { ...(inst.adaptiveConfig.variables || {}), ...templateVars };
+
+    if (Array.isArray(question.options)) {
+      let options = hydrateNode(question.options, templateVars);
+      options = options.map(o => ({
+        ...o,
+        label: String(o.content),
+        text: String(o.content)
+      }));
+
+      // Seeded Shuffle
+      const rawId = String(inst.id || 'static-seed');
+      const baseId = rawId.startsWith('inst_') ? rawId.split('_').slice(1, -2).join('_') : rawId;
+      let seed = 0;
+      for (let i = 0; i < baseId.length; i++) {
+        seed = ((seed << 5) - seed + baseId.charCodeAt(i)) | 0;
+      }
+      const seededRandom = () => {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+      inst.options = options;
+
+      const correctIdx = inst.options.findIndex(o => String(o.content).trim().toLowerCase() === correctWord.trim().toLowerCase());
+      inst.correctAnswerIndex = correctIdx >= 0 ? correctIdx : 0;
+      inst.correctAnswerText = correctWord;
+    }
+
+    inst.parts = hydrateNode(question.parts || [], templateVars);
+    if (question.solution) {
+       inst.solution = hydrateNode(question.solution, templateVars);
     }
   }
 
@@ -11438,6 +11546,58 @@ The angle is **${targetAngle}°**.`,
 3. Look at the right end of the line and read the number on the ruler.
         
 The length is **${targetLength} cm**.`,
+        isVertical: true
+      }
+    ];
+    inst.solution = inst.explanation;
+  }
+
+  if (logic === 'p5_algebra_slope_v1') {
+    const vars = inst.adaptiveConfig?.variables || {};
+    const targetSlope = vars.targetSlope || (Math.floor(Math.random() * 3) + 1); // 1, 2, or 3
+    const targetIntercept = vars.targetIntercept || (Math.floor(Math.random() * 5) - 2); // -2 to 2
+
+    inst.type = 'fillInTheBlank';
+    inst.questionText = `Manipulate the line so that its slope is exactly ${targetSlope} and its y-intercept is ${targetIntercept}.`;
+    
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `### Algebra Construction Lab\nDrag points **A** and **B** to align the line with the target parameters. Check the equation $y = mx + b$ in the corner of the lab.`, 
+        isVertical: true 
+      },
+      {
+        type: 'p5_lab',
+        config: {
+          width: 600,
+          height: 400,
+          mode: 'algebra_lab',
+          config: {
+            targetSlope: targetSlope,
+            targetIntercept: targetIntercept
+          }
+        }
+      },
+      {
+        type: 'text',
+        content: `Confirm your final y-intercept (b): [[intercept]]`,
+        isVertical: true
+      }
+    ];
+
+    inst.correctAnswerText = JSON.stringify({ intercept: String(targetIntercept) });
+    inst.validation = { type: 'fillInTheBlank' };
+
+    inst.explanation = [
+      {
+        type: "text",
+        content: `### Algebra Solution:
+        
+1. To get a slope of **${targetSlope}**, the line must rise **${targetSlope}** units for every 1 unit it moves right.
+2. The **y-intercept (b)** is where the line crosses the vertical axis at $x = 0$.
+3. By placing your points correctly, the equation should read $y = ${targetSlope}x ${targetIntercept >= 0 ? '+ ' + targetIntercept : '- ' + Math.abs(targetIntercept)}$.
+        
+The final value of **b** is **${targetIntercept}**.`,
         isVertical: true
       }
     ];

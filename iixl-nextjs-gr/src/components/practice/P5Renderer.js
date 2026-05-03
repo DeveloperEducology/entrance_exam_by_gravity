@@ -53,6 +53,13 @@ export default function P5Renderer({
           let variant = currentConfig.variant || 'roof';
           let customImg = null;
 
+          // Algebra Lab State
+          let algPoints = [
+            { x: -2, y: 0, isDragging: false },
+            { x: 2, y: 4, isDragging: false }
+          ];
+          let unitScale = 30; // pixels per unit
+
           let tool = {
             x: 50,
             y: height - 80,
@@ -83,6 +90,7 @@ export default function P5Renderer({
             if (mode === 'pattern_lab') renderPatternLab(p, gridSize, n);
             else if (mode === 'angle_lab') renderAngleLab(p, targetAngle, tool, variant, customImg);
             else if (mode === 'ruler_lab') renderRulerLab(p, targetLength, tool);
+            else if (mode === 'algebra_lab') renderAlgebraLab(p, algPoints, unitScale);
             p.pop();
           };
 
@@ -103,6 +111,65 @@ export default function P5Renderer({
               p.noStroke(); p.fill(79, 87, 255);
               p.circle(dot.x, dot.y, 18 + p.sin(p.frameCount * 5 + idx * 10) * 2);
             });
+          };
+
+          const renderAlgebraLab = (p, pts, scale) => {
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            p.stroke(241, 245, 249); p.strokeWeight(1);
+            for (let x = -10; x <= 10; x++) p.line(centerX + x * scale, 0, centerX + x * scale, height);
+            for (let y = -10; y <= 10; y++) p.line(0, centerY + y * scale, width, centerY + y * scale);
+
+            p.stroke(148, 163, 184); p.strokeWeight(2);
+            p.line(centerX, 0, centerX, height);
+            p.line(0, centerY, width, centerY);
+
+            p.fill(100); p.noStroke(); p.textSize(10); p.textAlign(p.CENTER, p.CENTER);
+            for (let x = -10; x <= 10; x++) if(x!==0) p.text(x, centerX + x * scale, centerY + 15);
+            for (let y = -10; y <= 10; y++) if(y!==0) p.text(-y, centerX - 15, centerY + y * scale);
+
+            const p1 = pts[0]; const p2 = pts[1];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const m = dx === 0 ? Infinity : dy / dx;
+            const b = p1.y - m * p1.x;
+
+            p.stroke(79, 87, 255); p.strokeWeight(3);
+            if (m === Infinity) {
+                p.line(centerX + p1.x * scale, 0, centerX + p1.x * scale, height);
+            } else {
+                let xLeft = -10; let yLeft = m * xLeft + b;
+                let xRight = 10; let yRight = m * xRight + b;
+                p.line(centerX + xLeft * scale, centerY - yLeft * scale, centerX + xRight * scale, centerY - yRight * scale);
+            }
+
+            pts.forEach((pt, idx) => {
+                p.noStroke();
+                p.fill(pt.isDragging ? [239, 68, 68] : [79, 87, 255]);
+                p.circle(centerX + pt.x * scale, centerY - pt.y * scale, 12);
+                p.fill(255); p.textSize(9);
+                p.text(idx === 0 ? "A" : "B", centerX + pt.x * scale, centerY - pt.y * scale);
+            });
+
+            const hideIntercept = currentConfig.hideInterceptInEquation ?? true;
+            p.push();
+            p.translate(20, 40);
+            p.fill(255, 255, 255, 220); p.stroke(226, 232, 240); p.rect(0, 0, 160, 60, 10);
+            p.fill(30, 41, 59); p.noStroke(); p.textAlign(p.LEFT);
+            p.textSize(14); p.textStyle(p.BOLD);
+            let mStr = m === Infinity ? "und." : m.toFixed(2);
+            let bStr = b >= 0 ? `+ ${b.toFixed(2)}` : `- ${Math.abs(b).toFixed(2)}`;
+            if (hideIntercept) {
+                p.text(`Equation: y = ${mStr}x + b`, 10, 25);
+                p.textSize(11); p.textStyle(p.NORMAL); p.fill(100);
+                p.text(`(Find 'b' on the graph)`, 10, 45);
+            } else {
+                p.text(`Equation: y = ${mStr}x ${bStr}`, 10, 25);
+                p.textSize(12); p.textStyle(p.NORMAL);
+                p.text(`Slope (m): ${mStr}`, 10, 45);
+            }
+            p.pop();
           };
 
           const renderAngleLab = (p, angle, pt, v, img) => {
@@ -197,6 +264,12 @@ export default function P5Renderer({
                 else nextDots.push({ x: gx, y: gy });
                 setDots(nextDots);
                 if (onStateChange) onStateChange({ dotsCount: nextDots.length });
+            } else if (mode === 'algebra_lab') {
+                algPoints.forEach(pt => {
+                    if (p.dist(mx, my, width/2 + pt.x * unitScale, height/2 - pt.y * unitScale) < 20) {
+                        pt.isDragging = true;
+                    }
+                });
             }
           };
 
@@ -206,9 +279,29 @@ export default function P5Renderer({
               if (mode === 'ruler_lab') tool.rotation = p.atan2(my - tool.y, mx - tool.x);
               else tool.rotation = p.atan2(my - tool.y, mx - tool.x) + 90;
             } else if (tool.isDragging) { tool.x = mx - tool.offset.x; tool.y = my - tool.offset.y; }
+            else if (mode === 'algebra_lab') {
+                algPoints.forEach(pt => {
+                    if (pt.isDragging) {
+                        pt.x = Math.round((mx - width/2) / unitScale);
+                        pt.y = Math.round((height/2 - my) / unitScale);
+                        pt.x = p.constrain(pt.x, -10, 10);
+                        pt.y = p.constrain(pt.y, -10, 10);
+                        if (onStateChange) {
+                            const dx = algPoints[1].x - algPoints[0].x;
+                            const dy = algPoints[1].y - algPoints[0].y;
+                            const m = dx === 0 ? Infinity : dy / dx;
+                            const b = algPoints[0].y - m * algPoints[0].x;
+                            onStateChange({ slope: m, intercept: b });
+                        }
+                    }
+                });
+            }
           };
 
-          p.mouseReleased = () => { tool.isDragging = false; tool.isRotating = false; };
+          p.mouseReleased = () => { 
+            tool.isDragging = false; tool.isRotating = false; 
+            if (mode === 'algebra_lab') algPoints.forEach(pt => pt.isDragging = false);
+          };
         };
 
         p5Instance.current = new p5Lib(sketch, containerRef.current);
@@ -229,11 +322,11 @@ export default function P5Renderer({
   return (
     <div className="p5-lab-outer" style={{ 
       width: '100%', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', 
-      alignItems: 'center', position: 'relative', background: '#f8fafc', padding: '0.5rem', borderRadius: '16px', border: '1px solid #e2e8f0'
+      alignItems: 'flex-start', position: 'relative', background: '#f8fafc', padding: '0.5rem', borderRadius: '16px', border: '1px solid #e2e8f0'
     }}>
       <style dangerouslySetInnerHTML={{ __html: `
         .p5-lab-scroll-wrapper::-webkit-scrollbar {
-          height: 10px;
+          height: 20px;
         }
         .p5-lab-scroll-wrapper::-webkit-scrollbar-track {
           background: #f1f5f9;
@@ -245,34 +338,31 @@ export default function P5Renderer({
           border: 2px solid #f1f5f9;
         }
         .p5-lab-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
+          // background: #1a6fe6ff;
         }
       `}} />
       
-      {/* Zoom Controls - Outside scroll wrapper to stay fixed */}
-      <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10 }}>
-        <button onClick={() => setZoom(prev => Math.min(prev + 0.2, 3))} style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ffffff', border: '1px solid #e2e8f0', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', fontSize: '20px', fontWeight: 'bold', color: '#475569' }}>+</button>
-        <button onClick={() => setZoom(prev => Math.max(prev - 0.2, 0.5))} style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ffffff', border: '1px solid #e2e8f0', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', fontSize: '20px', fontWeight: 'bold', color: '#475569' }}>-</button>
-        <button onClick={() => setZoom(1)} style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '9px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Reset</button>
+      <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10, pointerEvents: 'none' }}>
+        <button onClick={() => setZoom(prev => Math.min(prev + 0.2, 3))} style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ffffff', border: '1px solid #e2e8f0', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', fontSize: '20px', fontWeight: 'bold', color: '#475569', pointerEvents: 'auto' }}>+</button>
+        <button onClick={() => setZoom(prev => Math.max(prev - 0.2, 0.5))} style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ffffff', border: '1px solid #e2e8f0', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', fontSize: '20px', fontWeight: 'bold', color: '#475569', pointerEvents: 'auto' }}>-</button>
+        <button onClick={() => setZoom(1)} style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '9px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', pointerEvents: 'auto' }}>Reset</button>
       </div>
 
       <div className="p5-lab-scroll-wrapper" style={{
         width: '100%',
-        overflowX: 'scroll',
+        overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         padding: '0.25rem 0',
-        display: 'flex',
-        justifyContent: 'flex-start'
+        display: 'block',
+        touchAction: 'pan-x'
       }}>
         <div className="p5-lab-container" style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
           background: '#ffffff',
           borderRadius: '12px',
-          minWidth: width,
+          width: width,
           margin: '0 auto',
-          position: 'relative'
+          position: 'relative',
+          flexShrink: 0
         }}>
           <div ref={containerRef} style={{ 
             boxShadow: '0 10px 20px -5px rgba(0,0,0,0.05)', 
@@ -285,8 +375,8 @@ export default function P5Renderer({
       
       {isReady && (
          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px', background: '#ffffff', padding: '4px 12px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: '1rem' }}>↔️</span> 
-            <span style={{ fontWeight: 500 }}>Scroll horizontally to move the lab</span>
+            {/* <span style={{ fontSize: '1rem' }}>↔️</span> 
+            <span style={{ fontWeight: 500 }}>Scroll horizontally to see the full lab</span> */}
          </div>
       )}
     </div>
