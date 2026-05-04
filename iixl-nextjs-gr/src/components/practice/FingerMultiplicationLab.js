@@ -77,7 +77,7 @@ const Hand = ({ side, selectedCount, onSelect, value }) => {
   );
 };
 
-export default function FingerMultiplicationLab({ question, onAnswer, userAnswer, isAnswered }) {
+export default function FingerMultiplicationLab({ question, onAnswer, userAnswer, isAnswered, onSubmit, isCorrect }) {
   const [leftSelected, setLeftSelected] = useState(0);
   const [rightSelected, setRightSelected] = useState(0);
   const [isMounted, setIsMounted] = useState(false);

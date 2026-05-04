@@ -55,7 +55,7 @@ const HandFinger = ({ index, dots, onDotClick, countedDots }) => {
   );
 };
 
-export default function FingerCountingLab({ question, onAnswer, userAnswer, isAnswered }) {
+export default function FingerCountingLab({ question, onAnswer, userAnswer, isAnswered, onSubmit, isCorrect }) {
   const [countedDots, setCountedDots] = useState([]);
   const [isMounted, setIsMounted] = useState(false);
 
