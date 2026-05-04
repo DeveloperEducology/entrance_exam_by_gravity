@@ -20,6 +20,7 @@ import StepwiseArithmeticRenderer from './StepwiseArithmeticRenderer';
 import JourneyRenderer from './JourneyRenderer';
 import DotGridRenderer from './DotGridRenderer';
 import DragDropRendererV3 from './DragDropRendererV3';
+import FingerMultiplicationLab from './FingerMultiplicationLab';
 
 
 const RENDERER_MAP = {
@@ -50,6 +51,7 @@ const RENDERER_MAP = {
     smartTable: FillInTheBlankRenderer,
     arithmetic_journey: StepwiseArithmeticRenderer,
     journey_v1: JourneyRenderer,
+    fingerMultiplication: FingerMultiplicationLab,
 };
 
 

@@ -144,6 +144,41 @@ if (logic === 'division_countdown_v1') {
     return inst;
   }
 
+  if (logic === 'finger_multiplication_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    // Pick two numbers between 6 and 10
+    const a = ds.a || Math.floor(Math.random() * 5) + 6;
+    const b = ds.b || Math.floor(Math.random() * 5) + 6;
+    const product = a * b;
+
+    inst.adaptiveConfig.variables = { a, b, product };
+    inst.questionText = `Multiply ${a} and ${b} using the hand trick.`;
+    
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Multiply these numbers using your fingers! Each finger from pinky to thumb represents **6, 7, 8, 9, and 10**.`,
+        isVertical: true 
+      }
+    ];
+
+    inst.solution = [
+      { type: 'text', content: `### Hand Trick Steps for ${a} × ${b}`, isVertical: true },
+      { type: 'text', content: `1. On your left hand, fold fingers up to **${a}** (${a-5} fingers).`, isVertical: true },
+      { type: 'text', content: `2. On your right hand, fold fingers up to **${b}** (${b-5} fingers).`, isVertical: true },
+      { type: 'text', content: `3. **Tens:** Count the folded fingers: ${a-5} + ${b-5} = **${(a-5)+(b-5)}**. Multiply by 10 to get **${((a-5)+(b-5))*10}**.`, isVertical: true },
+      { type: 'text', content: `4. **Ones:** Multiply the standing fingers: ${5-(a-5)} × ${5-(b-5)} = **${(5-(a-5))*(5-(b-5))}**.`, isVertical: true },
+      { type: 'text', content: `5. **Total:** Add them up: ${((a-5)+(b-5))*10} + ${(5-(a-5))*(5-(b-5))} = **${product}**.`, isVertical: true }
+    ];
+
+    inst.type = 'fingerMultiplication';
+    inst.correctAnswerText = JSON.stringify({ total: product });
+
+    return inst;
+  }
+
 if (logic === 'money_subtraction_v1') {
     const config = inst.adaptiveConfig || {};
     const ds = inst.data_source || config.data_source || {};

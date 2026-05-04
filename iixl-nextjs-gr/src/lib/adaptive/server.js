@@ -606,6 +606,14 @@ export function validateAnswer(question, answer) {
     case 'fourpicsoneword':
       return (Array.isArray(answer) ? answer.join('') : String(answer ?? '')).toUpperCase() === String(question.correctAnswerText ?? '').toUpperCase();
 
+    case 'fingermultiplication': {
+      const expected = parseMaybeJson(question.correctAnswerText, null);
+      if (expected && typeof expected === 'object') {
+        return String(answer?.total ?? '') === String(expected.total ?? '');
+      }
+      return String(answer?.total ?? '') === String(question.correctAnswerText ?? '');
+    }
+
     case 'tokenselection':
     case 'tokenselectionv2': {
       const getTokens = (q) => {
