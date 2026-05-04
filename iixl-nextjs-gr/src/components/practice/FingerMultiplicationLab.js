@@ -117,6 +117,7 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
   if (!isMounted) return <div style={{ minHeight: '400px' }} />;
 
   return (
+    <>
       <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 600px) {
           .lab-root-container {
@@ -152,81 +153,82 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
         width: '100%',
         boxSizing: 'border-box'
       }}>
-      
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 'clamp(0.8rem, 2vw, 1.2rem)', color: '#b91c1c', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Hand Multiplication Trick
-        </div>
-        <div style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: '900', color: '#7f1d1d' }}>
-          {targetA} × {targetB}
-        </div>
-      </div>
-
-      <div className="hands-container" style={{ display: 'flex', gap: '2rem', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
-        <div style={{ flex: '1', maxWidth: '220px' }}>
-          <Hand 
-            side="left" 
-            selectedCount={leftSelected} 
-            onSelect={(c) => handleSelect('left', c)}
-            value={leftSelected > 0 ? leftSelected + 5 : null} 
-          />
-        </div>
-        <div className="hand-multiplier" style={{ fontSize: '3rem', color: '#f87171', fontWeight: 'bold' }}>×</div>
-        <div style={{ flex: '1', maxWidth: '220px' }}>
-          <Hand 
-            side="right" 
-            selectedCount={rightSelected} 
-            onSelect={(c) => handleSelect('right', c)}
-            value={rightSelected > 0 ? rightSelected + 5 : null}
-          />
-        </div>
-      </div>
-
-      <div style={{ 
-        width: '100%', 
-        maxWidth: '550px',
-        padding: 'clamp(1rem, 4vw, 2rem)',
-        background: 'white',
-        borderRadius: '24px',
-        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #fee2e2'
-      }}>
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>
-            <span style={{ color: '#4b5563' }}>Lowered Fingers (Tens):</span>
-            <span style={{ fontWeight: 'bold', color: '#dc2626' }}>({leftSelected} + {rightSelected}) × 10 = {tens}</span>
+        
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(0.8rem, 2vw, 1.2rem)', color: '#b91c1c', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Hand Multiplication Trick
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>
-            <span style={{ color: '#4b5563' }}>Raised Fingers (Ones):</span>
-            <span style={{ fontWeight: 'bold', color: '#b91c1c' }}>{onesLeft} × {onesRight} = {ones}</span>
-          </div>
-          <div style={{ 
-            marginTop: '0.75rem',
-            paddingTop: '0.75rem',
-            borderTop: '2px dashed #f3f4f6',
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            fontSize: 'clamp(1.2rem, 5vw, 1.5rem)'
-          }}>
-            <span style={{ fontWeight: 'bold', color: '#111827' }}>Final Result:</span>
-            <span style={{ fontWeight: 'bold', color: '#ef4444' }}>{tens} + {ones} = {total}</span>
+          <div style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: '900', color: '#7f1d1d' }}>
+            {targetA} × {targetB}
           </div>
         </div>
-      </div>
 
-      {!isAnswered && (
+        <div className="hands-container" style={{ display: 'flex', gap: '2rem', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
+          <div style={{ flex: '1', maxWidth: '220px' }}>
+            <Hand 
+              side="left" 
+              selectedCount={leftSelected} 
+              onSelect={(c) => handleSelect('left', c)}
+              value={leftSelected > 0 ? leftSelected + 5 : null} 
+            />
+          </div>
+          <div className="hand-multiplier" style={{ fontSize: '3rem', color: '#f87171', fontWeight: 'bold' }}>×</div>
+          <div style={{ flex: '1', maxWidth: '220px' }}>
+            <Hand 
+              side="right" 
+              selectedCount={rightSelected} 
+              onSelect={(c) => handleSelect('right', c)}
+              value={rightSelected > 0 ? rightSelected + 5 : null}
+            />
+          </div>
+        </div>
+
         <div style={{ 
-          padding: '0.75rem 1.5rem', 
-          background: '#fee2e2', 
-          borderRadius: '99px', 
-          color: '#991b1b',
-          fontWeight: 'bold',
-          fontSize: 'clamp(0.75rem, 2vw, 0.9rem)',
-          textAlign: 'center'
+          width: '100%', 
+          maxWidth: '550px',
+          padding: 'clamp(1rem, 4vw, 2rem)',
+          background: 'white',
+          borderRadius: '24px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #fee2e2'
         }}>
-          💡 Select finger {targetA} on left and {targetB} on right!
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>
+              <span style={{ color: '#4b5563' }}>Lowered Fingers (Tens):</span>
+              <span style={{ fontWeight: 'bold', color: '#dc2626' }}>({leftSelected} + {rightSelected}) × 10 = {tens}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>
+              <span style={{ color: '#4b5563' }}>Raised Fingers (Ones):</span>
+              <span style={{ fontWeight: 'bold', color: '#b91c1c' }}>{onesLeft} × {onesRight} = {ones}</span>
+            </div>
+            <div style={{ 
+              marginTop: '0.75rem',
+              paddingTop: '0.75rem',
+              borderTop: '2px dashed #f3f4f6',
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              fontSize: 'clamp(1.2rem, 5vw, 1.5rem)'
+            }}>
+              <span style={{ fontWeight: 'bold', color: '#111827' }}>Final Result:</span>
+              <span style={{ fontWeight: 'bold', color: '#ef4444' }}>{tens} + {ones} = {total}</span>
+            </div>
+          </div>
         </div>
-      )}
-    </div>
+
+        {!isAnswered && (
+          <div style={{ 
+            padding: '0.75rem 1.5rem', 
+            background: '#fee2e2', 
+            borderRadius: '99px', 
+            color: '#991b1b',
+            fontWeight: 'bold',
+            fontSize: 'clamp(0.75rem, 2vw, 0.9rem)',
+            textAlign: 'center'
+          }}>
+            💡 Select finger {targetA} on left and {targetB} on right!
+          </div>
+        )}
+      </div>
+    </>
   );
 }
