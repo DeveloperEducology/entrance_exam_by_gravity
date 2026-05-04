@@ -7,10 +7,17 @@ export default function FingerTestPage() {
   const [userAnswer, setUserAnswer] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(null);
-  const [factors, setFactors] = useState(() => ({
-    a: Math.floor(Math.random() * 5) + 6,
-    b: Math.floor(Math.random() * 5) + 6
-  }));
+  const [isMounted, setIsMounted] = useState(false);
+  const [factors, setFactors] = useState({ a: 7, b: 8 });
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Randomize only on client side to avoid hydration mismatch
+    setFactors({
+      a: Math.floor(Math.random() * 5) + 6,
+      b: Math.floor(Math.random() * 5) + 6
+    });
+  }, []);
 
   const mockQuestion = {
     id: 'test_finger_01',
