@@ -606,7 +606,8 @@ export function validateAnswer(question, answer) {
     case 'fourpicsoneword':
       return (Array.isArray(answer) ? answer.join('') : String(answer ?? '')).toUpperCase() === String(question.correctAnswerText ?? '').toUpperCase();
 
-    case 'fingermultiplication': {
+    case 'fingermultiplication':
+    case 'fingercounting': {
       const expected = parseMaybeJson(question.correctAnswerText, null);
       if (expected && typeof expected === 'object') {
         return String(answer?.total ?? '') === String(expected.total ?? '');

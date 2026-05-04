@@ -179,6 +179,40 @@ if (logic === 'division_countdown_v1') {
     return inst;
   }
 
+  if (logic === 'finger_counting_v1') {
+    const config = inst.adaptiveConfig || {};
+    const ds = inst.data_source || config.data_source || {};
+    
+    // Pick two numbers between 1 and 5
+    const a = ds.a || Math.floor(Math.random() * 5) + 1;
+    const b = ds.b || Math.floor(Math.random() * 5) + 1;
+    const product = a * b;
+
+    inst.adaptiveConfig.variables = { a, b, product };
+    inst.questionText = `Multiply ${a} and ${b} by counting dots on your fingers.`;
+    
+    inst.parts = [
+      { 
+        type: 'text', 
+        content: `Show **${a}** fingers. Imagine each finger has **${b}** dots. Count them all!`,
+        isVertical: true 
+      }
+    ];
+
+    inst.solution = [
+      { type: 'text', content: `### Counting Step by Step for ${a} × ${b}`, isVertical: true },
+      { type: 'text', content: `1. Hold up **${a}** fingers.`, isVertical: true },
+      { type: 'text', content: `2. Count **${b}** dots on EACH finger.`, isVertical: true },
+      { type: 'text', content: `3. Skip counting: ` + Array.from({length: a}).map((_, i) => (i + 1) * b).join(', ') + `.`, isVertical: true },
+      { type: 'text', content: `4. Total dots = **${product}**.`, isVertical: true }
+    ];
+
+    inst.type = 'fingerCounting';
+    inst.correctAnswerText = JSON.stringify({ total: product });
+
+    return inst;
+  }
+
 if (logic === 'money_subtraction_v1') {
     const config = inst.adaptiveConfig || {};
     const ds = inst.data_source || config.data_source || {};

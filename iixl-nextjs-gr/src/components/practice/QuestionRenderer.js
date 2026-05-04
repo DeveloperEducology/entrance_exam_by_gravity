@@ -21,6 +21,7 @@ import JourneyRenderer from './JourneyRenderer';
 import DotGridRenderer from './DotGridRenderer';
 import DragDropRendererV3 from './DragDropRendererV3';
 import FingerMultiplicationLab from './FingerMultiplicationLab';
+import FingerCountingLab from './FingerCountingLab';
 
 
 const RENDERER_MAP = {
@@ -52,6 +53,7 @@ const RENDERER_MAP = {
     arithmetic_journey: StepwiseArithmeticRenderer,
     journey_v1: JourneyRenderer,
     fingerMultiplication: FingerMultiplicationLab,
+    fingerCounting: FingerCountingLab,
 };
 
 
