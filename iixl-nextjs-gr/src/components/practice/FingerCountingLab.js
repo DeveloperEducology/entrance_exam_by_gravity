@@ -189,6 +189,26 @@ export default function FingerCountingLab({ question, onAnswer, userAnswer, isAn
             {isCorrect ? '🌟 Correct!' : `❌ Incorrect! The answer is ${factorA * factorB}`}
           </motion.div>
         )}
+
+        {!isAnswered && (
+          <button
+            onClick={() => onSubmit?.()}
+            disabled={!userAnswer?.inputValue}
+            style={{
+              padding: '0.6rem 1.5rem',
+              background: '#059669',
+              color: 'white',
+              border: 'none',
+              borderRadius: '99px',
+              fontWeight: 'bold',
+              cursor: userAnswer?.inputValue ? 'pointer' : 'not-allowed',
+              opacity: userAnswer?.inputValue ? 1 : 0.6,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Submit Answer
+          </button>
+        )}
       </div>
     </div>
   );

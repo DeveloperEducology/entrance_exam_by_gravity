@@ -245,6 +245,29 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
                   {tens} + {ones} = {tens + ones}
                 </div>
               )}
+
+              {!isAnswered && (
+                <button
+                  onClick={() => onSubmit?.()}
+                  disabled={!userAnswer?.inputValue}
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.8rem 2rem',
+                    background: '#76b900',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: '800',
+                    fontSize: '1.1rem',
+                    cursor: userAnswer?.inputValue ? 'pointer' : 'not-allowed',
+                    opacity: userAnswer?.inputValue ? 1 : 0.6,
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 6px rgba(118, 185, 0, 0.2)'
+                  }}
+                >
+                  Submit Answer
+                </button>
+              )}
             </div>
           </div>
         </div>
