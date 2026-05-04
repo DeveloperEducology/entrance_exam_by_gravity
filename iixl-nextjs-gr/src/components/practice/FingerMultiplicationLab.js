@@ -123,19 +123,20 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
           .lab-root-container {
             border: none !important;
             border-radius: 0 !important;
-            padding: 1.5rem 1rem !important;
+            padding: 1rem 0.25rem !important;
             box-shadow: none !important;
             margin: 0 !important;
             width: 100vw !important;
             margin-left: calc(-50vw + 50%) !important;
           }
           .hands-container {
-            flex-direction: column !important;
-            gap: 1rem !important;
+            flex-direction: row !important;
+            gap: 0.5rem !important;
+            transform: scale(0.75);
+            transform-origin: center;
           }
           .hand-multiplier {
-            transform: rotate(90deg);
-            margin: 1rem 0;
+            font-size: 2rem !important;
           }
         }
       `}} />
