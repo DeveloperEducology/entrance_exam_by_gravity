@@ -468,7 +468,7 @@ function getSelectedAnswerDisplay(question, answer) {
     return 'No order set';
   }
 
-  if (type === 'draganddrop' || type === 'draganddropv2') {
+  if (type === 'draganddrop' || type === 'draganddropv2' || type === 'draganddropv3') {
     if (!answer || typeof answer !== 'object') return 'No answer';
     const dragItems = Array.isArray(question.dragItems) ? question.dragItems : [];
     const dropGroups = Array.isArray(question.dropGroups) ? question.dropGroups : [];
@@ -877,7 +877,21 @@ export default function PracticePage() {
   const solutionParts = parseSolutionParts(feedbackData?.solution);
   const solutionSections = normalizeSolutionSections(solutionParts);
   const hasStructuredSolution = solutionSections.length > 0;
-  const correctAnswerDisplay = feedbackData?.correctAnswerDisplay || '';
+  const correctAnswerDisplay = (() => {
+    const fromFeedback = feedbackData?.correctAnswerDisplay;
+    if (fromFeedback) return fromFeedback;
+    
+    const text = currentQuestion?.correctAnswerText;
+    if (text && typeof text === 'string' && text.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(text);
+        return getSelectedAnswerDisplay(currentQuestion, parsed);
+      } catch (e) {
+        return text;
+      }
+    }
+    return String(text || '');
+  })();
   const selectedAnswerDisplay = getSelectedAnswerDisplay(currentQuestion, userAnswer);
   const shadeGridCorrectAnswer = getShadeGridCorrectAnswer(currentQuestion, correctAnswerDisplay);
   const isFillInTheBlankType = ['fillInTheBlank', 'smartTable', 'table', 'gridArithmetic', 'longMultiplication', 'longDivision'].includes(currentQuestion?.type);
@@ -1240,7 +1254,21 @@ export default function PracticePage() {
           difficulty: currentQuestion.difficulty,
           isCorrect: correct,
           selectedAnswer: getSelectedAnswerDisplay(currentQuestion, answer),
-          correctAnswer: payload?.result?.feedback?.correctAnswerDisplay || payload?.feedback?.correctAnswerDisplay || String(currentQuestion.correctAnswerText || ''),
+          correctAnswer: (() => {
+            const display = payload?.result?.feedback?.correctAnswerDisplay || payload?.feedback?.correctAnswerDisplay;
+            if (display) return display;
+            
+            const text = currentQuestion.correctAnswerText;
+            if (text && typeof text === 'string' && text.startsWith('{')) {
+              try {
+                const parsed = JSON.parse(text);
+                return getSelectedAnswerDisplay(currentQuestion, parsed);
+              } catch (e) {
+                return text;
+              }
+            }
+            return String(text || '');
+          })(),
           smartScore: Math.max(0, Math.min(100, (smartScore + Number(effectiveScore.delta || 0)))),
           delta: Number(effectiveScore.delta || 0),
           phase: returnedPhase,

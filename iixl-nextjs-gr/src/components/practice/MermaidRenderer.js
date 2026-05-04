@@ -51,7 +51,7 @@ export default function MermaidRenderer({ chart, onInputChange, userAnswer = {},
         let processedChart = chart;
         const foundBlanks = [];
         let match;
-        const prefix = `_BLNK_${Math.floor(Math.random() * 1000)}_`;
+        const prefix = `BLNK${Math.floor(Math.random() * 1000)}X`;
         
         while ((match = placeholderRegex.exec(chart)) !== null) {
           const id = match[1];

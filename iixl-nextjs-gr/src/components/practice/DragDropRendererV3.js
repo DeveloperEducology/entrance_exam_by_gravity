@@ -147,6 +147,18 @@ export default function DragDropRendererV3({
     return userAnswer;
   }, [userAnswer]);
 
+  const correctMap = useMemo(() => {
+    try {
+      const text = question.correctAnswerText || question.validation?.answer || question.validation?.correctAnswerText;
+      if (text && typeof text === 'string' && text.startsWith('{')) {
+        return JSON.parse(text);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }, [question]);
+
   const getItemsInGroup = (groupId) => dragItems.filter(item => placements[item.id] === String(groupId));
 
   const handleDragStart = (e) => {
@@ -251,7 +263,7 @@ export default function DragDropRendererV3({
                       isSelected={selectedId === item.id}
                       onSelect={handleItemSelect}
                       isAnswered={isAnswered}
-                      isCorrect={placements[item.id] === item.targetGroupId}
+                      isCorrect={correctMap ? (correctMap[item.id] === placements[item.id]) : (placements[item.id] === item.targetGroupId)}
                       disabled={isAnswered}
                       isPlaced={true}
                     />
