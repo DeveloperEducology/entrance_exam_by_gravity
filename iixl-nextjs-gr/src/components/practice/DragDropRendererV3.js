@@ -232,7 +232,10 @@ export default function DragDropRendererV3({
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         >
           {/* Map Overlay Section */}
-          <div className={styles.mapWrapper}>
+          <div 
+            className={styles.mapWrapper}
+            style={diagramPart.width ? { maxWidth: `${diagramPart.width}px` } : {}}
+          >
             {mapSource ? (
               <img
                 src={mapSource}
