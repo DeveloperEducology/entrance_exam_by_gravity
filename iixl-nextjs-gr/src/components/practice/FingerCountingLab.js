@@ -136,23 +136,57 @@ export default function FingerCountingLab({ question, onAnswer, userAnswer, isAn
         width: '100%', 
         padding: '1.5rem', 
         background: 'white', 
-        borderRadius: '20px',
+        borderRadius: '24px',
         border: '2px solid #dcfce7',
-        textAlign: 'center'
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '1rem'
       }}>
-        <div style={{ fontSize: '1.1rem', color: '#4b5563', marginBottom: '0.5rem' }}>
-          Dots counted so far:
+        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>Dots Counted</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#16a34a' }}>{countedDots.length}</div>
+          </div>
+          <div style={{ width: '2px', height: '40px', background: '#f1f5f9' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 'bold' }}>Final Product</div>
+            <input
+              type="number"
+              value={userAnswer?.inputValue || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                onAnswer?.({ ...userAnswer, counted: countedDots, inputValue: val, total: parseInt(val) });
+              }}
+              disabled={isAnswered}
+              placeholder="?"
+              style={{
+                width: '80px',
+                height: '50px',
+                fontSize: '1.5rem',
+                textAlign: 'center',
+                borderRadius: '12px',
+                border: `3px solid ${isAnswered ? (isCorrect ? '#22c55e' : '#ef4444') : '#10b981'}`,
+                outline: 'none',
+                fontWeight: 'bold',
+                color: '#14532d'
+              }}
+            />
+          </div>
         </div>
-        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#16a34a' }}>
-          {countedDots.length}
-        </div>
-        {countedDots.length === factorA * factorB && (
+
+        {isAnswered && (
           <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            style={{ color: '#059669', fontWeight: 'bold', marginTop: '0.5rem' }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ 
+              color: isCorrect ? '#059669' : '#ef4444', 
+              fontWeight: 'bold',
+              fontSize: '1.1rem'
+            }}
           >
-            🌟 You found the product!
+            {isCorrect ? '🌟 Correct!' : `❌ Incorrect! The answer is ${factorA * factorB}`}
           </motion.div>
         )}
       </div>

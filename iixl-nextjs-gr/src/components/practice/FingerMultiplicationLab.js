@@ -203,15 +203,48 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
               <span style={{ fontWeight: 'bold', color: '#b91c1c' }}>{onesLeft} × {onesRight} = {ones}</span>
             </div>
             <div style={{ 
-              marginTop: '0.75rem',
-              paddingTop: '0.75rem',
+              marginTop: '1rem',
+              paddingTop: '1rem',
               borderTop: '2px dashed #f3f4f6',
               display: 'flex', 
-              justifyContent: 'space-between', 
-              fontSize: 'clamp(1.2rem, 5vw, 1.5rem)'
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem'
             }}>
-              <span style={{ fontWeight: 'bold', color: '#111827' }}>Final Result:</span>
-              <span style={{ fontWeight: 'bold', color: '#ef4444' }}>{tens} + {ones} = {total}</span>
+              <div style={{ fontSize: '1.1rem', color: '#4b5563', fontWeight: 'bold' }}>
+                Enter the final product:
+              </div>
+              <input
+                type="number"
+                value={userAnswer?.inputValue || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onAnswer?.({ ...userAnswer, inputValue: val, total: parseInt(val) });
+                }}
+                disabled={isAnswered}
+                placeholder="?"
+                style={{
+                  width: '100px',
+                  height: '60px',
+                  fontSize: '2rem',
+                  textAlign: 'center',
+                  borderRadius: '16px',
+                  border: `3px solid ${isAnswered ? (isCorrect ? '#22c55e' : '#ef4444') : '#f87171'}`,
+                  outline: 'none',
+                  background: isAnswered ? '#f8fafc' : 'white',
+                  fontWeight: 'bold',
+                  color: '#7f1d1d'
+                }}
+              />
+              {isAnswered && (
+                <div style={{ 
+                  fontSize: 'clamp(1.2rem, 5vw, 1.5rem)',
+                  fontWeight: 'bold',
+                  color: isCorrect ? '#059669' : '#ef4444'
+                }}>
+                  {tens} + {ones} = {tens + ones}
+                </div>
+              )}
             </div>
           </div>
         </div>
