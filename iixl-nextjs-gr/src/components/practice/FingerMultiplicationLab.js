@@ -117,21 +117,17 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
   if (!isMounted) return <div style={{ minHeight: '400px' }} />;
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      gap: '2rem',
-      padding: '1.5rem',
-      background: '#fff5f5',
-      borderRadius: '32px',
-      border: '4px solid #fecaca',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-      width: '100%',
-      boxSizing: 'border-box'
-    }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 600px) {
+          .lab-root-container {
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 1.5rem 1rem !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100vw !important;
+            margin-left: calc(-50vw + 50%) !important;
+          }
           .hands-container {
             flex-direction: column !important;
             gap: 1rem !important;
@@ -142,6 +138,20 @@ export default function FingerMultiplicationLab({ question, onAnswer, userAnswer
           }
         }
       `}} />
+      
+      <div className="lab-root-container" style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        gap: '2rem',
+        padding: '1.5rem',
+        background: '#fff5f5',
+        borderRadius: '32px',
+        border: '4px solid #fecaca',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
       
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 'clamp(0.8rem, 2vw, 1.2rem)', color: '#b91c1c', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
