@@ -1,7 +1,6 @@
 import Hero from '@/components/Hero';
 import GradeCard from '@/components/GradeCard';
 import HomeAuthStatus from '@/components/HomeAuthStatus';
-import BackButton from '@/components/system/BackButton';
 import styles from './page.module.css';
 import { Suspense } from 'react';
 import Link from 'next/link';
@@ -23,11 +22,8 @@ export default async function Home() {
     <main className={styles.main}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <div className={styles.headerLeft}>
-            <BackButton className={styles.backButton} />
-            <div className={styles.logo}>
-              <span className={styles.logoText}>WEXLS</span>
-            </div>
+          <div className={styles.logo}>
+            <span className={styles.logoText}>WEXLS</span>
           </div>
           <nav className={styles.nav}>
             <a href="#" className={styles.navLink}>Learning</a>
