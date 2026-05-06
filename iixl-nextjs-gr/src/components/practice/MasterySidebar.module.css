@@ -1,0 +1,164 @@
+.sidebar {
+    width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0;
+    color: #1e293b;
+}
+
+.glassCard {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 1);
+    border-radius: 12px;
+    padding: 0.5rem;
+    box-shadow: 0 4px 12px rgba(148, 163, 184, 0.05);
+}
+
+.gaugeContainer {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.gaugeSvg {
+    transform: rotate(-90deg);
+}
+
+.gaugeBg {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.04);
+    stroke-width: 10;
+}
+
+.gaugeFill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scoreOverlay {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.scoreValue {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1;
+}
+
+.scoreLabel {
+    font-size: 0.45rem;
+    color: #64748b;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.statsStack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.statMiniCard {
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.miniLabel {
+    font-size: 0.45rem;
+    color: #64748b;
+    font-weight: 800;
+}
+
+.miniValue {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.journeyCard {
+    padding-bottom: 1rem;
+}
+
+.journeyTimeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-top: 0.5rem;
+    padding-left: 0.25rem;
+}
+
+.journeyStep {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.journeyNode {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    z-index: 2;
+}
+
+.activeNode {
+    background: #3b82f6;
+    border-color: #60a5fa;
+}
+
+.completedNode {
+    background: #22c55e;
+    border-color: #4ade80;
+}
+
+.journeyLine {
+    position: absolute;
+    left: 8px;
+    top: 16px;
+    width: 1px;
+    height: 1.2rem;
+    background: #e2e8f0;
+    z-index: 1;
+}
+
+.activeLine {
+    background: #22c55e;
+}
+
+.journeyLabel {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.difficultyBadge {
+    margin-top: 2rem;
+    padding: 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    text-align: center;
+    color: #60a5fa;
+    font-weight: 700;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.5; }
+    70% { transform: scale(2); opacity: 0; }
+    100% { transform: scale(1); opacity: 0; }
+}

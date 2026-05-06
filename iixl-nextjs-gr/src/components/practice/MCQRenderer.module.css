@@ -129,13 +129,13 @@
 }
 
 .mediaOption {
-    flex-direction: column;
+    /* flex-direction: row;
     align-items: stretch;
     justify-content: flex-start;
     gap: 0.45rem;
-    min-height: 290px;
-    width: 100%;
-    padding: 0.5rem;
+    min-height: 200px;
+    width: 50%;
+    padding: 0.5rem; */
 }
 
 .checkbox {
@@ -363,7 +363,7 @@
     }
 
     .mediaOption {
-        min-height: 240px;
+        min-height: 200px;
         padding: 0.42rem;
     }
 

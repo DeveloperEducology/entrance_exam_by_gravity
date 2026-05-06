@@ -1,0 +1,17 @@
+.droppable {
+  display: inline-flex;
+  position: relative;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.isOver {
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  transform: scale(1.05);
+}
+
+.isOver input {
+  border-color: #3b82f6;
+}

@@ -34,13 +34,17 @@ export default function RoughRenderer({
 
     const draw = async () => {
       const rough = await loadRough();
+      console.log("[RoughRenderer] Loaded rough:", !!rough);
       if (!isMounted || !canvasRef.current) return;
 
       const rc = rough.canvas(canvasRef.current);
       const context = canvasRef.current.getContext('2d');
+      console.log("[RoughRenderer] Drawing on canvas:", width, "x", height);
       context.clearRect(0, 0, width, height);
 
-      shapes.forEach(shape => {
+      console.log("[RoughRenderer] Shapes to draw:", shapes.length);
+      shapes.forEach((shape, sIdx) => {
+        console.log(`[RoughRenderer] Shape ${sIdx}:`, shape.type);
         const options = { 
           seed, 
           stroke: shape.color || '#4f57ff', 

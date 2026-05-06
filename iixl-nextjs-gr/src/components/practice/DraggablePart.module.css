@@ -1,0 +1,36 @@
+.draggable {
+  display: inline-block;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.draggable:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.draggable:active {
+  cursor: grabbing;
+}
+
+.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  transform: translateY(-2px);
+}
+
+.dragging {
+  opacity: 0.8;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  transform: scale(1.05) !important;
+  border-color: #3b82f6;
+  z-index: 1000;
+}

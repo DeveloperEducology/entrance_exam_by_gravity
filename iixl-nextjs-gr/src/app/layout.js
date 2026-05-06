@@ -73,6 +73,12 @@ export const metadata = {
     shortcut: '/wexls-favicon.svg',
     apple: '/wexls-favicon.svg',
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'WEXLS',
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -82,7 +88,10 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/wexls-favicon.svg" type="image/svg+xml" />
         <link rel="shortcut icon" href="/wexls-favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/wexls-favicon.svg" />
-        <meta name="theme-color" content="#22c55e" />
+        <meta name="theme-color" content="#004e92" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="WEXLS" />
       </head>
       <body className={`${nunito.variable} ${baloo.variable}`}>
         <ConnectivityBanner />

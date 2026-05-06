@@ -1,0 +1,17 @@
+{
+  "name": "WEXLS Learning Platform",
+  "short_name": "WEXLS",
+  "description": "Solving for your potential - Interactive Educational Learning",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000428",
+  "theme_color": "#004e92",
+  "icons": [
+    {
+      "src": "/wexls-logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

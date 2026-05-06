@@ -9,6 +9,15 @@
     white-space: normal;
 }
 
+.containerPart {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: auto;
+}
+
 .fullMarkdown {
     display: block;
     width: 100%;
@@ -89,6 +98,13 @@
     padding: 0.08rem 0.35rem;
     font-size: 0.9em;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.shapeWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
 }
 
 .imageContainer {
@@ -197,6 +213,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.shapeWrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    margin: 0 0.25rem;
 }
 
 .sequenceComma {
@@ -933,4 +957,76 @@
     display: inline-flex;
     vertical-align: middle;
     margin: 0 4px;
+}
+.scaffoldMcq {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    margin: 0.5rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.scaffoldMcqQuestion {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #334155;
+    line-height: 1.4;
+}
+
+.scaffoldMcqOptions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.scaffoldMcqOption {
+    padding: 0.65rem 1rem;
+    background: white;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scaffoldMcqOption:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.scaffoldMcqCorrect {
+    background: #f0fdf4 !important;
+    border-color: #22c55e !important;
+    color: #15803d !important;
+}
+
+.scaffoldMcqIncorrect {
+    background: #fef2f2 !important;
+    border-color: #ef4444 !important;
+    color: #b91c1c !important;
+}
+
+.scaffoldMcqFeedbackCorrect {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #15803d;
+    padding-top: 0.25rem;
+}
+
+.scaffoldMcqFeedbackIncorrect {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #b91c1c;
+    padding-top: 0.25rem;
 }

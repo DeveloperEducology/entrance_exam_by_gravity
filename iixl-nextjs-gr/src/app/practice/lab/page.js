@@ -1,7 +1,7 @@
 'use client';
-
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { instantiateTemplate } from '@/lib/practice/generators/templateInstantiator';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
@@ -11,6 +11,7 @@ import QuestionParts from '@/components/practice/QuestionParts';
 import WorkPad from '@/components/practice/WorkPad';
 import SafeImage from '@/components/practice/SafeImage';
 import SuccessFeedback from '@/components/practice/SuccessFeedback';
+import MasterySidebar from '@/components/practice/MasterySidebar';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from '@/components/practice/contentUtils';
 import styles from './practice.module.css';
 
@@ -815,7 +816,7 @@ function computeSmartScoreDelta({
 
 export default function PracticePage() {
   const params = useParams();
-  const { microskillId } = params;
+  const microskillId = params?.microskillId || 'test';
   const getSeenStorageKey = (skillId) => `practice-seen:${skillId}`;
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -1409,7 +1410,7 @@ export default function PracticePage() {
         <div className={styles.topBarInner}>
           <div className={styles.topBarLeft}>
             <Link href="/" className={styles.logo}><span>WEXLS</span></Link>
-            <div className={styles.skillTag}>{skillTitle}</div>
+            <div className={styles.skillTag}>🧪 LAB: Sidebar Experiment</div>
           </div>
           <div className={styles.topBarStats}>
             <div className={styles.statPill}><span className={styles.statLabel}>Questions</span><strong>{questionsAnswered}</strong></div>
@@ -1446,6 +1447,34 @@ export default function PracticePage() {
                 {showDebugJson ? 'Hide JSON' : 'View JSON'}
               </button>
             )}
+            <button
+              className={styles.headerButton}
+              onClick={() => {
+                const perimeterTemplate = {
+                  id: 'tpl_perimeter_test',
+                  logic_type: 'perimeter_v1',
+                  adaptiveConfig: { min: 3, max: 10, unit: 'cm' }
+                };
+                const inst = instantiateTemplate(perimeterTemplate);
+                setCurrentQuestion(inst);
+                setIsAnswered(false);
+                setIsCorrect(null);
+                setFeedbackData(null);
+              }}
+              style={{
+                background: '#10b981',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '0.75rem',
+                color: '#f8fafc',
+                cursor: 'pointer',
+                marginLeft: '8px',
+                fontWeight: 600
+              }}
+            >
+              Test Perimeter
+            </button>
             <button
               className={styles.toggleStatsButton}
               onClick={() => setShowStats(!showStats)}
@@ -1814,57 +1843,18 @@ export default function PracticePage() {
           )}
         </main>
 
-        <aside className={styles.sidebar}>
-          {/* Questions Block */}
-          {!isJourney && (
-            <div className={`${styles.ixlBlock} ${styles.questionsBlock}`}>
-              <div className={styles.ixlHeader}>Questions answered</div>
-              <div className={styles.ixlValue}>{questionsAnswered}</div>
-            </div>
-          )}
-
-          {/* Time Block */}
-          {!isJourney && (
-            <div className={`${styles.ixlBlock} ${styles.timeBlock}`}>
-              <div className={styles.ixlHeader}>Time elapsed</div>
-              <div className={styles.ixlValue}>
-                {time.mins}:{time.secs}
-                <div className={styles.pausedLabel}>PAUSED</div>
-              </div>
-            </div>
-          )}
-
-          {/* SmartScore Block */}
-          {!isJourney && showStats && (
-            <div className={`${styles.ixlBlock} ${styles.smartScoreBlock}`}>
-              <div className={styles.ixlHeader}>
-                SmartScore
-                <span className={styles.headerSub}>out of 100</span>
-                <span className={styles.helpCircle}>?</span>
-              </div>
-              <div className={styles.ixlValue}>{smartScore}</div>
-            </div>
-          )}
-
-          {/* Challenge Block (Retained but styled like IXL) */}
-          {!isJourney && showStats && (
-            <div className={`${styles.ixlBlock} ${styles.challengeBlock}`}>
-              <div className={styles.ixlHeader}>Challenge Stage</div>
-              <div className={styles.ixlValue}>
-                <div className={styles.stageText}>{currentChallengeStage.label}</div>
-                <div className={styles.tokensGrid}>
-                  {Array.from({ length: currentChallengeStage.tokensNeeded }).map((_, i) => (
-                    <div key={i} className={`${styles.ixlToken} ${i < tokensCollected ? styles.ixlCollected : ''}`} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Link href={teacherToolsHref} className={styles.teacherTools}>
-            <span className={styles.boltIcon}>⚡</span> Teacher tools ›
-          </Link>
-        </aside>
+        <div className={styles.sidebarWrapper}>
+          <MasterySidebar 
+            smartScore={smartScore}
+            questionsAnswered={questionsAnswered}
+            time={time}
+            streak={streak}
+            currentStage={currentStage}
+            tokensCollected={tokensCollected}
+            tokensNeeded={currentChallengeStage.tokensNeeded}
+            difficulty={adaptiveMeta?.difficulty || currentQuestion?.difficulty || 'Easy'}
+          />
+        </div>
       </div>
 
       {!currentQuestion?.hideWorkPad && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import styles from './QuestionParts.module.css';
 import { getImageSrc, hasInlineHtml, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SpeakerButton from './SpeakerButton';
@@ -27,6 +27,52 @@ import MermaidRenderer from './MermaidRenderer';
 import RoughRenderer from './RoughRenderer';
 import JSXGraphRenderer from './JSXGraphRenderer';
 import P5Renderer from './P5Renderer';
+import DraggablePart from './DraggablePart';
+
+function ScaffoldMCQ({ part, index }) {
+    const [selected, setSelected] = useMemo(() => {
+        // We use a small hack to have local state in a component that might be re-rendered
+        // but for simplicity here we'll just use a standard state in a sub-component
+        return [null, () => {}]; 
+    }, []);
+
+    // Actually, I should use a proper functional component for this
+    return <InteractiveScaffoldMCQ part={part} index={index} />;
+}
+
+function InteractiveScaffoldMCQ({ part, index }) {
+    const [selectedIdx, setSelectedIdx] = useState(null);
+    const isCorrect = selectedIdx === part.correctIndex;
+
+    return (
+        <div className={styles.scaffoldMcq}>
+            <div className={styles.scaffoldMcqQuestion}>{part.question}</div>
+            <div className={styles.scaffoldMcqOptions}>
+                {part.options.map((opt, oidx) => {
+                    let btnClass = styles.scaffoldMcqOption;
+                    if (selectedIdx === oidx) {
+                        btnClass += isCorrect ? ` ${styles.scaffoldMcqCorrect}` : ` ${styles.scaffoldMcqIncorrect}`;
+                    }
+                    return (
+                        <button 
+                            key={oidx} 
+                            className={btnClass}
+                            onClick={() => setSelectedIdx(oidx)}
+                        >
+                            {opt}
+                            {selectedIdx === oidx && (isCorrect ? ' ✓' : ' ✗')}
+                        </button>
+                    );
+                })}
+            </div>
+            {selectedIdx !== null && (
+                <div className={isCorrect ? styles.scaffoldMcqFeedbackCorrect : styles.scaffoldMcqFeedbackIncorrect}>
+                    {isCorrect ? "Correct! Well done." : "Not quite. Try checking the numbers again!"}
+                </div>
+            )}
+        </div>
+    );
+}
 
 /**
  * @typedef {Object} QuestionPart
@@ -736,6 +782,34 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                     </div>
                 );
 
+            case 'shape': {
+                const shapeType = part.shape || 'circle';
+                const color = part.color || '#3b82f6';
+                const size = part.size || 40;
+                
+                const renderShape = () => {
+                    switch (shapeType) {
+                        case 'square':
+                            return <rect x="5" y="5" width="30" height="30" fill={color} rx="4" />;
+                        case 'triangle':
+                            return <path d="M20 5 L35 35 L5 35 Z" fill={color} />;
+                        case 'star':
+                            return <path d="M20 2 L25 15 L38 15 L28 24 L32 38 L20 30 L8 38 L12 24 L2 15 L15 15 Z" fill={color} />;
+                        case 'circle':
+                        default:
+                            return <circle cx="20" cy="20" r="15" fill={color} />;
+                    }
+                };
+
+                return (
+                    <div key={index} className={styles.shapeWrapper} style={{ width: size, height: size }}>
+                        <svg viewBox="0 0 40 40" width="100%" height="100%">
+                            {renderShape()}
+                        </svg>
+                    </div>
+                );
+            }
+
             case 'image':
                 return renderImageSet(imageSrc, part, index);
 
@@ -759,7 +833,7 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
 
             case 'sequence':
                 const isCommaSeparated = Boolean(part?.isCommaSeparated || part?.is_comma_separated);
-                const children = Array.isArray(part.children) ? part.children : [];
+                const children = Array.isArray(part.children) ? part.children : (Array.isArray(part.parts) ? part.parts : []);
                 return (
                     <div key={index} className={`${styles.sequence} ${isCommaSeparated ? styles.commaSeparated : ''}`}>
                         {children.map((child, childIndex) => (
@@ -931,7 +1005,7 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 return <DotArrayVisual key={index} part={part} />;
 
             case 'rough':
-                return <RoughRenderer {...part.config} />;
+                return <RoughRenderer width={part.width} height={part.height} shapes={part.shapes} {...part.config} />;
 
             case 'jsxgraph':
                 return <JSXGraphRenderer {...part.config} />;
@@ -940,15 +1014,39 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
             case 'p5lab':
                 return <P5Renderer {...part.config} />;
 
+            case 'pair':
+            case 'row':
+            case 'container':
+                const containerChildren = Array.isArray(part.children) ? part.children : (Array.isArray(part.parts) ? part.parts : []);
+                return (
+                    <div key={index} className={styles.containerPart} style={part.style}>
+                        {containerChildren.map((child, childIndex) => renderPart(child, `${index}-${childIndex}`))}
+                    </div>
+                );
+
+            case 'mcq':
+                return <InteractiveScaffoldMCQ key={index} part={part} index={index} />;
+
             default:
                 return null;
         }
     };
 
     const renderPart = (part, index) => {
-        const content = renderPartContent(part, index);
+        let content = renderPartContent(part, index);
         console.log(`[QUESTION_PARTS] Part index ${index}, type: ${part.type}, hasContent: ${!!content}`);
         if (content === null) return null;
+
+        // Wrap with Draggable if flag is enabled
+        if (part.draggable) {
+            const draggableId = part.id || `drag-${index}`;
+            const dragValue = part.value !== undefined ? part.value : part.content;
+            content = (
+                <DraggablePart id={draggableId} value={dragValue} key={draggableId}>
+                    {content}
+                </DraggablePart>
+            );
+        }
 
         const isVertical = Boolean(part?.isVertical ?? defaultVertical);
         return (

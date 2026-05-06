@@ -1,0 +1,129 @@
+{
+  "increasing_pattern": {
+    "title": "Pattern Recognition: Increasing",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "patternType": "increasing",
+      "type": "numbers",
+      "min": 10,
+      "max": 100
+    }
+  },
+  "decreasing_pattern": {
+    "title": "Pattern Recognition: Decreasing",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "patternType": "decreasing",
+      "type": "numbers",
+      "min": 10,
+      "max": 100
+    }
+  },
+  "constant_pattern": {
+    "title": "Pattern Recognition: Constant",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "patternType": "constant",
+      "type": "numbers",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "alternating_pattern": {
+    "title": "Pattern Recognition: Alternating",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "patternType": "alternating",
+      "type": "numbers",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "rule_identification_addition": {
+    "title": "Rule Identification: Addition",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "level": 2,
+      "subType": "addition",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "rule_identification_subtraction": {
+    "title": "Rule Identification: Subtraction",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "level": 2,
+      "subType": "subtraction",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "rule_identification_multiplication": {
+    "title": "Rule Identification: Multiplication",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "level": 2,
+      "subType": "multiplication",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "rule_identification_division": {
+    "title": "Rule Identification: Division",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "level": 2,
+      "subType": "division",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "rule_identification_squares": {
+    "title": "Rule Identification: Square Numbers",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "level": 2,
+      "subType": "squares"
+    }
+  },
+  "rule_identification_cubes": {
+    "title": "Rule Identification: Cube Numbers",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "level": 2,
+      "subType": "cubes"
+    }
+  },
+  "identify_constant_sequence": {
+    "title": "Identify Sequence: Constant",
+    "logic_type": "pattern_recognition_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "patternType": "constant",
+      "mode": "identify_sequence",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "rectangle_perimeter": {
+    "title": "Perimeter: Rectangles",
+    "logic_type": "perimeter_v1",
+    "difficulty": "easy",
+    "adaptiveConfig": {
+      "min": 2,
+      "max": 8,
+      "unit": "in"
+    }
+  }
+}

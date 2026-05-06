@@ -5,6 +5,9 @@ import styles from './FillInTheBlankRenderer.module.css';
 import { getImageSrc, hasInlineHtml, hydrateTemplate, isImageUrl, isInlineSvg, sanitizeInlineHtml } from './contentUtils';
 import SpeakerButton from './SpeakerButton';
 import SafeImage from './SafeImage';
+import DroppableInput from './DroppableInput';
+import DraggablePart from './DraggablePart';
+import NumberLineSync from './NumberLineSync';
 import {
     extractLatexPlaceholderIds,
     latexWithInteractivePlaceholders,
@@ -133,7 +136,10 @@ export default function FillInTheBlankRenderer({
     onAnswer,
     onSubmit,
     isAnswered,
-    isCorrect
+    isCorrect,
+    selectedItem,
+    onItemClick,
+    onTargetClick
 }) {
     const arithmeticCellRefs = useRef({});
     const containerRef = useRef(null);
@@ -203,11 +209,12 @@ export default function FillInTheBlankRenderer({
         
         console.log("DEBUG: Raw Question from DB:", question);
 
-        const normalize = (obj, inheritedVars = null) => {
-            if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+        const normalize = (obj, inheritedVars = null, depth = 0) => {
+            if (!obj || typeof obj !== 'object' || Array.isArray(obj) || depth > 10) return obj;
             const res = { ...obj };
 
             // Normalize common root and part fields
+            // ... (rest of the fields)
             if (res.question_text !== undefined && res.questionText === undefined) res.questionText = res.question_text;
             if (res.adaptive_config !== undefined && res.adaptiveConfig === undefined) res.adaptiveConfig = res.adaptive_config;
             if (typeof res.adaptiveConfig === 'string') {
@@ -230,7 +237,15 @@ export default function FillInTheBlankRenderer({
             // PRO FIX: Resolve parts from ANY nested structure (root, data_source, or content_data)
             let rawParts = res.parts || res.data_source?.parts || res.data_source?.content_data?.parts || [];
             
-            // If no parts found but a template exists, convert template to a single part for consistent rendering
+            // If no parts found but the root itself has a part type (like 'sequence'), use the root as the only part
+            // ONLY DO THIS AT THE ROOT LEVEL (depth 0) TO AVOID INFINITE RECURSION
+            if (depth === 0 && (!rawParts || rawParts.length === 0) && ['sequence', 'text', 'image'].includes(res.type)) {
+                // Remove the type from the child to prevent it being treated as a "Question" and potentially looping
+                const partCopy = { ...res, isVertical: true };
+                rawParts = [partCopy];
+            }
+
+            // If still no parts found but a template exists, convert template to a single part for consistent rendering
             if ((!rawParts || rawParts.length === 0) && (res.template || res.data_source?.template)) {
                 rawParts = [{ type: 'markdown', content: res.template || res.data_source.template, isVertical: true }];
             }
@@ -240,7 +255,7 @@ export default function FillInTheBlankRenderer({
             // Recursively normalize parts
             if (res.parts.length > 0) {
                 res.parts = res.parts.map(p => {
-                    const normalized = normalize(p, currentVars);
+                    const normalized = normalize(p, currentVars, depth + 1);
                     // Bridge 'content' to type-specific fields if needed (image, etc.)
                     if (normalized.content && normalized.type === 'image' && !normalized.imageUrl) {
                         normalized.imageUrl = normalized.content;
@@ -266,7 +281,7 @@ export default function FillInTheBlankRenderer({
             return res;
         };
 
-        const finalQ = normalize(question);
+        const finalQ = normalize(question, null, 0);
         console.log("DEBUG: Final Normalized Question (q):", finalQ);
         return finalQ;
     }, [question]);
@@ -365,7 +380,37 @@ export default function FillInTheBlankRenderer({
         }
     };
 
-    const renderInput = (partId, properties = {}) => {
+    const renderInput = (id, properties = {}) => {
+        const partId = id || `blank-${Math.random().toString(36).substr(2, 9)}`;
+        const currentVal = getValue(partId);
+        let isLocked = isAnswered;
+        
+        // CHECK: Is the value a known shape?
+        const knownShapes = ['circle', 'square', 'triangle', 'star'];
+        const isShapeValue = typeof currentVal === 'string' && knownShapes.includes(currentVal.toLowerCase());
+        
+        const renderShapeOverlay = () => {
+            if (!isShapeValue) return null;
+            const shapeType = currentVal.toLowerCase();
+            const colors = {
+                circle: '#ef4444',
+                square: '#3b82f6',
+                triangle: '#10b981',
+                star: '#f59e0b'
+            };
+            
+            return (
+                <div className={styles.inputShapeOverlay}>
+                    <svg viewBox="0 0 40 40" width="24" height="24">
+                        {shapeType === 'square' && <rect x="5" y="5" width="30" height="30" fill={colors[shapeType]} rx="4" />}
+                        {shapeType === 'triangle' && <path d="M20 5 L35 35 L5 35 Z" fill={colors[shapeType]} />}
+                        {shapeType === 'star' && <path d="M20 2 L25 15 L38 15 L28 24 L32 38 L20 30 L8 38 L12 24 L2 15 L15 15 Z" fill={colors[shapeType]} />}
+                        {shapeType === 'circle' && <circle cx="20" cy="20" r="15" fill={colors[shapeType]} />}
+                    </svg>
+                </div>
+            );
+        };
+
         const inputConfig = getInputConfig({ id: partId, ...properties });
         const val = getValue(partId);
         // Hard-sanitized value for the input
@@ -402,7 +447,6 @@ export default function FillInTheBlankRenderer({
                 : '');
 
         // Guided Mode: Disable input if a previous blank is not yet correct
-        let isLocked = false;
         if (config.guidedMode) {
             const allBlankIds = Array.isArray(properties.allBlankIds) ? properties.allBlankIds : [];
             const myIndex = allBlankIds.indexOf(partId);
@@ -467,24 +511,39 @@ export default function FillInTheBlankRenderer({
 
         // Standard Text Input
         return (
-            <input
-                key={`raw-input-${partId}`}
-                type="text"
-                className={`${styles.input} ${sizeClassName} ${feedbackClass}`.trim()}
-                value={displayValue}
-                onChange={(e) => handleInputChange(partId, e.target.value)}
-                onFocus={() => setLastFocusedId(partId)}
-                ref={(el) => {
-                    if (el) arithmeticCellRefs.current[partId] = el;
-                }}
-                disabled={isAnswered || isLocked}
-                placeholder={isLocked ? '🔒' : (typeof properties.placeholder === 'string' ? properties.placeholder : '')}
-                aria-label={properties.placeholder || partId || 'blank input'}
-                style={{ width: resolvedWidth, opacity: isLocked ? 0.5 : 1 }}
-                inputMode={showKeypad ? 'none' : inputConfig.inputMode}
-                pattern={inputConfig.pattern}
-                maxLength={maxLength}
-            />
+            <DroppableInput 
+                id={partId} 
+                disabled={isAnswered || isLocked} 
+                key={`droppable-${partId}`}
+                onClick={() => onTargetClick(`blank-${partId}`)}
+            >
+                <div className={styles.inputWithOverlay}>
+                    <input
+                        key={`raw-input-${partId}`}
+                        type="text"
+                        className={`${styles.input} ${sizeClassName} ${feedbackClass}`.trim()}
+                        value={displayValue}
+                        onChange={(e) => handleInputChange(partId, e.target.value)}
+                        onFocus={() => setLastFocusedId(partId)}
+                        ref={(el) => {
+                            if (el) arithmeticCellRefs.current[partId] = el;
+                        }}
+                        disabled={isAnswered || isLocked}
+                        placeholder={isLocked ? '🔒' : (typeof properties.placeholder === 'string' ? properties.placeholder : '')}
+                        aria-label={properties.placeholder || partId || 'blank input'}
+                        style={{ 
+                            width: resolvedWidth, 
+                            opacity: isLocked ? 0.5 : 1,
+                            color: isShapeValue ? 'transparent' : 'inherit',
+                            caretColor: isShapeValue ? 'transparent' : 'auto'
+                        }}
+                        inputMode={showKeypad ? 'none' : inputConfig.inputMode}
+                        pattern={inputConfig.pattern}
+                        maxLength={maxLength}
+                    />
+                    {renderShapeOverlay()}
+                </div>
+            </DroppableInput>
         );
     };
 
@@ -2105,24 +2164,89 @@ export default function FillInTheBlankRenderer({
                 ));
             }
 
-            case 'sequence':
+            case 'sequence': {
                 const isCommaSeparated = Boolean(part?.isCommaSeparated || part?.is_comma_separated);
-                const children = Array.isArray(part.children) ? part.children : [];
+                const children = Array.isArray(part.children) ? part.children : (Array.isArray(part.parts) ? part.parts : []);
+                
                 return wrapPart(part, index, (
                     <div className={`${styles.sequence} ${isCommaSeparated ? styles.commaSeparated : ''}`}>
-                        {children.map((child, childIndex) => (
-                            <span key={`${index}-${childIndex}`} className={styles.sequenceItem}>
-                                {renderPart(child, `${index}-${childIndex}`)}
-                                {isCommaSeparated && childIndex < children.length - 1 && (
-                                    <span className={styles.sequenceComma}>,</span>
-                                )}
-                            </span>
-                        ))}
+                        {children.map((child, childIndex) => {
+                            let content = renderPart(child, `${index}-${childIndex}`);
+                            
+                            if (child.draggable) {
+                                const draggableId = child.id || `drag-${index}-${childIndex}`;
+                                const dragValue = child.value !== undefined ? child.value : child.content;
+                                content = (
+                                    <DraggablePart 
+                                        id={draggableId} 
+                                        value={dragValue} 
+                                        key={draggableId}
+                                        selected={selectedItem?.id === draggableId}
+                                        onClick={() => onItemClick(draggableId, dragValue)}
+                                    >
+                                        {content}
+                                    </DraggablePart>
+                                );
+                            }
+
+                            return (
+                                <span key={`${index}-${childIndex}`} className={styles.sequenceItem}>
+                                    {content}
+                                    {isCommaSeparated && childIndex < children.length - 1 && (
+                                        <span className={styles.sequenceComma}>,</span>
+                                    )}
+                                </span>
+                            );
+                        })}
                     </div>
                 ));
+            }
 
-            case 'pair':
-                return wrapPart(part, index, renderCompositePart(part, index));
+            case 'shape': {
+                const shapeType = part.shape || 'circle';
+                const color = part.color || '#3b82f6';
+                const size = part.size || 40;
+                
+                const renderShape = () => {
+                    switch (shapeType) {
+                        case 'square':
+                            return <rect x="5" y="5" width="30" height="30" fill={color} rx="4" />;
+                        case 'triangle':
+                            return <path d="M20 5 L35 35 L5 35 Z" fill={color} />;
+                        case 'star':
+                            return <path d="M20 2 L25 15 L38 15 L28 24 L32 38 L20 30 L8 38 L12 24 L2 15 L15 15 Z" fill={color} />;
+                        case 'circle':
+                        default:
+                            return <circle cx="20" cy="20" r="15" fill={color} />;
+                    }
+                };
+
+                let content = (
+                    <div className={styles.shapeWrapper} style={{ width: size, height: size }}>
+                        <svg viewBox="0 0 40 40" width="100%" height="100%">
+                            {renderShape()}
+                        </svg>
+                    </div>
+                );
+
+                if (part.draggable) {
+                    const draggableId = part.id || `drag-shape-${index}`;
+                    const dragValue = part.value !== undefined ? part.value : JSON.stringify({ shape: shapeType, color });
+                    content = (
+                        <DraggablePart 
+                            id={draggableId} 
+                            value={dragValue} 
+                            key={draggableId}
+                            selected={selectedItem?.id === draggableId}
+                            onClick={() => onItemClick(draggableId, dragValue)}
+                        >
+                            {content}
+                        </DraggablePart>
+                    );
+                }
+
+                return wrapPart(part, index, content);
+            }
 
             case 'digit_blank':
                 return wrapPart(part, index, (
@@ -2233,15 +2357,18 @@ export default function FillInTheBlankRenderer({
                     </span>
                 ));
 
-            case 'table':
-                if (part.content && typeof part.content === 'string' && part.content.includes('|')) {
+            case 'table': {
+                const rawContent = String(part.content || '');
+                const content = rawContent.replace(/\\n/g, '\n'); // Handle escaped newlines
+                if (content && content.includes('|')) {
                     return wrapPart(part, index, (
                         <div className={styles.markdownTableWrap}>
-                             {renderTextWithBlanks(part.content, `table_${index}`)}
+                             {renderTextWithBlanks(content, `table_${index}`)}
                         </div>
                     ));
                 }
                 return wrapPart(part, index, renderSmartTable(part));
+            }
 
             case 'smartTable':
                 return wrapPart(part, index, renderSmartTable(part));
@@ -2401,6 +2528,31 @@ export default function FillInTheBlankRenderer({
                         onChange={(val) => handleInputChange(part.id || `dd-${index}`, val)}
                     />
                 ));
+            case 'number_line_sync': {
+                const baseSequence = part.sequence || []; // e.g. [5, 10, "box1", 20, "box2"]
+                const currentSequence = baseSequence.map(item => {
+                    if (typeof item === 'string' && isNaN(parseFloat(item))) {
+                        return getValue(item) || null;
+                    }
+                    return item;
+                });
+                const highlightIndices = baseSequence
+                    .map((item, idx) => (typeof item === 'string' && isNaN(parseFloat(item))) ? idx : -1)
+                    .filter(idx => idx !== -1);
+
+                return wrapPart({ ...part, isVertical: true }, index, (
+                    <NumberLineSync 
+                        sequence={currentSequence} 
+                        range={part.range || [0, 50]} 
+                        highlightIndices={highlightIndices}
+                        onTargetClick={(blankId) => onTargetClick(`blank-${blankId}`)}
+                        selectedItem={selectedItem}
+                        baseSequence={baseSequence}
+                        part={part}
+                    />
+                ));
+            }
+
             case 'image_choice':
             case 'imageChoice':
                 return wrapPart(part, index, (
@@ -2412,6 +2564,27 @@ export default function FillInTheBlankRenderer({
                         isCorrect={isAnswered ? String(getValue(part.id || `ic-${index}`)) === String(part.correctAnswerIndex ?? part.correct_answer_index) : null}
                     />
                 ));
+            case 'input':
+            case 'blank':
+                return renderInput(part.id || `input-${index}`, part);
+
+            case 'rough':
+                console.log("[FillInTheBlankRenderer] Rough Part:", JSON.stringify(part).slice(0, 500));
+                return wrapPart(part, index, (
+                    <RoughRenderer width={part.width} height={part.height} shapes={part.shapes} {...part.config} />
+                ));
+
+            case 'pair':
+            case 'row':
+            case 'container': {
+                const containerChildren = Array.isArray(part.children) ? part.children : (Array.isArray(part.parts) ? part.parts : []);
+                return (
+                    <div key={index} className={styles.pairedRow} style={part.style}>
+                        {containerChildren.map((child, childIndex) => renderPart(child, `${index}-${childIndex}`))}
+                    </div>
+                );
+            }
+
             default:
                 return null;
         }

@@ -608,11 +608,11 @@ export function validateAnswer(question, answer) {
 
     case 'fingermultiplication':
     case 'fingercounting': {
+      const studentTotal = answer?.total ?? answer?.inputValue ?? '';
+      // Try parsing as JSON first for backward compatibility, then fallback to plain string
       const expected = parseMaybeJson(question.correctAnswerText, null);
-      if (expected && typeof expected === 'object') {
-        return String(answer?.total ?? '') === String(expected.total ?? '');
-      }
-      return String(answer?.total ?? '') === String(question.correctAnswerText ?? '');
+      const expectedTotal = (expected && typeof expected === 'object') ? expected.total : question.correctAnswerText;
+      return String(studentTotal) === String(expectedTotal);
     }
 
     case 'tokenselection':

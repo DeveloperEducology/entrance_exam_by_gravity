@@ -1,6 +1,13 @@
-'use client';
-
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { 
+    DndContext, 
+    PointerSensor, 
+    TouchSensor, 
+    useSensor, 
+    useSensors, 
+    rectIntersection,
+    MeasuringStrategy
+} from '@dnd-kit/core';
 
 import MCQRenderer from './MCQRenderer';
 import ImageChoiceRenderer from './ImageChoiceRenderer';
@@ -50,11 +57,14 @@ const RENDERER_MAP = {
     },
     table: FillInTheBlankRenderer,
     smartTable: FillInTheBlankRenderer,
+    sequence: FillInTheBlankRenderer,
     arithmetic_journey: StepwiseArithmeticRenderer,
     journey_v1: JourneyRenderer,
     fingerMultiplication: FingerMultiplicationLab,
     fingerCounting: FingerCountingLab,
 };
+
+
 
 
 export default function QuestionRenderer({
@@ -65,6 +75,57 @@ export default function QuestionRenderer({
     isAnswered,
     isCorrect
 }) {
+    const [selectedItem, setSelectedItem] = useState(null); // { id, value }
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } })
+    );
+
+    const handleItemClick = (id, value) => {
+        if (isAnswered) return;
+        if (selectedItem?.id === id) {
+            setSelectedItem(null); // Deselect
+        } else {
+            setSelectedItem({ id, value });
+        }
+    };
+
+    const handleTargetClick = (targetId) => {
+        if (isAnswered || !selectedItem) return;
+        
+        const blankId = String(targetId).replace('blank-', '');
+        
+        if (typeof userAnswer === 'object' && userAnswer !== null) {
+            onAnswer({ ...userAnswer, [blankId]: selectedItem.value });
+        } else {
+            onAnswer({ [blankId]: selectedItem.value });
+        }
+        
+        setSelectedItem(null); // Reset after placing
+    };
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (!over || isAnswered) return;
+
+        const itemId = active.id;
+        const targetId = over.id;
+
+        // If it's a fill-in-the-blank style interaction
+        if (String(targetId).startsWith('blank-') || String(targetId).startsWith('digit_')) {
+            const blankId = String(targetId).replace('blank-', '');
+            const itemValue = active.data.current?.value || itemId;
+            
+            if (typeof userAnswer === 'object' && userAnswer !== null) {
+                onAnswer({ ...userAnswer, [blankId]: itemValue });
+            } else {
+                onAnswer({ [blankId]: itemValue });
+            }
+        }
+        setSelectedItem(null); // Clear selection on drag
+    };
+
     const normalizedType = String(question.type || '').trim();
     const rendererKey = normalizedType in RENDERER_MAP
         ? normalizedType
@@ -88,13 +149,23 @@ export default function QuestionRenderer({
     }
 
     return (
-        <Renderer
-            question={question}
-            userAnswer={userAnswer}
-            onAnswer={onAnswer}
-            onSubmit={onSubmit}
-            isAnswered={isAnswered}
-            isCorrect={isCorrect}
-        />
+        <DndContext 
+            sensors={sensors} 
+            onDragEnd={handleDragEnd}
+            collisionDetection={rectIntersection}
+            measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        >
+            <Renderer
+                question={question}
+                userAnswer={userAnswer}
+                onAnswer={onAnswer}
+                onSubmit={onSubmit}
+                isAnswered={isAnswered}
+                isCorrect={isCorrect}
+                selectedItem={selectedItem}
+                onItemClick={handleItemClick}
+                onTargetClick={handleTargetClick}
+            />
+        </DndContext>
     );
 }

@@ -115,9 +115,29 @@ export default async function SkillsPage({ params }) {
                     </div>
 
                     {/* View Tabs */}
-                    <div className={styles.viewTabs}>
-                        <button className={`${styles.tab} ${styles.activeTab}`}>Capsule</button>
-                        <button className={styles.tab}>Topics</button>
+                    <div className={styles.viewTabs} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <button className={`${styles.tab} ${styles.activeTab}`}>Capsule</button>
+                            <button className={styles.tab}>Topics</button>
+                        </div>
+                        {process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true' && (
+                            <Link 
+                                href="/practice/lab" 
+                                className={styles.tab}
+                                style={{ 
+                                    background: '#1e293b', 
+                                    color: '#38bdf8', 
+                                    border: '1px solid #38bdf8',
+                                    borderRadius: '8px',
+                                    padding: '6px 12px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '700',
+                                    textDecoration: 'none'
+                                }}
+                            >
+                                Try Design Lab 🧪
+                            </Link>
+                        )}
                     </div>
 
                     {/* Skills Grid (3 columns) */}
