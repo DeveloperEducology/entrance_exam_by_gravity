@@ -1649,3 +1649,24 @@
         flex-direction: column;
     }
 }
+
+.mobileBackButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid #e2eff8;
+    background: #f1f8fc;
+    color: #4a637c;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 0.75rem 0 0 0.75rem;
+}
+
+.mobileBackButton:hover {
+    background: white;
+    color: #16a34a;
+    border-color: #16a34a;
+}

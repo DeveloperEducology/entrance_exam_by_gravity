@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/system/BackButton';
 import styles from './skills.module.css';
 import { absoluteUrl } from '@/lib/seo';
 import { getSkillsPageData } from '@/lib/curriculum/server';
@@ -70,9 +71,12 @@ export default async function SkillsPage({ params }) {
             {/* Header */}
             <header className={styles.header}>
                 <div className={styles.headerContent}>
+                <div className={styles.headerLeft}>
+                    <BackButton className={styles.backButton} />
                     <Link href="/" className={styles.logo}>
                         <span className={styles.logoText}>WEXLS</span>
                     </Link>
+                </div>
                     <nav className={styles.nav}>
                         <a href="#" className={styles.navLink}>Learning</a>
                         <Link href="/analytics" className={styles.navLink}>Analytics</Link>

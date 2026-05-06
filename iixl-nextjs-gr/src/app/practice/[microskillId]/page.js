@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import BackButton from '@/components/system/BackButton';
 import { createClient } from '@/lib/supabase/client';
 import { backendUrl } from '@/lib/backend/url';
 import QuestionRenderer from '@/components/practice/QuestionRenderer';
@@ -1362,6 +1363,7 @@ export default function PracticePage() {
       <div className={`${styles.blob} ${styles.blob1}`} />
       <div className={`${styles.blob} ${styles.blob2}`} />
       <div className={styles.mobileHeader}>
+        <BackButton className={styles.mobileBackButton} />
         <div className={styles.mobileBreadcrumbs}>
           <span>{grade?.name || 'Grade'}</span>
           <span className={styles.chevron}>›</span>

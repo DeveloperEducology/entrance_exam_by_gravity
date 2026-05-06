@@ -28,6 +28,39 @@
   gap: 2rem;
 }
 
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.backButton:hover {
+  background: #f8fafc;
+  color: #16a34a;
+  border-color: #16a34a;
+  transform: translateX(-2px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.1);
+}
+
+.backButton:active {
+  transform: scale(0.95);
+}
+
 .logo {
   display: flex;
   align-items: center;
