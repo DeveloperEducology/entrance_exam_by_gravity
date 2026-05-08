@@ -303,11 +303,17 @@ export default function MathKeyboardInput({
           ? <span className={styles.ph}>?</span>
           : inFracView && (
             <span className={styles.fracDisplay}>
-              <span className={`${styles.fracSlot} ${open && slot === 'num' ? styles.slotActive : ''}`}>
+              <span 
+                className={`${styles.fracSlot} ${open && slot === 'num' ? styles.slotActive : ''}`}
+                onClick={(e) => { e.stopPropagation(); setSlot('num'); if (!open) openKeyboard(); }}
+              >
                 {fracParts.num || (open && slot === 'num' ? <span className={styles.cursor} /> : <span className={styles.ph2}>□</span>)}
               </span>
               <span className={styles.fracBar} />
-              <span className={`${styles.fracSlot} ${open && slot === 'den' ? styles.slotActive : ''}`}>
+              <span 
+                className={`${styles.fracSlot} ${open && slot === 'den' ? styles.slotActive : ''}`}
+                onClick={(e) => { e.stopPropagation(); setSlot('den'); if (!open) openKeyboard(); }}
+              >
                 {fracParts.den || (open && slot === 'den' ? <span className={styles.cursor} /> : <span className={styles.ph2}>□</span>)}
               </span>
             </span>
