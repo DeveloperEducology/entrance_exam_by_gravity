@@ -32,7 +32,7 @@ export const Axis = ({ width, height, scale }: { width: number; height: number; 
 };
 
 export const Grid = ({ width, height, scale }: { width: number; height: number; scale: number }) => {
-  const lines = [];
+  const lines: React.ReactNode[] = [];
   for (let i = -10; i <= 10; i++) {
     const xPos = CoordinateSystem.toSvg(i, 0, width, height, scale).x;
     const yPos = CoordinateSystem.toSvg(0, i, width, height, scale).y;
