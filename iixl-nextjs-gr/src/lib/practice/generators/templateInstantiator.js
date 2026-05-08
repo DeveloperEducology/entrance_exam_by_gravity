@@ -1,6 +1,27 @@
-import { generatePlaceValueQuestion } from './placeValueGenerator';
-import { generatePerimeterQuestion } from './maths/perimeterGenerator';
+import { generatePlaceValueQuestion } from './math/arithmetic/placeValueGenerator';
+import { generatePerimeterQuestion } from './math/geometry/perimeterGenerator';
+import {
+  FRACTIONS_IMAGE_CUTS_TEMPLATE_ID,
+  FRACTIONS_SHADED_FRACTION_TEMPLATE_ID,
+  FRACTIONS_SHAPE_EQUAL_PARTS_TEMPLATE_ID,
+  generateFractionsQuestion,
+} from './math/fractions/fractionsGenerator';
 // Triggering rebuild after cleanup
+
+const FRACTIONS_EQUAL_PARTS_KEYS = new Set([
+  'fractions_equal_parts_v1',
+  FRACTIONS_IMAGE_CUTS_TEMPLATE_ID,
+  FRACTIONS_SHADED_FRACTION_TEMPLATE_ID,
+  FRACTIONS_SHAPE_EQUAL_PARTS_TEMPLATE_ID,
+  'fa45bfa3-0b66-4c9c-a238-2f8bbeb49e2b',
+]);
+
+const hasTemplatePlaceholder = (value) => {
+  if (typeof value === 'string') return /\{\w+\}/.test(value);
+  if (Array.isArray(value)) return value.some(hasTemplatePlaceholder);
+  if (value && typeof value === 'object') return Object.values(value).some(hasTemplatePlaceholder);
+  return false;
+};
 
 export function hydrateNode(node, templateVars) {
   if (typeof node === 'string') {
@@ -31,7 +52,9 @@ export function hydrateNode(node, templateVars) {
 export function instantiateTemplate(question, overrideVariables = null) {
   if (!question) return question;
 
-  const logic = question.logic_type || question.logicType || question.adaptiveConfig?.logic_type || question.adaptiveConfig?.logicType || question.adaptiveConfig?.logic;
+  const explicitLogic = question.logic_type || question.logicType || question.adaptiveConfig?.logic_type || question.adaptiveConfig?.logicType || question.adaptiveConfig?.logic;
+  const microSkillKey = question.microSkillId || question.micro_skill_id || question.microskill_id;
+  const logic = explicitLogic || (FRACTIONS_EQUAL_PARTS_KEYS.has(microSkillKey) ? microSkillKey : null);
   if (!logic) return question;
 
   let inst = JSON.parse(JSON.stringify(question));
@@ -50,6 +73,33 @@ export function instantiateTemplate(question, overrideVariables = null) {
     inst.adaptiveConfig.variables = {
       ...(inst.adaptiveConfig.variables || {}),
       ...overrideVariables
+    };
+  }
+
+  if (FRACTIONS_EQUAL_PARTS_KEYS.has(logic)) {
+    const existingCorrectIndex = Number(inst.correctAnswerIndex ?? inst.correct_answer_index);
+    const existingCorrectIndices = Array.isArray(inst.correctAnswerIndices) ? inst.correctAnswerIndices : [];
+    const isAlreadyInstantiated =
+      ((Number.isFinite(existingCorrectIndex) && existingCorrectIndex >= 0) || existingCorrectIndices.length > 0)
+      && !hasTemplatePlaceholder([inst.questionText, inst.question_text, inst.parts, inst.options]);
+
+    if (isAlreadyInstantiated) {
+      return inst;
+    }
+
+    const generated = generateFractionsQuestion(inst);
+    return {
+      ...inst,
+      ...generated,
+      id: inst.id || generated.id,
+      microSkillId: inst.microSkillId ?? inst.micro_skill_id ?? inst.microskill_id ?? generated.microSkillId ?? null,
+      difficulty: inst.difficulty ?? generated.difficulty ?? 'medium',
+      complexity: inst.complexity ?? generated.complexity ?? 0,
+      adaptiveConfig: {
+        ...(inst.adaptiveConfig || {}),
+        ...(generated.adaptiveConfig || {}),
+      },
+      logic_type: explicitLogic || 'fractions_equal_parts_v1',
     };
   }
 
@@ -1901,7 +1951,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
   }
 
   if (logic === 'division_journey_v1') {
-    const { generateDivisionJourney } = require('@/lib/practice/generators/math/divisionJourneyGenerator');
+    const { generateDivisionJourney } = require('@/lib/practice/generators/math/arithmetic/divisionJourneyGenerator');
     const generated = generateDivisionJourney();
     const templateVars = overrideVariables || generated.variables;
 
@@ -2919,7 +2969,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       if (numA < numB) [numA, numB] = [numB, numA];
     }
 
-    const { generateLongDivisionJourney } = require('./longDivisionGenerator');
+    const { generateLongDivisionJourney } = require('./math/arithmetic/longDivisionGenerator');
     const journey = generateLongDivisionJourney(numA, numB);
 
     inst = {
@@ -2994,7 +3044,7 @@ export function instantiateTemplate(question, overrideVariables = null) {
       generateAdditionJourney,
       generateSubtractionJourney,
       generateMultiplicationJourney
-    } = require('./arithmeticJourneyGenerator');
+    } = require('./math/arithmetic/arithmeticJourneyGenerator');
 
     let problem;
     if (type === 'addition') problem = generateAdditionJourney(n1, n2);

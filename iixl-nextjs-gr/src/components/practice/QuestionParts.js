@@ -28,51 +28,9 @@ import RoughRenderer from './RoughRenderer';
 import JSXGraphRenderer from './JSXGraphRenderer';
 import P5Renderer from './P5Renderer';
 import DraggablePart from './DraggablePart';
+import FractionShapeVisual from './FractionShapeVisual';
 
-function ScaffoldMCQ({ part, index }) {
-    const [selected, setSelected] = useMemo(() => {
-        // We use a small hack to have local state in a component that might be re-rendered
-        // but for simplicity here we'll just use a standard state in a sub-component
-        return [null, () => {}]; 
-    }, []);
-
-    // Actually, I should use a proper functional component for this
-    return <InteractiveScaffoldMCQ part={part} index={index} />;
-}
-
-function InteractiveScaffoldMCQ({ part, index }) {
-    const [selectedIdx, setSelectedIdx] = useState(null);
-    const isCorrect = selectedIdx === part.correctIndex;
-
-    return (
-        <div className={styles.scaffoldMcq}>
-            <div className={styles.scaffoldMcqQuestion}>{part.question}</div>
-            <div className={styles.scaffoldMcqOptions}>
-                {part.options.map((opt, oidx) => {
-                    let btnClass = styles.scaffoldMcqOption;
-                    if (selectedIdx === oidx) {
-                        btnClass += isCorrect ? ` ${styles.scaffoldMcqCorrect}` : ` ${styles.scaffoldMcqIncorrect}`;
-                    }
-                    return (
-                        <button 
-                            key={oidx} 
-                            className={btnClass}
-                            onClick={() => setSelectedIdx(oidx)}
-                        >
-                            {opt}
-                            {selectedIdx === oidx && (isCorrect ? ' ✓' : ' ✗')}
-                        </button>
-                    );
-                })}
-            </div>
-            {selectedIdx !== null && (
-                <div className={isCorrect ? styles.scaffoldMcqFeedbackCorrect : styles.scaffoldMcqFeedbackIncorrect}>
-                    {isCorrect ? "Correct! Well done." : "Not quite. Try checking the numbers again!"}
-                </div>
-            )}
-        </div>
-    );
-}
+// InteractiveScaffoldMCQ was here but is now moved inside QuestionParts for better scope access.
 
 /**
  * @typedef {Object} QuestionPart
@@ -605,6 +563,7 @@ function renderSmartTable(part, index, styles) {
 }
 
 export default function QuestionParts({ parts, isVertical: defaultVertical = false, className = '' }) {
+    const [selectedMcqState, setSelectedMcqState] = useState({}); // Track state for multiple MCQs in one page
     const safeParts = useMemo(() => {
         let rawParts = parts;
         if (typeof parts === 'string') {
@@ -731,9 +690,69 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
     };
 
     const renderPartContent = (part, index) => {
+        // SELF-HEALING: If text contains template variables, try to resolve them from part metadata
+        if (part.type === 'text' && part.content?.includes('{')) {
+            const vars = part.variables || {};
+            part.content = part.content.replace(/{(\w+)}/g, (_, key) => vars[key] || `{${key}}`);
+        }
+
         const imageSrc = getImageSrc(part?.imageUrl || part?.content);
 
+        // Handle MCQ inline to ensure stable rendering of rich options
+        if (part.type === 'mcq') {
+            const correctIndex = part.options.findIndex(o => o.isCorrect || o.id === part.correctAnswerId || o.is_correct);
+
+            return (
+                <div className={styles.scaffoldMcq}>
+                    {(part.question || part.questionText) && <div className={styles.scaffoldMcqQuestion}>{part.question || part.questionText}</div>}
+                    <div className={styles.scaffoldMcqOptions}>
+                        {part.options.map((opt, oidx) => {
+                            const isSelected = selectedMcqState[index] === oidx;
+                            const isOptionCorrect = oidx === correctIndex;
+                            let btnClass = styles.scaffoldMcqOption;
+                            if (isSelected) {
+                                btnClass += isOptionCorrect ? ` ${styles.scaffoldMcqCorrect}` : ` ${styles.scaffoldMcqIncorrect}`;
+                            }
+                            const optionContent = typeof opt === 'object' ? (opt.content || opt) : opt;
+
+                            return (
+                                <button 
+                                    key={oidx} 
+                                    className={btnClass}
+                                    onClick={() => setSelectedMcqState(prev => ({ ...prev, [index]: oidx }))}
+                                >
+                                    <div className={styles.mcqOptionVisual}>
+                                        {typeof optionContent === 'object' ? renderPartContent(optionContent, `opt-${index}-${oidx}`) : optionContent}
+                                    </div>
+                                    {isSelected && (isOptionCorrect ? ' ✓' : ' ✗')}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {selectedMcqState[index] !== undefined && (
+                        <div className={selectedMcqState[index] === correctIndex ? styles.scaffoldMcqFeedbackCorrect : styles.scaffoldMcqFeedbackIncorrect}>
+                            {selectedMcqState[index] === correctIndex ? "Correct! Well done." : "Not quite. Try checking the parts again!"}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         switch (part.type) {
+            case 'svg':
+                return (
+                    <div
+                        key={index}
+                        className={`${styles.svgContainer} ${part.isVertical ? styles.vertical : ''}`}
+                        dangerouslySetInnerHTML={{ __html: part.content }}
+                        style={{ 
+                            display: 'block', 
+                            margin: part.isVertical ? '1.5rem auto' : '0',
+                            maxWidth: '100%',
+                            ...part.style 
+                        }}
+                    />
+                );
             case 'text':
                 if (isInlineSvg(part.content)) {
                     return (
@@ -845,6 +864,21 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                             </span>
                         ))}
                     </div>
+                );
+
+            case 'fraction_shape':
+            case 'fraction_visual':
+                return (
+                    <FractionShapeVisual 
+                        key={index} 
+                        shape={part.shape}
+                        partitions={part.partitions}
+                        isEqual={part.isEqual}
+                        rotation={part.rotation}
+                        fill={part.fill}
+                        stroke={part.stroke}
+                        size={part.size || 140}
+                    />
                 );
 
             case 'input':

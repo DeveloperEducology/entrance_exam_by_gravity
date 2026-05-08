@@ -1,10 +1,19 @@
 import { mathGenerators } from './math';
-import { mathsGenerators } from './maths';
-// Import other subjects as they are created
-// import { scienceGenerators } from './science';
 
-export const subjectRegistry = {
+/**
+ * Central registry of all question generators.
+ * The Practice Orchestrator uses this to dispatch template instantiation
+ * based on the 'logic_type' field.
+ */
+export const generatorRegistry = {
   ...mathGenerators,
-  ...mathsGenerators,
+  // Add other subjects here:
   // ...scienceGenerators,
+  // ...englishGenerators,
 };
+
+/**
+ * @deprecated Use generatorRegistry instead.
+ * Keeping subjectRegistry for backward compatibility.
+ */
+export const subjectRegistry = generatorRegistry;

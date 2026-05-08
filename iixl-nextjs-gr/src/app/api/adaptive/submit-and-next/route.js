@@ -21,6 +21,71 @@ import {
   validateAnswer,
 } from '@/lib/adaptive/server';
 
+const FRACTIONS_EQUAL_PARTS_KEYS = new Set([
+  'fractions_equal_parts_v1',
+  'fractions_image_cuts_v1',
+  'fractions_shaded_fraction_v1',
+  'fractions_shape_equal_parts_v1',
+  'fa45bfa3-0b66-4c9c-a238-2f8bbeb49e2b',
+]);
+
+function isInstantiatedFractionsSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  const key = snapshot.logic_type
+    || snapshot.logicType
+    || snapshot.adaptiveConfig?.logic_type
+    || snapshot.adaptiveConfig?.logicType
+    || snapshot.adaptiveConfig?.logic
+    || snapshot.microSkillId
+    || snapshot.micro_skill_id
+    || snapshot.microskill_id;
+  if (!FRACTIONS_EQUAL_PARTS_KEYS.has(key)) return false;
+
+  const direct = Number(snapshot.correctAnswerIndex ?? snapshot.correct_answer_index);
+  const hasIndex = (Number.isFinite(direct) && direct >= 0)
+    || (Array.isArray(snapshot.correctAnswerIndices) && snapshot.correctAnswerIndices.length > 0);
+  if (!hasIndex) return false;
+
+  const options = Array.isArray(snapshot.options) ? snapshot.options : [];
+  return options.length > 0 && options.every((option) => {
+    if (!option || typeof option !== 'object') return true;
+    return !String(option.shape ?? '').includes('{') && !String(option.partitions ?? '').includes('{');
+  });
+}
+
+function normalizeFractionMcqAnswer(question) {
+  if (!question || typeof question !== 'object') return question;
+  const key = question.logic_type
+    || question.logicType
+    || question.adaptiveConfig?.logic_type
+    || question.adaptiveConfig?.logicType
+    || question.adaptiveConfig?.logic
+    || question.microSkillId
+    || question.micro_skill_id
+    || question.microskill_id;
+  if (!FRACTIONS_EQUAL_PARTS_KEYS.has(key)) return question;
+
+  const options = Array.isArray(question.options) ? question.options : [];
+  const metaEqualIdx = options.findIndex((option) => option && typeof option === 'object' && option.meta?.isEqual === true);
+  const idCorrectIdx = options.findIndex((option) => option && typeof option === 'object' && option.id === 'opt_correct');
+  const isCorrectIdx = options.findIndex((option) => option && typeof option === 'object' && option.isCorrect === true);
+  const resolvedIdx = metaEqualIdx >= 0 ? metaEqualIdx : (idCorrectIdx >= 0 ? idCorrectIdx : isCorrectIdx);
+  if (resolvedIdx < 0) return question;
+
+  return {
+    ...question,
+    correctAnswerIndex: resolvedIdx,
+    correctAnswerIndices: [resolvedIdx],
+    correct_answer_index: resolvedIdx,
+    correct_answer_indices: [resolvedIdx],
+    validation: {
+      ...(question.validation || {}),
+      type: question.validation?.type || 'exact',
+      answer: resolvedIdx,
+    },
+  };
+}
+
 function buildBasicFeedback(question, selectedAnswer = null) {
   const getOptionLabel = (option, index) => {
     if (typeof option === 'object' && option !== null) {
@@ -433,6 +498,13 @@ export async function POST(req) {
       // NEW: Securely reconstruct full object (including Hidden Solutions) from DB templates!
       const instParts = String(questionId).split('_');
       if (instParts.length >= 4 && instParts[0] === 'inst') {
+         if (isInstantiatedFractionsSnapshot(payload.questionSnapshot)) {
+            currentQuestion = {
+              ...payload.questionSnapshot,
+              id: questionId
+            };
+            alreadyHydrated = true;
+         } else {
          // The inst ID format is inst_{templateId}_{timestamp}_{random}
          const templateId = instParts.slice(1, -2).join('_');
          const dbTemplate = questions.find(q => String(q.id) === templateId || String(q.template_id) === templateId || String(q.adaptiveConfig?.template_id) === templateId);
@@ -450,6 +522,7 @@ export async function POST(req) {
               ...payload.questionSnapshot,
               id: questionId // force trust the ID
             };
+         }
          }
       } else if (payload.questionSnapshot) {
          // Fallback for generated_pv_ or other dynamic types
@@ -475,6 +548,7 @@ export async function POST(req) {
     if (!currentQuestion) {
       return NextResponse.json({ error: 'Question not found for this microskill.' }, { status: 404 });
     }
+    currentQuestion = normalizeFractionMcqAnswer(currentQuestion);
 
     const isCorrect = validateAnswer(currentQuestion, answer);
     const detectedMisconceptionCode = detectMisconceptionCode({
@@ -643,7 +717,7 @@ export async function POST(req) {
 
     if (!nextResult.question || microskillId === 'place-value-auto-intro' || isLcmStep || isDivStep || isArithStep) {
       if (microskillId === 'place-value-auto-intro' || microskillKey === 'place-value-auto-intro') {
-        const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
+        const { generatePlaceValueQuestion } = require('@/lib/practice/generators/math/arithmetic/placeValueGenerator');
         nextResult = {
           question: generatePlaceValueQuestion(),
           reason: triggerScaffold ? 'intervention_scaffold' : 'auto_generated'

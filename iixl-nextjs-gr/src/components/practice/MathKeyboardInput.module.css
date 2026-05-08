@@ -1,0 +1,313 @@
+/* ══════════════════════════════════════════════════════
+   ANSWER BOX — inline, grows with content
+   ══════════════════════════════════════════════════════ */
+.answerBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  min-height: 52px;
+  padding: 8px 16px;
+  border: 2px solid #a8b3cf;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s, min-width 0.1s;
+  vertical-align: middle;
+  user-select: none;
+  /* grows with content */
+  width: fit-content;
+  max-width: 90vw;
+}
+
+.focused {
+  border-color: #1865f2;
+  box-shadow: 0 0 0 3px rgba(24,101,242,0.18);
+}
+
+.correct   { border-color: #00a300; background: #f5fff5; }
+.incorrect { border-color: #d93025; background: #fff5f5; }
+
+/* ── Placeholder ──────────────────────────────────────── */
+.ph {
+  font-size: 1.4rem;
+  color: #c0c8d8;
+  font-style: italic;
+}
+
+/* ── Text display (grows with content) ───────────────── */
+.textDisplay {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: 'Georgia', serif;
+  color: #1b1b1b;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  min-width: 20px;
+}
+
+/* ── Fraction display ─────────────────────────────────── */
+.fracDisplay {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.fracSlot {
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-family: 'Georgia', serif;
+  color: #1b1b1b;
+  min-width: 22px;
+  min-height: 26px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.slotActive {
+  background: #dce8fd;
+}
+
+.ph2 {
+  color: #c0c8d8;
+  font-style: normal;
+}
+
+.fracBar {
+  width: 100%;
+  min-width: 28px;
+  height: 2px;
+  background: #1b1b1b;
+  border-radius: 1px;
+  margin: 1px 0;
+}
+
+/* ── Cursor ───────────────────────────────────────────── */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #1865f2;
+  border-radius: 1px;
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 1px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── Feedback ─────────────────────────────────────────── */
+.feedback {
+  position: absolute;
+  right: -26px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.correct  .feedback { color: #00a300; }
+.incorrect .feedback { color: #d93025; }
+
+
+/* ══════════════════════════════════════════════════════
+   KEYBOARD DOCK — fixed bottom, never overlaps
+   ══════════════════════════════════════════════════════ */
+.dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: #d1d5db;
+  border-top: 1px solid #9ca3af;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  animation: slideUp 0.18s ease-out;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Tab row ──────────────────────────────────────────── */
+.tabRow {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 10px;
+  background: #c4c9d4;
+  border-bottom: 1px solid #9ca3af;
+  gap: 2px;
+}
+
+.tab {
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  border-radius: 6px 6px 0 0;
+  background: #c4c9d4;
+  border: none;
+  cursor: pointer;
+}
+
+.tabActive {
+  background: #d1d5db;
+  font-weight: 700;
+  color: #111;
+  border-bottom: 2px solid #1865f2;
+}
+
+.tabDim { opacity: 0.45; cursor: default; }
+.tabFill { flex: 1; }
+
+.closeBtn {
+  background: none;
+  border: none;
+  padding: 5px 10px;
+  font-size: 1rem;
+  color: #374151;
+  cursor: pointer;
+  font-weight: 700;
+  align-self: center;
+}
+.closeBtn:hover { color: #111; }
+
+/* ── Keyboard body ────────────────────────────────────── */
+.keyboardBody {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 8px;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Number + symbol grid (6 cols, fluid) ─────────────── */
+.numPad {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Key base style ───────────────────────────────────── */
+.key {
+  background: #fff;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.32);
+  height: 44px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #1b1b1b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.07s, transform 0.07s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.key:active {
+  filter: brightness(0.86);
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Symbol keys (operator / special) */
+.sym {
+  background: #e2e5ea;
+}
+
+.small {
+  font-size: 0.7rem !important;
+}
+
+/* Fraction icon inside □/□ key */
+.fracIcon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+  font-size: 0.62rem;
+  color: #374151;
+}
+.fracIconBar {
+  width: 14px;
+  height: 1.5px;
+  background: #374151;
+  border-radius: 1px;
+}
+
+/* ── Arrow cross wrapper (hidden on very narrow screens) ─ */
+.arrowWrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrows {
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
+  gap: 4px;
+}
+
+.arrowKey {
+  background: #fff;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.32);
+  font-size: 0.8rem;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.07s, transform 0.07s;
+  -webkit-tap-highlight-color: transparent;
+}
+.arrowKey:active {
+  filter: brightness(0.86);
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.arrowCenter {
+  background: #c0c5cf;
+  border-radius: 5px;
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 520px) {
+  /* Smaller keys on mobile */
+  .key {
+    height: 40px;
+    font-size: 0.95rem;
+  }
+  .numPad { gap: 4px; }
+  .keyboardBody { gap: 4px; padding: 5px 5px 7px; }
+
+  /* Hide arrow cluster below 520px — not enough room */
+  .arrowWrap { display: none; }
+}
+
+@media (max-width: 380px) {
+  .key { height: 36px; font-size: 0.85rem; }
+  .numPad { gap: 3px; }
+}

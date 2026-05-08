@@ -1,11 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import QuestionParts from './QuestionParts';
 import styles from './MCQRenderer.module.css';
 import { getImageSrc, isImageUrl, isInlineSvg } from './contentUtils';
 import SafeImage from './SafeImage';
 import SpeakerButton from './SpeakerButton';
 import { isRawLatex } from './latexUtils';
+import { generateFractionsQuestion } from '../../lib/practice/generators/math/fractions/fractionsGenerator';
 
 /**
  * MCQRenderer - Optimized for the "Unique MCQ" Schema
@@ -15,14 +17,30 @@ import { isRawLatex } from './latexUtils';
  * - Multi-select
  * - Rich options (JSON objects vs Strings)
  */
+
 export default function MCQRenderer({
-    question,
+    question: rawQuestion,
     userAnswer,
     onAnswer,
     onSubmit,
     isAnswered
 }) {
-    // 1. Dynamic Unique Style Mapping (CSS-in-JSON)
+    // SELF-HEALING: If the question is an unresolved template, generate it now.
+    // Memoized on question ID so randomization is stable across re-renders.
+    const question = useMemo(() => {
+        const isTemplate =
+            !rawQuestion.options?.length ||
+            rawQuestion.correctAnswerIndex === -1 ||
+            rawQuestion.questionText?.includes('{') ||
+            rawQuestion.options?.[0]?.shape?.includes?.('{');
+
+        if (isTemplate) {
+            console.log('[MCQRenderer] Resolving template for:', rawQuestion.id);
+            return generateFractionsQuestion(rawQuestion);
+        }
+        return rawQuestion;
+    }, [rawQuestion.id]);
+
     const layout = question.layoutConfig || {};
     const dynamicStyle = {
         '--mcq-accent': layout.accentColor || layout.theme || '#22c55e',
@@ -60,8 +78,9 @@ export default function MCQRenderer({
     };
 
     const getOptionMeta = (option) => {
-        const isComplexParts = Array.isArray(option) || (option && typeof option === 'object' && Array.isArray(option.parts));
-        const optionParts = Array.isArray(option) ? option : (option?.parts || []);
+        const isComplexParts = Array.isArray(option) || 
+                             (option && typeof option === 'object' && (Array.isArray(option.parts) || option.type));
+        const optionParts = Array.isArray(option) ? option : (option?.parts || (option?.type ? [option] : []));
         const rawContent = typeof option === 'string' ? option : (option?.content || option?.value || '');
         const labelText = typeof option === 'string' ? option : (option?.label || option?.text || rawContent);
         const optionImageSrc = !isComplexParts ? getImageSrc(rawContent) : '';

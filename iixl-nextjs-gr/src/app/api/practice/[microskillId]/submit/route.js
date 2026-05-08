@@ -6,6 +6,46 @@ import { resolveMicroskillIdByKey } from '@/lib/curriculum/server';
 
 const SKILL_COLUMNS = ['microSkillId', 'micro_skill_id', 'microskill_id'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
+const FRACTIONS_TEMPLATE_KEYS = new Set([
+  'fractions_equal_parts_v1',
+  'fractions_image_cuts_v1',
+  'fractions_shaded_fraction_v1',
+  'fractions_shape_equal_parts_v1',
+  'fa45bfa3-0b66-4c9c-a238-2f8bbeb49e2b',
+]);
+
+function normalizeFractionMcqAnswer(question) {
+  if (!question || typeof question !== 'object') return question;
+  const key = question.logic_type
+    || question.logicType
+    || question.adaptiveConfig?.logic_type
+    || question.adaptiveConfig?.logicType
+    || question.adaptiveConfig?.logic
+    || question.microSkillId
+    || question.micro_skill_id
+    || question.microskill_id;
+  if (!FRACTIONS_TEMPLATE_KEYS.has(key)) return question;
+
+  const options = Array.isArray(question.options) ? question.options : [];
+  const metaEqualIdx = options.findIndex((option) => option && typeof option === 'object' && option.meta?.isEqual === true);
+  const idCorrectIdx = options.findIndex((option) => option && typeof option === 'object' && option.id === 'opt_correct');
+  const isCorrectIdx = options.findIndex((option) => option && typeof option === 'object' && option.isCorrect === true);
+  const resolvedIdx = metaEqualIdx >= 0 ? metaEqualIdx : (idCorrectIdx >= 0 ? idCorrectIdx : isCorrectIdx);
+  if (resolvedIdx < 0) return question;
+
+  return {
+    ...question,
+    correctAnswerIndex: resolvedIdx,
+    correctAnswerIndices: [resolvedIdx],
+    correct_answer_index: resolvedIdx,
+    correct_answer_indices: [resolvedIdx],
+    validation: {
+      ...(question.validation || {}),
+      type: question.validation?.type || 'exact',
+      answer: resolvedIdx,
+    },
+  };
+}
 
 function toPublicQuestion(question) {
   if (!question) return null;
@@ -25,6 +65,7 @@ function toPublicQuestion(question) {
     dropGroups: question.dropGroups ?? [],
     adaptiveConfig: question.adaptiveConfig ?? null,
     tokenSelectionV2Config: question.tokenSelectionV2Config ?? question.tokenSelectionConfig ?? null,
+    layoutConfig: question.layoutConfig ?? question.layout_config ?? null,
     correctAnswerText: question.correctAnswerText ?? '',
     correctAnswerIndex: question.correctAnswerIndex ?? null,
     correctAnswerIndices: Array.isArray(question.correctAnswerIndices) ? question.correctAnswerIndices : [],
@@ -609,6 +650,7 @@ export async function POST(req, { params }) {
         const snapVars = currentQuestion.adaptiveConfig?.variables || null;
         currentQuestion = instantiateTemplate(currentQuestion, snapVars);
     }
+    currentQuestion = normalizeFractionMcqAnswer(currentQuestion);
 
     // 3. Perform Validation against the instantiated question
     const isCorrect = validateAnswer(currentQuestion, answer);

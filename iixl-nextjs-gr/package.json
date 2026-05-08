@@ -31,18 +31,21 @@
     "framer-motion": "^12.36.0",
     "jsonwebtoken": "^9.0.3",
     "katex": "^0.16.32",
+    "lucide-react": "^1.14.0",
     "mermaid": "^11.14.0",
     "mongoose": "^8.19.2",
     "next": "16.1.6",
     "next-mdx-remote": "^6.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-katex": "^3.1.0",
     "react-markdown": "^10.1.0",
     "rehype-katex": "^7.0.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.2.1",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "babel-plugin-react-compiler": "1.0.0",

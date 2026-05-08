@@ -68,6 +68,12 @@ export default function RoughRenderer({
           case 'ellipse':
             rc.ellipse(shape.x, shape.y, shape.w, shape.h, options);
             break;
+          case 'polygon':
+            rc.polygon(shape.points, options);
+            break;
+          case 'arc':
+            rc.arc(shape.x, shape.y, shape.w, shape.h, shape.start, shape.stop, shape.closed || false, options);
+            break;
           case 'text':
             context.font = shape.font || '20px "Comic Sans MS", cursive';
             context.fillStyle = shape.color || '#000';
@@ -83,7 +89,7 @@ export default function RoughRenderer({
   }, [shapes, width, height, seed]);
 
   return (
-    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+    <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', padding: '0.25rem 0' }}>
       <canvas 
         ref={canvasRef} 
         width={width} 

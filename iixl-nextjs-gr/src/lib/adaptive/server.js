@@ -334,6 +334,7 @@ export function toPublicQuestion(question) {
     problem: question.problem ?? null,
     adaptiveConfig: question.adaptiveConfig ?? null,
     tokenSelectionV2Config: question.tokenSelectionV2Config ?? question.tokenSelectionConfig ?? null,
+    layoutConfig: question.layoutConfig ?? question.layout_config ?? null,
     ui_config: question.ui_config ?? null,
     measureTarget: getMeasureTarget(question),
     wordLength: fourPics.wordLength,

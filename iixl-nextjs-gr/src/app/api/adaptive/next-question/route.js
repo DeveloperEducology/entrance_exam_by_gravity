@@ -52,7 +52,7 @@ async function selectAndInstantiateNextQuestion({
 
   if (!result.question || microskillId === 'place-value-auto-intro' || isLcmStep || isHcfStep || isAdditionStep || isSubtractionStep || isMultiplicationStep) {
     if (microskillId === 'place-value-auto-intro') {
-      const { generatePlaceValueQuestion } = require('@/lib/practice/generators/placeValueGenerator');
+      const { generatePlaceValueQuestion } = require('@/lib/practice/generators/math/arithmetic/placeValueGenerator');
       result = {
         question: generatePlaceValueQuestion(),
         reason: 'auto_generated'

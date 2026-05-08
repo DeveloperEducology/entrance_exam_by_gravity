@@ -27,6 +27,7 @@ import MermaidRenderer from './MermaidRenderer';
 import RoughRenderer from './RoughRenderer';
 import JSXGraphRenderer from './JSXGraphRenderer';
 import P5Renderer from './P5Renderer';
+import MathKeyboardInput from './MathKeyboardInput';
 
 function InlineLatexBlanks({
     part,
@@ -509,41 +510,30 @@ export default function FillInTheBlankRenderer({
             );
         }
 
-        // Standard Text Input
+        // ── Fraction answer: stacked fraction display ──────────────────────
+        const isFractionAnswer = typeof expected === 'string' && /^\d+\/\d+$/.test(expected.trim());
+        const isFractionInputType = String(properties?.answerType || properties?.answer_type || '').toLowerCase() === 'fraction';
+        const useFractionMode = isFractionAnswer || isFractionInputType;
+
+        const mathVal = typeof val === 'string' ? val : '';
+        const mathCorrect = isAnswered && String(mathVal).trim() === String(expected).trim();
+
+        // ── MathKeyboardInput for ALL blank inputs ──────────────────────────
+        // Fraction mode for n/d answers, text mode for everything else.
+        // Gives all questions the bottom-docked math keyboard.
         return (
-            <DroppableInput 
-                id={partId} 
-                disabled={isAnswered || isLocked} 
-                key={`droppable-${partId}`}
-                onClick={() => onTargetClick(`blank-${partId}`)}
-            >
-                <div className={styles.inputWithOverlay}>
-                    <input
-                        key={`raw-input-${partId}`}
-                        type="text"
-                        className={`${styles.input} ${sizeClassName} ${feedbackClass}`.trim()}
-                        value={displayValue}
-                        onChange={(e) => handleInputChange(partId, e.target.value)}
-                        onFocus={() => setLastFocusedId(partId)}
-                        ref={(el) => {
-                            if (el) arithmeticCellRefs.current[partId] = el;
-                        }}
-                        disabled={isAnswered || isLocked}
-                        placeholder={isLocked ? '🔒' : (typeof properties.placeholder === 'string' ? properties.placeholder : '')}
-                        aria-label={properties.placeholder || partId || 'blank input'}
-                        style={{ 
-                            width: resolvedWidth, 
-                            opacity: isLocked ? 0.5 : 1,
-                            color: isShapeValue ? 'transparent' : 'inherit',
-                            caretColor: isShapeValue ? 'transparent' : 'auto'
-                        }}
-                        inputMode={showKeypad ? 'none' : inputConfig.inputMode}
-                        pattern={inputConfig.pattern}
-                        maxLength={maxLength}
-                    />
-                    {renderShapeOverlay()}
-                </div>
-            </DroppableInput>
+            <MathKeyboardInput
+                key={`math-input-${partId}`}
+                id={partId}
+                value={mathVal}
+                onChange={(v) => handleInputChange(partId, v)}
+                disabled={isAnswered || isLocked}
+                isAnswered={isAnswered}
+                isCorrect={mathCorrect}
+                autoFocus={!isAnswered}
+                mode={useFractionMode ? 'fraction' : 'text'}
+                placeholder={typeof properties?.placeholder === 'string' ? properties.placeholder : ''}
+            />
         );
     };
 
@@ -1926,6 +1916,14 @@ export default function FillInTheBlankRenderer({
 
     const renderPart = (part, index) => {
         switch (part.type) {
+            case 'svg':
+                return wrapPart(part, index, (
+                    <div
+                        className={styles.imageContainer}
+                        dangerouslySetInnerHTML={{ __html: part.content }}
+                        style={{ display: 'block', margin: '1rem auto', ...part.style }}
+                    />
+                ));
             case 'text':
                 if (isInlineSvg(part.content)) {
                     return wrapPart(part, index, (
@@ -2314,7 +2312,14 @@ export default function FillInTheBlankRenderer({
                 ));
 
             case 'rough':
-                return wrapPart(part, index, <RoughRenderer {...part.config} />);
+                return wrapPart(part, index, (
+                    <RoughRenderer 
+                        width={part.width} 
+                        height={part.height} 
+                        shapes={part.shapes} 
+                        {...(part.config || {})} 
+                    />
+                ));
 
             case 'jsxgraph':
                 return wrapPart(part, index, <JSXGraphRenderer {...part.config} />);
@@ -2350,12 +2355,7 @@ export default function FillInTheBlankRenderer({
             case 'boxMethodMultiply':
                 return wrapPart(part, index, renderBoxMethodMultiply(part));
 
-            case 'blank':
-                return wrapPart(part, index, (
-                    <span className={styles.inlineBlankWrap}>
-                         {renderInput(part.id || `blank_${index}`, { placeholder: part.placeholder || '' })}
-                    </span>
-                ));
+
 
             case 'table': {
                 const rawContent = String(part.content || '');
@@ -2564,15 +2564,7 @@ export default function FillInTheBlankRenderer({
                         isCorrect={isAnswered ? String(getValue(part.id || `ic-${index}`)) === String(part.correctAnswerIndex ?? part.correct_answer_index) : null}
                     />
                 ));
-            case 'input':
-            case 'blank':
-                return renderInput(part.id || `input-${index}`, part);
 
-            case 'rough':
-                console.log("[FillInTheBlankRenderer] Rough Part:", JSON.stringify(part).slice(0, 500));
-                return wrapPart(part, index, (
-                    <RoughRenderer width={part.width} height={part.height} shapes={part.shapes} {...part.config} />
-                ));
 
             case 'pair':
             case 'row':
