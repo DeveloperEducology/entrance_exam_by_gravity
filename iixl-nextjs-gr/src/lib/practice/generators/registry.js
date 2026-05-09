@@ -1,4 +1,5 @@
 import { mathGenerators } from './math';
+import { englishGenerators } from './english';
 
 /**
  * Central registry of all question generators.
@@ -7,9 +8,7 @@ import { mathGenerators } from './math';
  */
 export const generatorRegistry = {
   ...mathGenerators,
-  // Add other subjects here:
-  // ...scienceGenerators,
-  // ...englishGenerators,
+  ...englishGenerators,
 };
 
 /**

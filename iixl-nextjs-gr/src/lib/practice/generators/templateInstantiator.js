@@ -6,6 +6,7 @@ import {
   FRACTIONS_SHAPE_EQUAL_PARTS_TEMPLATE_ID,
   generateFractionsQuestion,
 } from './math/fractions/fractionsGenerator';
+import { generatorRegistry } from './registry';
 // Triggering rebuild after cleanup
 
 const FRACTIONS_EQUAL_PARTS_KEYS = new Set([
@@ -55,7 +56,15 @@ export function instantiateTemplate(question, overrideVariables = null) {
   const explicitLogic = question.logic_type || question.logicType || question.adaptiveConfig?.logic_type || question.adaptiveConfig?.logicType || question.adaptiveConfig?.logic;
   const microSkillKey = question.microSkillId || question.micro_skill_id || question.microskill_id;
   const logic = explicitLogic || (FRACTIONS_EQUAL_PARTS_KEYS.has(microSkillKey) ? microSkillKey : null);
-  if (!logic) return question;
+  
+  // 1. Priority: Modular Registry (New V2 Engines)
+  if (logic && generatorRegistry && generatorRegistry[logic]) {
+    return generatorRegistry[logic](question, overrideVariables);
+  }
+
+  // 2. Fallback: Check if it's a template or has logic that needs legacy processing
+  const isTemplate = question.type === 'template' || question.type === 'fillInTheBlankTemplate';
+  if (!logic && !isTemplate) return question;
 
   let inst = JSON.parse(JSON.stringify(question));
   inst.adaptiveConfig = inst.adaptiveConfig || {};

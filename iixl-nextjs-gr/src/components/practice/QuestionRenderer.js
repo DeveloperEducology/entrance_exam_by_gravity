@@ -29,6 +29,7 @@ import DotGridRenderer from './DotGridRenderer';
 import DragDropRendererV3 from './DragDropRendererV3';
 import FingerMultiplicationLab from './FingerMultiplicationLab';
 import FingerCountingLab from './FingerCountingLab';
+import SpeechRenderer from './SpeechRenderer';
 
 
 const RENDERER_MAP = {
@@ -62,6 +63,8 @@ const RENDERER_MAP = {
     journey_v1: JourneyRenderer,
     fingerMultiplication: FingerMultiplicationLab,
     fingerCounting: FingerCountingLab,
+    speech: SpeechRenderer,
+    speech_recognition: SpeechRenderer,
 };
 
 
