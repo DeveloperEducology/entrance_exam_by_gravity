@@ -1,0 +1,18 @@
+{
+  "title": "C.7 Virtual Protractor Lab",
+  "type": "fillInTheBlank",
+  "logic_type": "p5_angle_measurement_v1",
+  "questionText": "Measure the angle using the virtual protractor.",
+  "parts": [
+    {
+      "type": "text",
+      "content": "### Protractor Skills\nUse the tool below to find the measurement.",
+      "isVertical": true
+    }
+  ],
+  "adaptiveConfig": {
+    "variables": {
+      "targetAngle": 60
+    }
+  }
+}

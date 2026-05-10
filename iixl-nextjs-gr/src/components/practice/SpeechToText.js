@@ -33,10 +33,10 @@ export default function SpeechToText({
         recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
-            let interim = '';
             let final = '';
+            let interim = '';
 
-            for (let i = event.resultIndex; i < event.results.length; i++) {
+            for (let i = 0; i < event.results.length; i++) {
                 const transcriptPart = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
                     final += transcriptPart;
@@ -45,9 +45,7 @@ export default function SpeechToText({
                 }
             }
 
-            if (final) {
-                setTranscript(prev => prev + ' ' + final);
-            }
+            setTranscript(final);
             setInterimTranscript(interim);
         };
 

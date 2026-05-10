@@ -61,8 +61,8 @@ function SpeechDemoContent() {
                 <p style={{ color: '#94a3b8' }}>Test your pronunciation and see the magic of browser-native speech recognition.</p>
             </header>
 
-            <main className={styles.main} style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
-                <div className={styles.rendererWrapper} style={{ background: '#1e293b', padding: '2rem', borderRadius: '24px' }}>
+            <main className={styles.main}>
+                <div className={styles.rendererWrapper} style={{ background: 'rgba(30, 41, 59, 0.5)', borderRadius: '24px' }}>
                     <QuestionRenderer
                         question={currentQuestion}
                         userAnswer={userAnswer}

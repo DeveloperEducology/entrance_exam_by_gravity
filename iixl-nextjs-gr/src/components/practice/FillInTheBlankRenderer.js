@@ -2290,6 +2290,7 @@ export default function FillInTheBlankRenderer({
                 ));
             }
 
+            case 'latex':
             case 'math':
                 return wrapPart(part, index, (
                     <div className={styles.mathLatex}>

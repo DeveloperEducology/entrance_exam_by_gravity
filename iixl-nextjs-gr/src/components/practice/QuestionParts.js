@@ -885,6 +885,7 @@ export default function QuestionParts({ parts, isVertical: defaultVertical = fal
                 // Input rendering handled by FillInTheBlank renderer
                 return null;
 
+            case 'latex':
             case 'math':
             case 'mathLatex': {
                 const displayMode = Boolean(part?.displayMode ?? part?.isDisplayMode);

@@ -79,6 +79,11 @@ function toPublicQuestion(question) {
     isGrid: Boolean(question.isGrid),
     isVertical: Boolean(question.isVertical),
     showSubmitButton: Boolean(question.showSubmitButton),
+    tokens: question.tokens ?? [],
+    concepts: question.concepts ?? [],
+    steps: question.steps ?? [],
+    data_source: question.data_source ?? null,
+    logic_type: question.logic_type ?? null,
   };
 }
 
@@ -663,9 +668,13 @@ export async function POST(req, { params }) {
     const excludedIds = new Set([...attemptedIds, ...clientSeenIds, String(questionId)]);
     const unseen = rawQuestions.map(mapDbQuestion).filter((q) => !excludedIds.has(String(q.id)));
 
-    const nextQuestion = unseen.length > 0
+    let nextQuestion = unseen.length > 0
       ? chooseAdaptiveQuestion(unseen, questionId, isCorrect, rawQuestions.map(mapDbQuestion))
       : chooseAdaptiveQuestion([], questionId, isCorrect, rawQuestions.map(mapDbQuestion));
+
+    if (nextQuestion) {
+      nextQuestion = instantiateTemplate(nextQuestion);
+    }
 
     return NextResponse.json({ source: 'mongodb_hydrated', isCorrect, feedback, nextQuestion: toPublicQuestion(nextQuestion) });
   } catch (err) {

@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, AlertCircle, CheckCircle, FileJson, Layers, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Upload, AlertCircle, CheckCircle, FileJson, Layers, HelpCircle, Image as ImageIcon, Loader2, Copy } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { uploadToR2 } from '../lib/r2';
 
 export function JsonImport() {
     const navigate = useNavigate();
@@ -12,6 +13,8 @@ export function JsonImport() {
     
     // Import Mode
     const [importMode, setImportMode] = useState('questions'); // 'questions' | 'micro_skills' | 'lessons' | 'full'
+    const [activeTab, setActiveTab] = useState('editor'); // 'editor' | 'preview'
+    const [previewItems, setPreviewItems] = useState([]);
 
     // State for Cascading Dropdowns
     const [grades, setGrades] = useState([]);
@@ -23,6 +26,11 @@ export function JsonImport() {
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedUnit, setSelectedUnit] = useState('');
     const [selectedSkill, setSelectedSkill] = useState('');
+    
+    // Image Upload State
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+    const [uploadError, setUploadError] = useState('');
 
     // Fetch Grades on load
     useEffect(() => {
@@ -93,7 +101,8 @@ export function JsonImport() {
 
     // Normalization helper for questions
     const normalizeQuestion = (item, skillId) => {
-        const q = { ...item };
+        // Handle cases where question is wrapped in 'summary' or similar
+        const q = item.summary ? { ...item.summary, title: item.title || item.summary.title } : { ...item };
         
         // ID Normalization
         const _id = q._id || q.id || crypto.randomUUID();
@@ -120,6 +129,7 @@ export function JsonImport() {
 
         // Solution Mapping
         let solution = q.solution || [];
+        if (typeof solution === 'string') { try { solution = JSON.parse(solution); } catch (e) { solution = []; } }
         if (solution.length === 0 && q.validation?.steps) {
             solution = q.validation.steps.map(s => ({
                 type: 'text',
@@ -158,6 +168,26 @@ export function JsonImport() {
             is_multi_select: q.is_multi_select ?? q.isMultiSelect ?? false
         };
     };
+
+    useEffect(() => {
+        if (!jsonInput.trim()) {
+            setPreviewItems([]);
+            return;
+        }
+        try {
+            const parsed = JSON.parse(jsonInput);
+            if (importMode === 'questions') {
+                const items = (Array.isArray(parsed) ? parsed : [parsed]).flat();
+                setPreviewItems(items.map(item => normalizeQuestion(item, selectedSkill)));
+            } else if (importMode === 'micro_skills') {
+                setPreviewItems((Array.isArray(parsed) ? parsed : [parsed]).flat());
+            } else {
+                setPreviewItems([]);
+            }
+        } catch (e) {
+            setPreviewItems([]);
+        }
+    }, [jsonInput, importMode, selectedSkill]);
 
     const handleImport = async () => {
         if (!jsonInput.trim()) {
@@ -290,6 +320,40 @@ export function JsonImport() {
         }
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingImage(true);
+        setUploadError('');
+        setUploadedImageUrl('');
+
+        try {
+            const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+            const publicUrl = await uploadToR2(file, fileName);
+            
+            // Register in Media Registry
+            try {
+                await fetch('http://localhost:5000/api/media', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: file.name.split('.')[0],
+                        url: publicUrl,
+                        type: file.type
+                    })
+                });
+            } catch (e) { console.error("Registry error:", e); }
+
+            setUploadedImageUrl(publicUrl);
+        } catch (err) {
+            console.error(err);
+            setUploadError(err.message);
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20">
             <header className="flex items-center gap-4 py-6 border-b border-slate-200">
@@ -381,6 +445,74 @@ export function JsonImport() {
                         </section>
                     )}
 
+                    {/* Image Uploader Quick Tool */}
+                    <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <ImageIcon className="w-5 h-5 text-indigo-500" />
+                                Asset Uploader
+                            </h3>
+                            {uploadedImageUrl && (
+                                <button 
+                                    onClick={() => setUploadedImageUrl('')}
+                                    className="text-[10px] font-bold text-slate-400 hover:text-slate-600"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-500">Upload images to get URLs for your JSON.</p>
+                        
+                        <div className="relative group border-2 border-dashed border-slate-100 rounded-xl p-4 transition-colors hover:border-indigo-300">
+                            {uploadingImage ? (
+                                <div className="flex flex-col items-center gap-2 py-2">
+                                    <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+                                    <span className="text-[10px] font-bold text-slate-400">Uploading...</span>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 py-2">
+                                    <Upload className="w-6 h-6 text-slate-300" />
+                                    <span className="text-[10px] font-bold text-slate-400">Click or Drop Image</span>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={handleImageUpload}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {uploadedImageUrl && (
+                            <div className="animate-in fade-in slide-in-from-top-1 duration-300 space-y-2">
+                                <div className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span className="text-[10px] font-medium text-emerald-700 truncate flex-1">{uploadedImageUrl}</span>
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(uploadedImageUrl);
+                                            // Optional: visual feedback
+                                        }}
+                                        className="p-1 hover:bg-emerald-100 rounded text-emerald-600 transition-colors"
+                                        title="Copy URL"
+                                    >
+                                        <Copy className="w-3 h-3" />
+                                    </button>
+                                </div>
+                                <div className="aspect-video rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
+                                    <img src={uploadedImageUrl} alt="Uploaded" className="w-full h-full object-contain" />
+                                </div>
+                            </div>
+                        )}
+
+                        {uploadError && (
+                            <div className="p-2 bg-red-50 rounded-lg border border-red-100 flex items-start gap-2">
+                                <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />
+                                <p className="text-[9px] text-red-600 leading-tight">{uploadError}</p>
+                            </div>
+                        )}
+                    </section>
+
                     <button
                         onClick={handleImport}
                         disabled={loading || !jsonInput.trim()}
@@ -403,27 +535,122 @@ export function JsonImport() {
                 {/* Editor Panel */}
                 <div className="lg:col-span-2 space-y-3">
                     <div className="flex items-center justify-between">
-                        <label className="text-sm font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                            <FileJson className="w-4 h-4" /> JSON Code Payload
-                        </label>
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => setActiveTab('editor')}
+                                className={cn(
+                                    "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
+                                    activeTab === 'editor' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                )}
+                            >
+                                JSON Editor
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('preview')}
+                                className={cn(
+                                    "px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2",
+                                    activeTab === 'preview' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                )}
+                            >
+                                Visual Preview
+                                {previewItems.length > 0 && (
+                                    <span className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-md text-[10px]">
+                                        {previewItems.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
                         <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Array of Objects expected</span>
                     </div>
-                    <div className="relative group">
-                        <textarea
-                            value={jsonInput}
-                            onChange={(e) => setJsonInput(e.target.value)}
-                            className="w-full h-[650px] font-mono text-[11px] bg-slate-900 text-slate-300 p-6 rounded-3xl focus:ring-4 focus:ring-indigo-500/20 border-0 outline-none resize-none leading-relaxed shadow-2xl"
-                            placeholder={
-                                importMode === 'questions' ? "// Paste Questions Array here..." :
-                                importMode === 'micro_skills' ? "// Paste Micro Skills Array here (e.g. { name: '..', code: '..' })" :
-                                importMode === 'lessons' ? "// Paste Lessons Array here..." :
-                                " // Paste Whole DB Object here { grades: [], units: [], ... }"
-                            }
-                        />
-                        <div className="absolute top-6 right-6 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <FileJson className="w-10 h-10 text-white" />
+
+                    {activeTab === 'editor' ? (
+                        <div className="relative group">
+                            <textarea
+                                value={jsonInput}
+                                onChange={(e) => setJsonInput(e.target.value)}
+                                className="w-full h-[650px] font-mono text-[11px] bg-slate-900 text-slate-300 p-6 rounded-3xl focus:ring-4 focus:ring-indigo-500/20 border-0 outline-none resize-none leading-relaxed shadow-2xl"
+                                placeholder={
+                                    importMode === 'questions' ? "// Paste Questions Array here..." :
+                                    importMode === 'micro_skills' ? "// Paste Micro Skills Array here (e.g. { name: '..', code: '..' })" :
+                                    importMode === 'lessons' ? "// Paste Lessons Array here..." :
+                                    " // Paste Whole DB Object here { grades: [], units: [], ... }"
+                                }
+                            />
+                            <div className="absolute top-6 right-6 opacity-20 group-hover:opacity-40 transition-opacity">
+                                <FileJson className="w-10 h-10 text-white" />
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="bg-slate-50 rounded-3xl h-[650px] border border-slate-200 overflow-y-auto p-6 space-y-4">
+                            {previewItems.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
+                                    <FileJson className="w-16 h-16 opacity-10" />
+                                    <p className="font-medium">No valid data to preview</p>
+                                    <p className="text-xs">Paste valid JSON in the editor tab first.</p>
+                                </div>
+                            ) : importMode === 'questions' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {previewItems.map((q, idx) => (
+                                        <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 bg-slate-100 px-3 py-1 rounded-bl-xl text-[10px] font-bold text-slate-400">
+                                                #{idx + 1}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={cn(
+                                                    "text-[10px] font-bold px-2 py-0.5 rounded uppercase",
+                                                    q.difficulty === 'high' ? "bg-red-100 text-red-600" : 
+                                                    q.difficulty === 'medium' ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
+                                                )}>
+                                                    {q.difficulty}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                    {q.type} • {q.marks} Marks
+                                                </span>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-sm leading-tight">{q.title || q.question_text}</h4>
+                                            
+                                            {/* Preview Parts */}
+                                            <div className="space-y-2">
+                                                {q.parts?.slice(0, 3).map((p, pIdx) => (
+                                                    <div key={pIdx} className="text-[11px] text-slate-500 flex items-start gap-2">
+                                                        {p.type === 'text' && <span className="line-clamp-2 italic">"{p.content}"</span>}
+                                                        {p.type === 'image' && (
+                                                            <div className="flex items-center gap-2 text-indigo-500">
+                                                                <Layers className="w-3 h-3" />
+                                                                <span>Image: {p.imageUrl?.split('/').pop()}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {q.parts?.length > 3 && <p className="text-[10px] text-slate-300">+{q.parts.length - 3} more parts</p>}
+                                            </div>
+
+                                            <div className="pt-3 border-t border-slate-50 flex items-center justify-between">
+                                                <div className="flex gap-1">
+                                                    {q.concepts?.map((c, i) => (
+                                                        <span key={i} className="text-[9px] bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded">
+                                                            {c}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <span className="text-[10px] font-mono text-emerald-600 font-bold">
+                                                    Ans: {typeof q.correct_answer_text === 'string' && q.correct_answer_text.length > 20 ? '...' : q.correct_answer_text}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {previewItems.map((item, idx) => (
+                                        <div key={idx} className="bg-white p-3 rounded-xl border border-slate-100 text-xs font-mono text-slate-600 overflow-hidden text-ellipsis whitespace-pre">
+                                            {JSON.stringify(item, null, 2)}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

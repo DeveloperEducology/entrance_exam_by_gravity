@@ -1,0 +1,46 @@
+{
+  "title": "Convert digits to word names",
+  "type": "mcq",
+  "logic_type": "digit_to_word_v1",
+  "data_source": {
+    "range": [101, 999]
+  },
+  "parts": [
+    {
+      "type": "text",
+      "content": "How do you write this number using words?"
+    },
+    {
+      "type": "text",
+      "content": "### **{num}**"
+    }
+  ],
+  "options": [
+    {
+      "content": "{correct_word}"
+    },
+    {
+      "content": "{teen_error}"
+    },
+    {
+      "content": "{swap_error}"
+    },
+    {
+      "content": "{hundred_error}"
+    }
+  ],
+  "solution": [
+    {
+      "type": "text",
+      "content": "To write **{num}** in words, we look at each place value:"
+    },
+    {
+      "type": "text",
+      "content": "| hundreds | tens | ones |\n| :---: | :---: | :---: |\n| **{digit_3}** | **{digit_2}** | **{digit_1}** |"
+    },
+    {
+      "type": "text",
+      "content": "\nSo, **{num}** is written as **{correct_word}**."
+    }
+  ]
+}
